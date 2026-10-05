@@ -29,6 +29,6 @@ mkdir -p "$staging/Payload"
 cp -R "$app" "$staging/Payload/"
 ditto -c -k --keepParent "$staging/Payload" .build/artifact/HapticLab-unsigned.ipa
 cp docs/INSTALL-WINDOWS.md .build/artifact/INSTALL-WINDOWS.md
+cp docs/MUSIC.md docs/GOOGLE-LOGIN.md .build/artifact/
 (cd .build/artifact && shasum -a 256 HapticLab-unsigned.ipa > SHA256SUMS.txt)
 echo 'Physical iPhone build passed. IPA is unsigned and must be signed locally using Sideloadly.'
-

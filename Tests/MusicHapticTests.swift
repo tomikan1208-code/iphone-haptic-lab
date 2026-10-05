@@ -65,6 +65,18 @@ final class MusicHapticTests: XCTestCase {
         XCTAssertFalse(MusicLibraryDisk.safeFilename("/other/source.wav"))
     }
 
+    func testClockGateStopsDuringPauseAndStallsUntilMediaAdvancesAgain() {
+        var gate = MusicPlaybackGate()
+        XCTAssertTrue(gate.accept(position: 1, playing: true, rate: 1, hostTime: 10))
+        XCTAssertTrue(gate.accept(position: 1, playing: true, rate: 1, hostTime: 10.1))
+        XCTAssertFalse(gate.accept(position: 1, playing: true, rate: 1, hostTime: 10.4))
+        XCTAssertFalse(gate.accept(position: 1, playing: true, rate: 1, hostTime: 10.5))
+        XCTAssertTrue(gate.accept(position: 1.1, playing: true, rate: 1, hostTime: 10.6))
+        XCTAssertFalse(gate.accept(position: 1.1, playing: false, rate: 1, hostTime: 10.7))
+        XCTAssertTrue(gate.accept(position: 4, playing: true, rate: 2, hostTime: 11))
+        XCTAssertFalse(gate.accept(position: .nan, playing: true, rate: 1, hostTime: 12))
+    }
+
     func testSignalExtractorRejectsSilentAudio() throws {
         let extractor = try MusicSignalExtractor(channels: 1)
         try extractor.append(Array(repeating: 0, count: 22_050))

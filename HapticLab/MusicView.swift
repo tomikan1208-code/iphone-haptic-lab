@@ -5,6 +5,12 @@ private enum MusicListSection: String, CaseIterable {
     case prepared = "作成済み", history = "履歴", youtube = "YouTube"
 }
 
+private struct MusicPreparationRequest: Identifiable {
+    let selection: MusicSelection
+    var audioURL: URL?
+    var id: String { selection.id }
+}
+
 struct MusicView: View {
     @EnvironmentObject private var library: MusicLibrary
     @EnvironmentObject private var playback: MusicPlayback
@@ -13,8 +19,7 @@ struct MusicView: View {
     @State private var urlText = ""
     @State private var resolving = false
     @State private var section: MusicListSection = .prepared
-    @State private var pending: MusicSelection?
-    @State private var importedAudio: URL?
+    @State private var pending: MusicPreparationRequest?
     @State private var importing = false
     @State private var showPlayer = false
     @State private var showAccount = false
@@ -39,9 +44,9 @@ struct MusicView: View {
         .scrollIndicators(.hidden)
         .sheet(item: $pending, onDismiss: {
             if openPlayerAfterDismiss { openPlayerAfterDismiss = false; showPlayer = true }
-        }) { selection in
-            MusicPreparationView(selection: selection, initialAudio: importedAudio) {
-                open(selection, withHaptics: false)
+        }) { request in
+            MusicPreparationView(selection: request.selection, initialAudio: request.audioURL) {
+                open(request.selection, withHaptics: false)
             }
             .environmentObject(library)
             .presentationDragIndicator(.visible)
@@ -55,8 +60,7 @@ struct MusicView: View {
         .fileImporter(isPresented: $importing, allowedContentTypes: [.audio, .movie], allowsMultipleSelection: false) { result in
             do {
                 guard let url = try result.get().first else { return }
-                importedAudio = url
-                pending = MusicSelection.file(url)
+                pending = MusicPreparationRequest(selection: MusicSelection.file(url), audioURL: url)
             } catch { library.message = error.localizedDescription }
         }
         .alert("この曲の保存データを削除しますか？", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
@@ -72,7 +76,7 @@ struct MusicView: View {
             Text("振動・調整値・このアプリの履歴を削除します。読み込んだ音源のアプリ内コピーも削除されます。")
         }
         .onChange(of: library.recentlyPreparedID) { id in
-            if id != nil { pending = nil; importedAudio = nil; section = .prepared }
+            if id != nil { pending = nil; section = .prepared }
         }
         .onChange(of: library.records) { records in youtube.synchronize(records: records) }
         .task {
@@ -115,12 +119,10 @@ struct MusicView: View {
             .accessibilityIdentifier("music.import")
             Button {
                 guard let url = Bundle.main.url(forResource: "MusicDemo", withExtension: "wav") else { return }
-                importedAudio = url
-                var selection = MusicSelection.file(url)
-                selection = MusicSelection(id: "bundled-music-demo", kind: .file, title: "Pulse Garden · 12秒のサンプル",
+                let selection = MusicSelection(id: "bundled-music-demo", kind: .file, title: "Pulse Garden · 12秒のサンプル",
                                            artist: "触感ラボ オリジナル", url: "")
                 if library.record(for: selection)?.isPrepared == true { open(selection, withHaptics: true) }
-                else { pending = selection }
+                else { pending = MusicPreparationRequest(selection: selection, audioURL: url) }
             } label: {
                 Label("12秒のサンプルで試す", systemImage: "sparkles").font(.system(size: 12)).foregroundStyle(LabTheme.mint)
             }
@@ -264,9 +266,8 @@ struct MusicView: View {
     }
 
     private func select(_ selection: MusicSelection) {
-        importedAudio = nil
         if library.record(for: selection)?.isPrepared == true { open(selection, withHaptics: true) }
-        else { pending = selection }
+        else { pending = MusicPreparationRequest(selection: selection) }
     }
 
     private func open(_ selection: MusicSelection, withHaptics: Bool) {
@@ -280,7 +281,7 @@ struct MusicView: View {
             else { showPlayer = true }
         } catch {
             library.message = error.localizedDescription
-            pending = selection
+            pending = MusicPreparationRequest(selection: selection, audioURL: record.flatMap { library.disk.mediaURL($0) })
         }
     }
 }
@@ -313,7 +314,7 @@ struct MusicPreparationView: View {
                     Text("1曲20分・512 MBまで。解析中はアプリを開いたままにしてください。")
                         .font(.system(size: 12)).foregroundStyle(LabTheme.muted)
                     PrimaryButton(title: selection.kind == .youtube ? "音源を選んで振動を作成" : "解析して振動を作成", symbol: "waveform") {
-                        if selection.kind == .youtube { importing = true }
+                        if selection.kind == .youtube || (selection.kind == .file && initialAudio == nil) { importing = true }
                         else { library.prepare(selection, audioFile: initialAudio); dismiss() }
                     }
                     .disabled(library.preparation != nil).accessibilityIdentifier("music.prepare")

@@ -242,6 +242,27 @@ func lowerBound<T>(_ values: [T], time: Double, key: (T) -> Double) -> Int {
     return low
 }
 
+// Require the media clock to advance, even when a player reports "playing" during a stall.
+struct MusicPlaybackGate {
+    private var previousPosition: Double?
+    private var lastAdvance = 0.0
+    private var previousHost = -Double.infinity
+
+    mutating func accept(position: Double, playing: Bool, rate: Double, hostTime: Double) -> Bool {
+        guard playing, position.isFinite, position >= 0, rate.isFinite, (0.25...2).contains(rate),
+              hostTime.isFinite, hostTime >= previousHost else { reset(); return false }
+        previousHost = hostTime
+        if let previousPosition, abs(position - previousPosition) < 0.001 {
+            return hostTime - lastAdvance <= 0.25
+        }
+        previousPosition = position
+        lastAdvance = hostTime
+        return true
+    }
+
+    mutating func reset() { previousPosition = nil; lastAdvance = 0; previousHost = -Double.infinity }
+}
+
 func musicTime(_ seconds: Double) -> String {
     let value = seconds.isFinite ? max(0, Int(seconds)) : 0
     return String(format: "%d:%02d", value / 60, value % 60)

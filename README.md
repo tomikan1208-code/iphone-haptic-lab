@@ -12,7 +12,18 @@ iPhone SE（第3世代）で、Taptic Engineの触感を体験・調整するネ
 - お気に入りと調整値の保存
 - 常時表示の停止ボタン、タブ切り替え・画面ロック・バックグラウンド移行時の停止
 
-初版は触感を試すためのアプリです。音楽ファイルの解析・再生やYouTube連携は今後の段階です。画面内の波形は触感のイメージを表す図です。
+## 音楽機能（2.0）
+
+- 初回の確認・音源解析と、振動・曲ごとの調整値の保存
+- 音楽・動画ファイルの読み込み、直接HTTPS URLの解析とストリーミング再生
+- YouTube公式プレーヤーと保存した振動の同期（初回に同じ内容の音源ファイルが必要）
+- Googleログインによる再生リスト選択（OAuth設定が必要）
+- 作成済みリスト、アプリ内再生履歴、曲ごとのデータ削除
+- 非公開のYouTube作成済みリストへの自動追加・削除と再試行
+- 一時停止・シーク・読み込み待ちの同期、強さ・低音・ビート密度・同期補正
+- 12秒のオリジナル音源で解析・保存・再生を確認
+
+YouTube全体の視聴履歴は公式APIで取得できません。解析用音声も提供しないため、動画URLだけから振動を生成する機能はありません。[音楽の使い方](docs/MUSIC.md)、[Googleログイン設定](docs/GOOGLE-LOGIN.md)を参照してください。OAuth未設定でも音源ファイル・直接URL・アプリ内リストは利用できます。
 
 ## Windowsで使う
 
@@ -35,6 +46,7 @@ macOSが利用できる場合は次のコマンドで同じビルドを実行で
 
 ```sh
 node scripts/generate-project.mjs
+node scripts/generate-music-demo.mjs
 node scripts/generate-icons.mjs
 node scripts/validate-project.mjs
 bash scripts/build-ios.sh
@@ -49,10 +61,14 @@ WindowsでもNode.jsを使ってプロジェクトとリソースの整合性を
 - `HapticController.swift`：Core Hapticsへの変換、単一プレーヤー管理、動的パラメーター、停止・中断・リセット対応
 - `Resources/Presets.json`：触感の見本。時刻・持続時間は秒、強さ・鋭さは0〜1
 - SwiftUIの各画面：見本、調整、パッド、使い方
+- `MusicAnalyzer.swift`：PCMの順次処理、FFTによる低音・打音・音量解析
+- `MusicModels.swift` / `MusicLibrary.swift`：全曲の振動データ、分割、保存と個別削除
+- `MusicPlayback.swift`：AVPlayer・YouTubeの再生時刻とCore Hapticsの区間予約
+- `GoogleOAuth.swift` / `YouTubeAccount.swift`：PKCE、Keychain、再生リスト取得・自動同期
 - `Tests/`：不正な値、30秒制限、連打の時刻、メトロノーム末尾の無音区間を検証
 - `UITests/`：小さい画面でタブ・スライダー・種類切り替え・停止を確認し、スクリーンショットを保存
 
-同時に再生するカスタムパターンは1つだけです。新しい再生時に前のプレーヤーを停止し、世代番号で古い完了通知・タイマーが新しい再生を停止しないようにしています。音楽同期に拡張するときも、解析から同じパターンデータを生成できる構成です。
+見本のカスタムパターンは同時に1つだけです。音楽は持続とタップを分けた区間プレーヤーを使用します。停止は全体へ作用し、世代番号で古い完了通知が新しい再生を停止しないようにしています。
 
 画面・ビルド・データの検証と、実際の触感の検証は別です。触感の質と実機での中断動作はiPhoneで確認してください。
 

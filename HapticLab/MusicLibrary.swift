@@ -138,6 +138,7 @@ final class MusicLibrary: ObservableObject {
     }
 
     func delete(_ record: MusicRecord) throws {
+        if preparation?.selection.id == record.id { cancelPreparation() }
         try persist(records.filter { $0.id != record.id })
         try disk.removeOrphans(records: records)
     }

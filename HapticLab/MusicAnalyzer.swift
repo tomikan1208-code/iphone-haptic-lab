@@ -40,7 +40,7 @@ final class MusicSignalExtractor {
 
     func append(_ interleavedSamples: [Float]) throws {
         guard interleavedSamples.count % channels == 0,
-              interleavedSamples.allSatisfy({ $0.isFinite }) else { throw MusicError.unsupportedMedia }
+              interleavedSamples.allSatisfy({ $0.isFinite && abs($0) <= 16 }) else { throw MusicError.unsupportedMedia }
         totalFrames += interleavedSamples.count / channels
         guard Double(totalFrames) / Self.sampleRate <= MusicHapticTrack.maximumDuration + 0.1 else {
             throw MusicError.tooLong

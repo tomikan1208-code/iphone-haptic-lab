@@ -9,6 +9,8 @@ struct GuideView: View {
                          detail: "同じiPhoneでも、持ち方と設定で感じ方が変わります。")
             tip("hand.raised", title: "手に持って比べる",
                 text: "軽く手に持ち、見本を1つずつ再生してみてください。ケースや机に置いた状態でも感じ方が変わります。")
+            tip("music.note", title: "まず音楽のサンプルから",
+                text: "「音楽」の12秒サンプルで振動を作成し、「作成済み」から再生してください。初回だけ解析し、2回目から保存した振動を使います。")
             tip("slider.horizontal.3", title: "「強さ」と「鋭さ」は別もの",
                 text: "強さは振動の大きさ。鋭さを上げると、柔らかい感触から、くっきりしたクリック感へ近づきます。")
             tip("button.programmable", title: "ホームボタンの感触を探す",
@@ -28,7 +30,7 @@ struct GuideView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .labPanel()
-            Text("触感ラボ 1.0  ·  音を鳴らさず、触感だけを探索")
+            Text("触感ラボ 2.0  ·  音楽と触感を手の中へ")
                 .font(.system(size: 10)).foregroundStyle(LabTheme.muted)
                 .frame(maxWidth: .infinity)
                 .padding(.top, 5)

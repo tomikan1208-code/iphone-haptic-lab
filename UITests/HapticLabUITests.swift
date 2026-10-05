@@ -1,6 +1,7 @@
 import XCTest
 
 final class HapticLabUITests: XCTestCase {
+    override func setUp() { continueAfterFailure = false }
     func testSmallScreenNavigationAndControls() {
         let app = XCUIApplication()
         app.launchArguments = ["--music-test-library", "--reset-music-test-library"]
@@ -47,12 +48,14 @@ final class HapticLabUITests: XCTestCase {
         reveal(prepare, app: app)
         prepare.tap()
         let song = app.buttons["music.song.bundled-music-demo"]
+        reveal(song, app: app)
         XCTAssertTrue(song.waitForExistence(timeout: 40))
         reveal(song, app: app)
         screenshot("06-music-prepared", app: app)
         app.terminate()
         app.launchArguments = ["--music-test-library"]
         app.launch()
+        reveal(song, app: app)
         XCTAssertTrue(song.waitForExistence(timeout: 10))
         reveal(song, app: app)
         song.tap()

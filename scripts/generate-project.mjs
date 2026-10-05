@@ -87,8 +87,8 @@ for (const target of targets) {
     Object.assign(base, {
       INFOPLIST_FILE: 'HapticLab/Info.plist', GENERATE_INFOPLIST_FILE: 'NO',
       ASSETCATALOG_COMPILER_APPICON_NAME: 'AppIcon', ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: 'AccentColor',
-      ENABLE_PREVIEWS: 'YES', SWIFT_EMIT_LOC_STRINGS: 'NO'
-      , GOOGLE_IOS_CLIENT_ID: googleClientID, GOOGLE_REVERSED_CLIENT_ID: googleCallbackScheme
+      ENABLE_PREVIEWS: 'YES', SWIFT_EMIT_LOC_STRINGS: 'NO',
+      GOOGLE_IOS_CLIENT_ID: googleClientID, GOOGLE_REVERSED_CLIENT_ID: googleCallbackScheme
     });
   } else {
     base.GENERATE_INFOPLIST_FILE = 'YES';

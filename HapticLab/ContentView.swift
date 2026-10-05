@@ -104,11 +104,11 @@ struct ContentView: View {
 
     private var playerBar: some View {
         HStack(spacing: 12) {
-            Image(systemName: haptics.isPlaying ? "waveform" : "pause.circle")
-                .foregroundStyle(haptics.isPlaying ? LabTheme.mint : LabTheme.muted)
+            Image(systemName: (haptics.isPlaying || music.isPlaying) ? "waveform" : "pause.circle")
+                .foregroundStyle((haptics.isPlaying || music.isPlaying) ? LabTheme.mint : LabTheme.muted)
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 3) {
-                Text(haptics.isPlaying ? "PLAYING" : "READY")
+                Text((haptics.isPlaying || music.isPlaying) ? "PLAYING" : "READY")
                     .font(.system(size: 8, weight: .bold, design: .monospaced))
                     .tracking(1.5)
                     .foregroundStyle(LabTheme.muted)

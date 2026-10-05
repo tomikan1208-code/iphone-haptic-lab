@@ -12,8 +12,7 @@ final class MusicHapticRenderer {
     private var anchorMedia = 0.0
     private var nextEngine = 0.0
     private var nextMedia = 0.0
-    private var previousPosition: Double?
-    private var lastAdvance = 0.0
+    private var clockGate = MusicPlaybackGate()
     private var previousRate = 1.0
     private var generation = 0
     private var watchdog: Task<Void, Never>?
@@ -25,17 +24,13 @@ final class MusicHapticRenderer {
         guard supported, let track, position.isFinite, position >= 0, playing,
               rate.isFinite, (0.25...2).contains(rate) else { stop(); return }
         let host = CACurrentMediaTime()
-        if let previousPosition, abs(position - previousPosition) < 0.001 {
-            if host - lastAdvance > 0.25 { stopPlayers(); return }
-        } else { lastAdvance = host }
-        previousPosition = position
+        guard clockGate.accept(position: position, playing: playing, rate: rate, hostTime: host) else { stopPlayers(); return }
         let media = position - settings.normalized.offset
         guard media >= 0, media < track.duration else { stopPlayers(); return }
         watchdog?.cancel()
-        let token = generation
         watchdog = Task { [weak self] in
             do { try await Task.sleep(nanoseconds: 350_000_000) } catch { return }
-            guard let self, self.generation == token else { return }
+            guard let self else { return }
             self.stopPlayers()
         }
         do {
@@ -70,8 +65,7 @@ final class MusicHapticRenderer {
         stopPlayers()
         watchdog?.cancel()
         watchdog = nil
-        previousPosition = nil
-        lastAdvance = 0
+        clockGate.reset()
     }
 
     func suspend() {
@@ -164,6 +158,9 @@ final class MusicPlayback: ObservableObject {
     private var routeObserver: NSObjectProtocol?
     private var loggedPlay = false
     private var mismatchReported = false
+    private var seekTarget: Double?
+    private var seekDeadline = 0.0
+    private var seekGeneration = 0
 
     init() {
         renderer.onFailure = { [weak self] text in self?.pause(); self?.message = text }
@@ -197,6 +194,7 @@ final class MusicPlayback: ObservableObject {
         message = nil
         loggedPlay = false
         mismatchReported = false
+        seekTarget = nil
         isReady = false
         if selection.kind != .youtube {
             guard let url = mediaURL ?? URL(string: selection.url) else {
@@ -237,6 +235,8 @@ final class MusicPlayback: ObservableObject {
         isPlaying = false
         isBuffering = false
         renderer.stop()
+        seekGeneration += 1
+        seekTarget = nil
     }
 
     func stop() {
@@ -257,15 +257,34 @@ final class MusicPlayback: ObservableObject {
         duration = 0
     }
 
-    func suspend() { pause(); renderer.suspend() }
+    func suspend() {
+        pause()
+        renderer.suspend()
+        if selection != nil { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
+    }
 
     func seek(to time: Double) {
         guard time.isFinite, duration > 0 else { return }
         let target = min(duration, max(0, time))
         renderer.stop()
+        seekGeneration += 1
+        let generation = seekGeneration
+        seekTarget = target
+        seekDeadline = CACurrentMediaTime() + 5
         position = target
         if selection?.kind == .youtube { evaluate("player.seekTo(\(target),true)") }
-        else { player.seek(to: CMTime(seconds: target, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) }
+        else {
+            player.seek(to: CMTime(seconds: target, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
+                Task { @MainActor [weak self] in
+                    guard let self, self.seekGeneration == generation else { return }
+                    if finished { self.seekTarget = nil }
+                }
+            }
+        }
+    }
+
+    func beginYouTubeLoading(videoID: String) {
+        if selection?.videoID == videoID { isReady = false; renderer.stop() }
     }
 
     func receiveYouTube(_ snapshot: [String: Any], videoID: String) {
@@ -302,6 +321,15 @@ final class MusicPlayback: ObservableObject {
     }
 
     private func synchronize(position: Double, playing: Bool, rate: Double) {
+        guard duration > 0 else { renderer.stop(); return }
+        if let seekTarget {
+            if abs(position - seekTarget) <= 0.5 { self.seekTarget = nil }
+            else {
+                renderer.stop()
+                if CACurrentMediaTime() > seekDeadline { pause(); message = "指定した位置へ移動できませんでした。もう一度再生してください。" }
+                return
+            }
+        }
         if playing, !loggedPlay, let selection { loggedPlay = true; onPlay?(selection) }
         if let track, duration > 0, abs(duration - track.duration) > max(1, track.duration * 0.015) {
             renderer.stop()
@@ -335,6 +363,7 @@ struct YouTubeMusicPlayer: UIViewRepresentable {
         webView.backgroundColor = .black
         webView.scrollView.isScrollEnabled = false
         playback.webView = webView
+        playback.beginYouTubeLoading(videoID: videoID)
         let origin = "https://\(Bundle.main.bundleIdentifier ?? "com.tomikan1208.hapticlab")"
         // The bundle-ID HTTPS base supplies the app identity required by YouTube (error 153).
         let html = """
@@ -369,7 +398,7 @@ struct YouTubeMusicPlayer: UIViewRepresentable {
         uiView.evaluateJavaScript("clearInterval(timer); if(window.player && player.destroy) player.destroy()", completionHandler: nil)
         uiView.configuration.userContentController.removeScriptMessageHandler(forName: "musicPlayer")
         uiView.stopLoading()
-        coordinator.playback?.renderer.stop()
+        if coordinator.playback?.webView === uiView { coordinator.playback?.renderer.stop() }
     }
 
     final class Coordinator: NSObject, WKScriptMessageHandler {

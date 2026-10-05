@@ -46,6 +46,7 @@ jobs:
           retention-days: 14
           if-no-files-found: error
       - name: Upload native screenshots
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: HapticLab-preview
@@ -60,4 +61,5 @@ jobs:
             .build/TestResults.xcresult
             .build/build-ios.log
             .build/test-ios.log
+            .build/test-summary.json
           retention-days: 7

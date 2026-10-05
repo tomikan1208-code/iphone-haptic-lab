@@ -67,6 +67,7 @@ final class YouTubeAccount: ObservableObject {
     private var syncTask: Task<Void, Never>?
     private var syncID: UUID?
     private var loadRevision = 0
+    private var authorizationGeneration = 0
     var configured: Bool { oauth.isConfigured }
     var managedPlaylistURL: URL? {
         guard let id = managedList.playlistID else { return nil }
@@ -122,6 +123,7 @@ final class YouTubeAccount: ObservableObject {
     }
 
     func disconnect() {
+        authorizationGeneration += 1
         loadRevision += 1
         disableSync()
         oauth.disconnect()
@@ -215,13 +217,28 @@ final class YouTubeAccount: ObservableObject {
             if page.items?.isEmpty != false { state = YouTubeManagedList() }
         }
         if state.playlistID == nil {
+            // Find our marked list before creating it, including after a lost create response.
+            var pageToken: String?
+            repeat {
+                var query = ["part": "snippet", "mine": "true", "maxResults": "50"]
+                query["pageToken"] = pageToken
+                let page: YouTubePage<YouTubePlaylist> = try await request("playlists", query: query)
+                if let found = page.items?.first(where: { $0.snippet.title == "触感ラボ・振動作成済み" &&
+                    $0.snippet.description == "触感ラボで振動を作成した動画。アプリの自動同期で管理します。" }) {
+                    state.playlistID = found.id
+                    break
+                }
+                pageToken = page.nextPageToken
+            } while pageToken != nil
+        }
+        if state.playlistID == nil {
             let created: YouTubePlaylist = try await request("playlists", method: "POST", query: ["part": "snippet,status"], body: [
                 "snippet": ["title": "触感ラボ・振動作成済み", "description": "触感ラボで振動を作成した動画。アプリの自動同期で管理します。"],
                 "status": ["privacyStatus": "private"]
             ])
             state.playlistID = created.id
-            try saveManaged(state, key: key)
         }
+        try saveManaged(state, key: key)
         guard let playlistID = state.playlistID else { return }
         for (videoID, itemID) in state.members where !desiredIDs.contains(videoID) {
             do { _ = try await requestData("playlistItems", method: "DELETE", query: ["id": itemID]) }
@@ -256,10 +273,12 @@ final class YouTubeAccount: ObservableObject {
     }
 
     private func authorize(write: Bool) async throws {
+        let generation = authorizationGeneration
         let previous = oauth.credential
         var credential = try await oauth.authorize(write: write)
         let page: YouTubePage<YouTubeChannel> = try await request("channels",
             query: ["part": "snippet,contentDetails", "mine": "true"], token: credential.accessToken)
+        guard generation == authorizationGeneration else { throw CancellationError() }
         guard let channel = page.items?.first else { throw MusicError.account("このGoogleアカウントにYouTubeのチャンネルがありません。YouTubeでチャンネルを作成してからログインしてください。") }
         if write, !credential.canWrite { throw MusicError.account("再生リストへの追加権限が許可されませんでした。アプリ内リストを利用できます。") }
         credential.channelID = channel.id
