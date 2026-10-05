@@ -1,0 +1,848 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+
+	};
+	objectVersion = 56;
+	objects = {
+		CE5A1BA8EC3F753E64EBC170 = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/alexeichhorn/YouTubeKit.git";
+			requirement = {
+				kind = revision;
+				revision = e5b7d0396ce12bf3444f0d209e8436c83373b7af;
+			};
+		};
+		1ECBCB51895DA3D3ACB31A2E = {
+			isa = XCSwiftPackageProductDependency;
+			package = CE5A1BA8EC3F753E64EBC170;
+			productName = YouTubeKit;
+		};
+		4741E67E75932B26294913BE = {
+			isa = PBXBuildFile;
+			productRef = 1ECBCB51895DA3D3ACB31A2E;
+		};
+		E7CBA11D019B60C70AEDD922 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = ContentView.swift;
+			sourceTree = "<group>";
+		};
+		A2E680B8DD48A9BF3E4F76F9 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = ExperimentView.swift;
+			sourceTree = "<group>";
+		};
+		5BE777719960B641B666FD81 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = GalleryView.swift;
+			sourceTree = "<group>";
+		};
+		11DEA63A79E352795E73BB11 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = GoogleOAuth.swift;
+			sourceTree = "<group>";
+		};
+		3648876B083986E28419DBA5 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = GuideView.swift;
+			sourceTree = "<group>";
+		};
+		3AE2BA4070CC889D5B1A8D9B = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = HapticController.swift;
+			sourceTree = "<group>";
+		};
+		F35FC03F3B32327908B082F4 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = HapticLabApp.swift;
+			sourceTree = "<group>";
+		};
+		3207FE469A052B487C36A69A = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = HapticPattern.swift;
+			sourceTree = "<group>";
+		};
+		BD1FDBE556FBC84571ABAB64 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = HapticVisualization.swift;
+			sourceTree = "<group>";
+		};
+		FC8134C1BACF0BEAC8C3DBE5 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicAnalyzer.swift;
+			sourceTree = "<group>";
+		};
+		FD4FA09751C92EA36947819D = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicComposer.swift;
+			sourceTree = "<group>";
+		};
+		1997D22C5218C0FB0997387B = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicLibrary.swift;
+			sourceTree = "<group>";
+		};
+		B12AF2972DBF2E43EC621262 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicModels.swift;
+			sourceTree = "<group>";
+		};
+		9A56DCC9BD25A795EE91FAE9 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicPlayback.swift;
+			sourceTree = "<group>";
+		};
+		8B56465797BF799A3046333D = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicPlayerView.swift;
+			sourceTree = "<group>";
+		};
+		D5349AC6E579C0C482051EA9 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicView.swift;
+			sourceTree = "<group>";
+		};
+		D8EC3098F0102F9EAB90D487 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = PCAnalysis.swift;
+			sourceTree = "<group>";
+		};
+		17BA6C4D66802E901A561C49 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = Theme.swift;
+			sourceTree = "<group>";
+		};
+		F38FAE94E7994A0260EDF288 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = TouchPadView.swift;
+			sourceTree = "<group>";
+		};
+		6C0BB2BCC5D78407083F5D51 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = YouTubeAccount.swift;
+			sourceTree = "<group>";
+		};
+		18A7636D519CD01E9ECE219A = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = YouTubeMedia.swift;
+			sourceTree = "<group>";
+		};
+		76ADFCD4788F0F72513A3FA7 = {
+			isa = PBXBuildFile;
+			fileRef = E7CBA11D019B60C70AEDD922;
+		};
+		6CAB5CCB792F95820053FB5D = {
+			isa = PBXBuildFile;
+			fileRef = A2E680B8DD48A9BF3E4F76F9;
+		};
+		5041D0B69A454AC7C1CDDEF5 = {
+			isa = PBXBuildFile;
+			fileRef = 5BE777719960B641B666FD81;
+		};
+		D9C73A63E64872008F488969 = {
+			isa = PBXBuildFile;
+			fileRef = 11DEA63A79E352795E73BB11;
+		};
+		9675745F7CB55E75ECC5D570 = {
+			isa = PBXBuildFile;
+			fileRef = 3648876B083986E28419DBA5;
+		};
+		BC8297CF93BDC0F8B76FB7C4 = {
+			isa = PBXBuildFile;
+			fileRef = 3AE2BA4070CC889D5B1A8D9B;
+		};
+		409E776BF93B23433CEE5200 = {
+			isa = PBXBuildFile;
+			fileRef = F35FC03F3B32327908B082F4;
+		};
+		D7ACDC643816AD1A66520F11 = {
+			isa = PBXBuildFile;
+			fileRef = 3207FE469A052B487C36A69A;
+		};
+		F574AA6984C7586D77506CC8 = {
+			isa = PBXBuildFile;
+			fileRef = BD1FDBE556FBC84571ABAB64;
+		};
+		602E753F4BA6FEEABE05E141 = {
+			isa = PBXBuildFile;
+			fileRef = FC8134C1BACF0BEAC8C3DBE5;
+		};
+		C78E8D9EA96B301F73A1839D = {
+			isa = PBXBuildFile;
+			fileRef = FD4FA09751C92EA36947819D;
+		};
+		126000E58ECAA5CB8424899C = {
+			isa = PBXBuildFile;
+			fileRef = 1997D22C5218C0FB0997387B;
+		};
+		78FE50C53B5D714A7C40BE36 = {
+			isa = PBXBuildFile;
+			fileRef = B12AF2972DBF2E43EC621262;
+		};
+		574484E5D5BA0344D754328C = {
+			isa = PBXBuildFile;
+			fileRef = 9A56DCC9BD25A795EE91FAE9;
+		};
+		B49B0DF3236225FD9F26E6CD = {
+			isa = PBXBuildFile;
+			fileRef = 8B56465797BF799A3046333D;
+		};
+		1042B2C0FFCDDB54EA26A4E4 = {
+			isa = PBXBuildFile;
+			fileRef = D5349AC6E579C0C482051EA9;
+		};
+		5176F910AC1B29560B6D3DB3 = {
+			isa = PBXBuildFile;
+			fileRef = D8EC3098F0102F9EAB90D487;
+		};
+		983ECF2B09D43633F1914DC3 = {
+			isa = PBXBuildFile;
+			fileRef = 17BA6C4D66802E901A561C49;
+		};
+		E503E78CC2BB93B96FE55502 = {
+			isa = PBXBuildFile;
+			fileRef = F38FAE94E7994A0260EDF288;
+		};
+		B9D218942E380DA4805CB68D = {
+			isa = PBXBuildFile;
+			fileRef = 6C0BB2BCC5D78407083F5D51;
+		};
+		F24BF41B3E7B5CAB5E458A75 = {
+			isa = PBXBuildFile;
+			fileRef = 18A7636D519CD01E9ECE219A;
+		};
+		68C4AA1F758E906A64E77950 = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.json;
+			path = Presets.json;
+			sourceTree = "<group>";
+		};
+		2A87E830313D9A31CF8A1663 = {
+			isa = PBXFileReference;
+			lastKnownFileType = audio.wav;
+			path = MusicDemo.wav;
+			sourceTree = "<group>";
+		};
+		93CA6FF6272D2B46CF44D1B0 = {
+			isa = PBXFileReference;
+			lastKnownFileType = text;
+			path = "YouTubeKit-LICENSE.txt";
+			sourceTree = "<group>";
+		};
+		0BD14CF9AEE8B8115BE42078 = {
+			isa = PBXFileReference;
+			lastKnownFileType = folder.assetcatalog;
+			path = Assets.xcassets;
+			sourceTree = "<group>";
+		};
+		8C49A6DCFC2D7D66191C1C21 = {
+			isa = PBXBuildFile;
+			fileRef = 68C4AA1F758E906A64E77950;
+		};
+		B7FE93C138119C93D105FB56 = {
+			isa = PBXBuildFile;
+			fileRef = 2A87E830313D9A31CF8A1663;
+		};
+		A2AA355F20CCF2C2B05C1478 = {
+			isa = PBXBuildFile;
+			fileRef = 93CA6FF6272D2B46CF44D1B0;
+		};
+		D24F7ACE5DC4522519535579 = {
+			isa = PBXBuildFile;
+			fileRef = 0BD14CF9AEE8B8115BE42078;
+		};
+		63C38E40907F2CB5ACA79DFA = {
+			isa = PBXGroup;
+			children = (
+				68C4AA1F758E906A64E77950,
+				2A87E830313D9A31CF8A1663,
+				93CA6FF6272D2B46CF44D1B0,
+				0BD14CF9AEE8B8115BE42078,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		CBFD5F5CEFAE1FCCE60AE281 = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.plist.xml;
+			path = Info.plist;
+			sourceTree = "<group>";
+		};
+		AD8E02A2117AF67E6628017A = {
+			isa = PBXGroup;
+			children = (
+				E7CBA11D019B60C70AEDD922,
+				A2E680B8DD48A9BF3E4F76F9,
+				5BE777719960B641B666FD81,
+				11DEA63A79E352795E73BB11,
+				3648876B083986E28419DBA5,
+				3AE2BA4070CC889D5B1A8D9B,
+				F35FC03F3B32327908B082F4,
+				3207FE469A052B487C36A69A,
+				BD1FDBE556FBC84571ABAB64,
+				FC8134C1BACF0BEAC8C3DBE5,
+				FD4FA09751C92EA36947819D,
+				1997D22C5218C0FB0997387B,
+				B12AF2972DBF2E43EC621262,
+				9A56DCC9BD25A795EE91FAE9,
+				8B56465797BF799A3046333D,
+				D5349AC6E579C0C482051EA9,
+				D8EC3098F0102F9EAB90D487,
+				17BA6C4D66802E901A561C49,
+				F38FAE94E7994A0260EDF288,
+				6C0BB2BCC5D78407083F5D51,
+				18A7636D519CD01E9ECE219A,
+				63C38E40907F2CB5ACA79DFA,
+				CBFD5F5CEFAE1FCCE60AE281,
+			);
+			path = HapticLab;
+			sourceTree = "<group>";
+		};
+		E90F1B9047E41B3357E5F62F = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.application;
+			includeInIndex = 0;
+			path = HapticLab.app;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		1F197EF8495FD8FEDAFCF1E0 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				76ADFCD4788F0F72513A3FA7,
+				6CAB5CCB792F95820053FB5D,
+				5041D0B69A454AC7C1CDDEF5,
+				D9C73A63E64872008F488969,
+				9675745F7CB55E75ECC5D570,
+				BC8297CF93BDC0F8B76FB7C4,
+				409E776BF93B23433CEE5200,
+				D7ACDC643816AD1A66520F11,
+				F574AA6984C7586D77506CC8,
+				602E753F4BA6FEEABE05E141,
+				C78E8D9EA96B301F73A1839D,
+				126000E58ECAA5CB8424899C,
+				78FE50C53B5D714A7C40BE36,
+				574484E5D5BA0344D754328C,
+				B49B0DF3236225FD9F26E6CD,
+				1042B2C0FFCDDB54EA26A4E4,
+				5176F910AC1B29560B6D3DB3,
+				983ECF2B09D43633F1914DC3,
+				E503E78CC2BB93B96FE55502,
+				B9D218942E380DA4805CB68D,
+				F24BF41B3E7B5CAB5E458A75,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		68D0EC63DE293EC829FAC280 = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4741E67E75932B26294913BE,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		81A2EE0BC391DDD73227794D = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8C49A6DCFC2D7D66191C1C21,
+				B7FE93C138119C93D105FB56,
+				A2AA355F20CCF2C2B05C1478,
+				D24F7ACE5DC4522519535579,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AD32CEB52B312833DB368971 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tomikan1208.hapticlab;
+				TARGETED_DEVICE_FAMILY = 1;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				SWIFT_VERSION = 5.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				INFOPLIST_FILE = HapticLab/Info.plist;
+				GENERATE_INFOPLIST_FILE = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ENABLE_PREVIEWS = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				GOOGLE_IOS_CLIENT_ID = "";
+				GOOGLE_REVERSED_CLIENT_ID = com.tomikan1208.hapticlab.oauth;
+			};
+			name = Debug;
+		};
+		E5E96FC79EC60CD1D26A0323 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tomikan1208.hapticlab;
+				TARGETED_DEVICE_FAMILY = 1;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				SWIFT_VERSION = 5.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				INFOPLIST_FILE = HapticLab/Info.plist;
+				GENERATE_INFOPLIST_FILE = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ENABLE_PREVIEWS = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				GOOGLE_IOS_CLIENT_ID = "";
+				GOOGLE_REVERSED_CLIENT_ID = com.tomikan1208.hapticlab.oauth;
+			};
+			name = Release;
+		};
+		F6AA8656905703EDE109E832 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AD32CEB52B312833DB368971,
+				E5E96FC79EC60CD1D26A0323,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3E2DEF02C32129C3626417DF = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F6AA8656905703EDE109E832;
+			buildPhases = (
+				1F197EF8495FD8FEDAFCF1E0,
+				68D0EC63DE293EC829FAC280,
+				81A2EE0BC391DDD73227794D,
+			);
+			buildRules = (
+
+			);
+			dependencies = (
+
+			);
+			packageProductDependencies = (
+				1ECBCB51895DA3D3ACB31A2E,
+			);
+			name = HapticLab;
+			productName = HapticLab;
+			productReference = E90F1B9047E41B3357E5F62F;
+			productType = "com.apple.product-type.application";
+		};
+		378A29A97E13BC600245D867 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = HapticPatternTests.swift;
+			sourceTree = "<group>";
+		};
+		E46E0A8528084A496B3F304F = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicHapticTests.swift;
+			sourceTree = "<group>";
+		};
+		F9ED0ECA5AEC380659EE1414 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicPlayerTests.swift;
+			sourceTree = "<group>";
+		};
+		19D08358BC042FC915B97E0A = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = YouTubeMediaTests.swift;
+			sourceTree = "<group>";
+		};
+		1612BE72FFDE1E21105E6006 = {
+			isa = PBXBuildFile;
+			fileRef = 378A29A97E13BC600245D867;
+		};
+		D833091D58E57F003C6AF0CD = {
+			isa = PBXBuildFile;
+			fileRef = E46E0A8528084A496B3F304F;
+		};
+		EC6446C664114E31D6769033 = {
+			isa = PBXBuildFile;
+			fileRef = F9ED0ECA5AEC380659EE1414;
+		};
+		1BEC2AB58C4B1CD927FB27B1 = {
+			isa = PBXBuildFile;
+			fileRef = 19D08358BC042FC915B97E0A;
+		};
+		F779C9C9A01895FC297A88B2 = {
+			isa = PBXGroup;
+			children = (
+				378A29A97E13BC600245D867,
+				E46E0A8528084A496B3F304F,
+				F9ED0ECA5AEC380659EE1414,
+				19D08358BC042FC915B97E0A,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		6D94A70C10955DA88327FAC3 = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.cfbundle;
+			includeInIndex = 0;
+			path = HapticLabTests.xctest;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		52730CE36D4DC619AA318415 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1612BE72FFDE1E21105E6006,
+				D833091D58E57F003C6AF0CD,
+				EC6446C664114E31D6769033,
+				1BEC2AB58C4B1CD927FB27B1,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		24CB8A86AB2D94F1C7ED0618 = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D79D27B98D2CCA12C365C757 = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D52C0153742627086F3E3C5B = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tomikan1208.hapticlabtests;
+				TARGETED_DEVICE_FAMILY = 1;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				SWIFT_VERSION = 5.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				GENERATE_INFOPLIST_FILE = YES;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HapticLab.app/HapticLab";
+				BUNDLE_LOADER = "$(TEST_HOST)";
+			};
+			name = Debug;
+		};
+		BCDD7BCB7BE144156C349CEC = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tomikan1208.hapticlabtests;
+				TARGETED_DEVICE_FAMILY = 1;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				SWIFT_VERSION = 5.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				GENERATE_INFOPLIST_FILE = YES;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HapticLab.app/HapticLab";
+				BUNDLE_LOADER = "$(TEST_HOST)";
+			};
+			name = Release;
+		};
+		6F65E09140514C9AD60E4717 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D52C0153742627086F3E3C5B,
+				BCDD7BCB7BE144156C349CEC,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C95D09E7638BB1D419B57AA8 = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FBA1579C1129C0FC34F4CC6F;
+			proxyType = 1;
+			remoteGlobalIDString = 3E2DEF02C32129C3626417DF;
+			remoteInfo = HapticLab;
+		};
+		8F0EBFAEBEC51872D4741B9F = {
+			isa = PBXTargetDependency;
+			target = 3E2DEF02C32129C3626417DF;
+			targetProxy = C95D09E7638BB1D419B57AA8;
+		};
+		B60EC2FB58A4519DCDEB8F34 = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6F65E09140514C9AD60E4717;
+			buildPhases = (
+				52730CE36D4DC619AA318415,
+				24CB8A86AB2D94F1C7ED0618,
+				D79D27B98D2CCA12C365C757,
+			);
+			buildRules = (
+
+			);
+			dependencies = (
+				8F0EBFAEBEC51872D4741B9F,
+			);
+			packageProductDependencies = (
+
+			);
+			name = HapticLabTests;
+			productName = HapticLabTests;
+			productReference = 6D94A70C10955DA88327FAC3;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		3FE12416357B548A3806853E = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = HapticLabUITests.swift;
+			sourceTree = "<group>";
+		};
+		DA57F8C7A5AB8411E2F91355 = {
+			isa = PBXBuildFile;
+			fileRef = 3FE12416357B548A3806853E;
+		};
+		0EB66C1166D240C9C8670E9C = {
+			isa = PBXGroup;
+			children = (
+				3FE12416357B548A3806853E,
+			);
+			path = UITests;
+			sourceTree = "<group>";
+		};
+		C509896C3D79DF7A33A007DC = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.cfbundle;
+			includeInIndex = 0;
+			path = HapticLabUITests.xctest;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		E3DE33FD56260C2DE23ADA39 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DA57F8C7A5AB8411E2F91355,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AE5EF2D7AF57875E1DBC9303 = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3D12BF835AED0168BD44F6CA = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E85E4F1658F19251976E29EA = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tomikan1208.hapticlabuitests;
+				TARGETED_DEVICE_FAMILY = 1;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				SWIFT_VERSION = 5.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				GENERATE_INFOPLIST_FILE = YES;
+				TEST_TARGET_NAME = HapticLab;
+			};
+			name = Debug;
+		};
+		D5C6D9C2DCD785F43C532CD6 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tomikan1208.hapticlabuitests;
+				TARGETED_DEVICE_FAMILY = 1;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				SWIFT_VERSION = 5.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				GENERATE_INFOPLIST_FILE = YES;
+				TEST_TARGET_NAME = HapticLab;
+			};
+			name = Release;
+		};
+		8CA9D82D90C623E588E403C7 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E85E4F1658F19251976E29EA,
+				D5C6D9C2DCD785F43C532CD6,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5A0E538CA5353B78C2FCB1B6 = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FBA1579C1129C0FC34F4CC6F;
+			proxyType = 1;
+			remoteGlobalIDString = 3E2DEF02C32129C3626417DF;
+			remoteInfo = HapticLab;
+		};
+		FE5F04600205090191F25340 = {
+			isa = PBXTargetDependency;
+			target = 3E2DEF02C32129C3626417DF;
+			targetProxy = 5A0E538CA5353B78C2FCB1B6;
+		};
+		CECA528F1FD9479F22B11077 = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8CA9D82D90C623E588E403C7;
+			buildPhases = (
+				E3DE33FD56260C2DE23ADA39,
+				AE5EF2D7AF57875E1DBC9303,
+				3D12BF835AED0168BD44F6CA,
+			);
+			buildRules = (
+
+			);
+			dependencies = (
+				FE5F04600205090191F25340,
+			);
+			packageProductDependencies = (
+
+			);
+			name = HapticLabUITests;
+			productName = HapticLabUITests;
+			productReference = C509896C3D79DF7A33A007DC;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		07EA4F436BF0D754242E0915 = {
+			isa = PBXGroup;
+			children = (
+				E90F1B9047E41B3357E5F62F,
+				6D94A70C10955DA88327FAC3,
+				C509896C3D79DF7A33A007DC,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B237EC100606C4927408A7EA = {
+			isa = PBXGroup;
+			children = (
+				AD8E02A2117AF67E6628017A,
+				F779C9C9A01895FC297A88B2,
+				0EB66C1166D240C9C8670E9C,
+				07EA4F436BF0D754242E0915,
+			);
+			sourceTree = "<group>";
+		};
+		8FC19BA19A576EB46DD809D8 = {
+			isa = XCBuildConfiguration;
+			name = Debug;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				SDKROOT = iphoneos;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SWIFT_VERSION = 5.0;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_COMPILATION_MODE = singlefile;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+			};
+		};
+		D1961C4807DCD88C4B4BDFA9 = {
+			isa = XCBuildConfiguration;
+			name = Release;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				SDKROOT = iphoneos;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SWIFT_VERSION = 5.0;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited)";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_TESTABILITY = NO;
+			};
+		};
+		0D25B24F8EBA02F64760FB78 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8FC19BA19A576EB46DD809D8,
+				D1961C4807DCD88C4B4BDFA9,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FBA1579C1129C0FC34F4CC6F = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					3E2DEF02C32129C3626417DF = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					B60EC2FB58A4519DCDEB8F34 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = 3E2DEF02C32129C3626417DF;
+					};
+					CECA528F1FD9479F22B11077 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = 3E2DEF02C32129C3626417DF;
+					};
+				};
+			};
+			buildConfigurationList = 0D25B24F8EBA02F64760FB78;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = ja;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				ja,
+				en,
+				Base,
+			);
+			mainGroup = B237EC100606C4927408A7EA;
+			productRefGroup = 07EA4F436BF0D754242E0915;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				3E2DEF02C32129C3626417DF,
+				B60EC2FB58A4519DCDEB8F34,
+				CECA528F1FD9479F22B11077,
+			);
+			packageReferences = (
+				CE5A1BA8EC3F753E64EBC170,
+			);
+		};
+	};
+	rootObject = FBA1579C1129C0FC34F4CC6F;
+}

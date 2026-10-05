@@ -4,11 +4,13 @@ on:
   push:
     branches: [main, 'codex/**']
     paths:
-      - 'HapticLab/**'
-      - 'HapticLab.xcodeproj/**'
-      - 'Tests/**'
-      - 'UITests/**'
-      - 'scripts/**'
+      - 'haptic-lab/HapticLab/**'
+      - 'haptic-lab/HapticLab.xcodeproj/**'
+      - 'haptic-lab/Tests/**'
+      - 'haptic-lab/UITests/**'
+      - 'haptic-lab/scripts/**'
+      - 'haptic-lab/pc-server/**'
+      - 'haptic-lab/docs/**'
       - '.github/workflows/build-ios.yml'
       - '.gitattributes'
   workflow_dispatch:
@@ -26,8 +28,18 @@ jobs:
     timeout-minutes: 35
     env:
       GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
+    defaults:
+      run:
+        working-directory: haptic-lab
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Test audio spectrum analysis and temporary-file cleanup
+        run: |
+          python -m pip install -r pc-server/requirements.txt
+          python -m unittest discover -s pc-server -p 'test_*.py' -v
       - name: Generate project and validate assets
         run: |
           node scripts/generate-project.mjs
@@ -42,7 +54,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HapticLab-iPhone
-          path: .build/artifact/
+          path: haptic-lab/.build/artifact/
           retention-days: 14
           if-no-files-found: error
       - name: Upload native screenshots
@@ -50,7 +62,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HapticLab-preview
-          path: .build/screenshots/
+          path: haptic-lab/.build/screenshots/
           retention-days: 7
       - name: Upload test results
         if: always()
@@ -58,8 +70,9 @@ jobs:
         with:
           name: HapticLab-test-results
           path: |
-            .build/TestResults.xcresult
-            .build/build-ios.log
-            .build/test-ios.log
-            .build/test-summary.json
+            haptic-lab/.build/TestResults.xcresult
+            haptic-lab/.build/build-ios.log
+            haptic-lab/.build/test-ios.log
+            haptic-lab/.build/test-summary.json
+            haptic-lab/.build/pc-test-metrics.json
           retention-days: 7
