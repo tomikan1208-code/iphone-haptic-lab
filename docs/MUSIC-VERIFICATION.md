@@ -2,6 +2,8 @@
 
 2026-10-05に、非公開GitHubリポジトリの `codex/music-haptics` ブランチで音楽版をビルドしました。
 
+これは旧版2.0の記録です。この版の配布物は `dist/archive/2.0.0/` へ保存済みです。現在の配布物は[音楽プレイヤー2.1の検証結果](PLAYER-VERIFICATION.md)を参照してください。
+
 - アプリのバージョン：2.0.0（ビルド2）
 - 検証したアプリのコミット：`abc21f82426d154961792b91bae1b609ed3fd358`
 - [成功したビルドとテスト](https://github.com/tomikan1208-code/iphone-haptic-lab/actions/runs/37309098619)

@@ -81,4 +81,4 @@ WindowsでもNode.jsを使ってプロジェクトとリソースの整合性を
 
 画面・ビルド・データの検証と、実際の触感の検証は別です。触感の質と実機での中断動作はiPhoneで確認してください。
 
-音楽版2.0のビルド、24件のテスト、SE3サイズの画面確認、成果物と未検証範囲は[音楽版の検証結果](docs/MUSIC-VERIFICATION.md)にまとめています。[初版の検証記録](docs/VERIFICATION.md)も残しています。
+音楽プレイヤー2.1のiPhoneテスト33件、PCテスト10件、画面確認、URL解析の測定値、成果物と未検証範囲は[2.1の検証結果](docs/PLAYER-VERIFICATION.md)にまとめています。[音楽版2.0の検証結果](docs/MUSIC-VERIFICATION.md)と[初版の検証記録](docs/VERIFICATION.md)も残しています。
