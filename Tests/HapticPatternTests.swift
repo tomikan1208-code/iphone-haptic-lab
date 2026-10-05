@@ -2,6 +2,22 @@ import XCTest
 @testable import HapticLab
 
 final class HapticPatternTests: XCTestCase {
+    func testQuickPlayUsesPersistedValuesAndUsefulDefaults() throws {
+        let suite = "HapticLabTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let initial = ExperimentConfiguration.saved(defaults: defaults)
+        XCTAssertEqual(initial.intensity, 0.65)
+        XCTAssertEqual(initial.duration, 1.5)
+        defaults.set("pulses", forKey: "experiment.kind")
+        defaults.set(0.28, forKey: "experiment.intensity")
+        defaults.set(0.4, forKey: "experiment.duration")
+        let pattern = PatternFactory.experiment(.saved(defaults: defaults))
+        XCTAssertNoThrow(try pattern.validated())
+        XCTAssertEqual(pattern.events.count, 2)
+        XCTAssertEqual(pattern.events.first?.intensity, 0.28)
+    }
+
     func testBundledCatalogHasUniqueValidPatterns() throws {
         let patterns = try PatternCatalog.load()
         XCTAssertEqual(patterns.count, 10)
@@ -73,4 +89,3 @@ final class HapticPatternTests: XCTestCase {
                           category: "test", duration: duration, events: events, curves: curves)
     }
 }
-

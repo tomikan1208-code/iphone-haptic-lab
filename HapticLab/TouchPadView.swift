@@ -10,12 +10,10 @@ struct TouchPadView: View {
                          detail: "パッドに触れたまま動かしてみよう。\n上下で強さ、左右で鋭さが変わります。")
 
             VStack(spacing: 14) {
-                HStack {
-                    Text("強い")
-                    Spacer()
-                    Image(systemName: "arrow.up")
+                HStack(spacing: 12) {
+                    readout("強さ", value: intensity)
+                    readout("鋭さ", value: sharpness)
                 }
-                .font(.system(size: 11)).foregroundStyle(LabTheme.muted)
                 TouchSurface(intensity: $intensity, sharpness: $sharpness).frame(height: 225)
                 HStack {
                     Text("やわらかい")
@@ -23,10 +21,6 @@ struct TouchPadView: View {
                     Text("くっきり")
                 }
                 .font(.system(size: 11)).foregroundStyle(LabTheme.muted)
-                HStack(spacing: 12) {
-                    readout("強さ", value: intensity)
-                    readout("鋭さ", value: sharpness)
-                }
                 Text("指を離すと止まります。1回の振動は最大20秒。")
                     .font(.system(size: 10)).foregroundStyle(LabTheme.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -40,14 +34,16 @@ struct TouchPadView: View {
     }
 
     private func readout(_ title: String, value: Double) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
+        HStack(spacing: 8) {
             Text(title).font(.system(size: 11)).foregroundStyle(LabTheme.muted)
+            Spacer(minLength: 0)
             Text("\(Int(value * 100))%")
-                .font(.system(size: 24, weight: .semibold, design: .monospaced))
+                .font(.system(size: 20, weight: .semibold, design: .monospaced))
                 .foregroundStyle(LabTheme.mint).monospacedDigit()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
+        .padding(.horizontal, 13)
+        .padding(.vertical, 11)
         .background(LabTheme.elevated, in: RoundedRectangle(cornerRadius: 14))
     }
 }

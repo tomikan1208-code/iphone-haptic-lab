@@ -126,6 +126,19 @@ struct ExperimentConfiguration {
     var duration: Double = 1.5
     var interval: Double = 0.2
 
+    static func saved(defaults: UserDefaults = .standard) -> ExperimentConfiguration {
+        func number(_ key: String, fallback: Double) -> Double {
+            defaults.object(forKey: key) == nil ? fallback : defaults.double(forKey: key)
+        }
+        return ExperimentConfiguration(
+            kind: HapticKind(rawValue: defaults.string(forKey: "experiment.kind") ?? "") ?? .continuous,
+            intensity: number("experiment.intensity", fallback: 0.65),
+            sharpness: number("experiment.sharpness", fallback: 0.5),
+            duration: number("experiment.duration", fallback: 1.5),
+            interval: number("experiment.interval", fallback: 0.2)
+        ).normalized
+    }
+
     var normalized: ExperimentConfiguration {
         ExperimentConfiguration(
             kind: kind,
@@ -187,4 +200,3 @@ enum PatternFactory {
                                  events: events, curves: [])
     }
 }
-

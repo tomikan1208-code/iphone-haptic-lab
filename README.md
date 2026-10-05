@@ -22,6 +22,8 @@ iPhone SE（第3世代）で、Taptic Engineの触感を体験・調整するネ
 
 ## ビルド
 
+ソースは[非公開リポジトリ](https://github.com/tomikan1208-code/iphone-haptic-lab)に保存しています。[ビルド画面](https://github.com/tomikan1208-code/iphone-haptic-lab/actions/workflows/build-ios.yml)で実行状況とArtifactsを確認できます。アクセスには所有者のGitHubログインが必要です。
+
 GitHubのActionsタブで`Build iPhone app`を実行すると、通常のmacOS runnerで次を行います。
 
 1. Xcodeプロジェクト・アイコン・見本データを確認

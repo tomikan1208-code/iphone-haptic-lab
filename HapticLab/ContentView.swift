@@ -112,6 +112,20 @@ struct ContentView: View {
                     .accessibilityIdentifier("playback.status")
             }
             Spacer(minLength: 0)
+            if tab == .experiment {
+                Button {
+                    haptics.play(PatternFactory.experiment(.saved()))
+                } label: {
+                    Label("再生", systemImage: "play.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(LabTheme.background)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 11)
+                        .background(LabTheme.mint, in: Capsule())
+                }
+                .accessibilityLabel("現在の設定で触感を再生")
+                .accessibilityIdentifier("experiment.quickPlay")
+            }
             Button { haptics.stop() } label: {
                 Label("停止", systemImage: "stop.fill")
                     .font(.system(size: 12, weight: .bold))

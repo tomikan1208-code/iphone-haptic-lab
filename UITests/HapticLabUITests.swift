@@ -10,6 +10,7 @@ final class HapticLabUITests: XCTestCase {
 
         app.buttons["tab.experiment"].tap()
         XCTAssertTrue(app.sliders["control.intensity"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["experiment.quickPlay"].isHittable)
         app.sliders["control.intensity"].adjust(toNormalizedSliderPosition: 0.3)
         app.buttons["kind.tap"].tap()
         XCTAssertFalse(app.sliders["control.duration"].exists)
