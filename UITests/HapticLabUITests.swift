@@ -74,6 +74,9 @@ final class HapticLabUITests: XCTestCase {
         XCTAssertTrue(app.buttons["music.play"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["保存した振動を使用"].exists)
         XCTAssertTrue(app.otherElements["haptics.waveform"].exists)
+        expectation(for: NSPredicate(format: "value MATCHES %@", ".*、[1-9][0-9]*区間の振動"),
+                    evaluatedWith: app.otherElements["haptics.waveform"])
+        waitForExpectations(timeout: 5)
         XCTAssertFalse(app.staticTexts["music.firstPreparation"].exists)
         screenshot("07-music-player", app: app)
         let play = app.buttons["music.play"]

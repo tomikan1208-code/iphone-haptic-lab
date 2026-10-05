@@ -64,13 +64,15 @@ struct HapticTimelineView: View {
     @State private var levels: [Double] = []
 
     var body: some View {
-        Canvas { context, size in
+        // Read cached state in body so updating it invalidates Canvas before playback starts.
+        let renderedLevels = levels
+        return Canvas { context, size in
             guard let track else { return }
-            let count = levels.count
+            let count = renderedLevels.count
             guard count > 0 else { return }
             let progress = min(1, max(0, position / track.duration))
             for index in 0..<count {
-                let level = levels[index]
+                let level = renderedLevels[index]
                 let height = max(2, level * (size.height - 8))
                 let width = size.width / Double(count)
                 let rect = CGRect(x: Double(index) * width, y: (size.height - height) / 2,
@@ -84,7 +86,8 @@ struct HapticTimelineView: View {
             context.stroke(marker, with: .color(.white.opacity(playing ? 0.9 : 0.45)), lineWidth: 1)
         }
         .accessibilityElement(children: .ignore).accessibilityLabel("保存した振動の波形")
-        .accessibilityValue(musicTime(position)).accessibilityIdentifier("haptics.waveform")
+        .accessibilityValue(musicTime(position) + "、\(renderedLevels.filter { $0 > 0 }.count)区間の振動")
+        .accessibilityIdentifier("haptics.waveform")
         .onAppear { update() }
         .onChange(of: settings) { _ in update() }
         .onChange(of: track?.audioSHA256) { _ in update() }
