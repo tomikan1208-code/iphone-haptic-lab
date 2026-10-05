@@ -1,6 +1,7 @@
 """Exercise real decoding, worker persistence, cancellation, and the phone's HTTP protocol."""
 import base64
 import hashlib
+import io
 from http.server import ThreadingHTTPServer
 import json
 from pathlib import Path
@@ -9,6 +10,7 @@ import tempfile
 import threading
 import time
 import unittest
+import wave
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -151,6 +153,23 @@ class PCServerTests(unittest.TestCase):
         self.assertEqual(self.api('/shutdown', 'POST'), {'stopping': True})
         self.thread.join(timeout=5)
         self.assertFalse(self.thread.is_alive())
+
+    def test_running_cancellation_closes_decoder_and_removes_temporary_audio(self):
+        buffer = io.BytesIO()
+        samples = (.2 * np.sin(np.arange(22050 * 60) * (2 * np.pi * 110 / 22050)) * 32767).astype('<i2')
+        with wave.open(buffer, 'wb') as audio:
+            audio.setnchannels(1)
+            audio.setsampwidth(2)
+            audio.setframerate(22050)
+            audio.writeframes(samples.tobytes())
+        identity = self.upload(buffer.getvalue())
+        folder = self.companion.jobs[identity]['folder']
+        wait_until(lambda: (folder / 'decoded.f32').exists())
+        self.api('/jobs/' + identity, 'DELETE')
+        wait_until(lambda: self.companion.jobs[identity]['ended'])
+        self.assertEqual(self.api('/jobs/' + identity)['state'], 'canceled')
+        self.assertFalse(any(path.name.startswith(('source', 'decoded')) for path in folder.iterdir()))
+        self.assertEqual(self.api('/tracks'), [])
 
     def test_stereo_antiphase_retains_bass_and_bad_samples_are_rejected(self):
         times = np.arange(RATE * 2) / RATE

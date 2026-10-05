@@ -127,7 +127,12 @@ class Companion:
             (job['folder'] / 'cancel').touch()
             process = job['process']
             if process and process.poll() is None:
-                process.terminate()
+                if os.name == 'nt':
+                    # FFmpeg / Node belong to this worker. Close their file handles too.
+                    subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
+                        capture_output=True, timeout=10, creationflags=subprocess.CREATE_NO_WINDOW)
+                else:
+                    process.terminate()
             if process is None:
                 job['ended'] = True
             self.clean_source(job)
