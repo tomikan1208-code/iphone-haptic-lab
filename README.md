@@ -1,6 +1,6 @@
-# 触感ラボ / HapticLab
+# 音楽プレイヤー / HapticLab
 
-iPhone SE（第3世代）で、Taptic Engineの触感を体験・調整するネイティブアプリです。SwiftUI + Core Hapticsで実装し、iOS 16以降のiPhoneに対応しています。
+iPhone SE（第3世代）で音楽・映像と保存した振動を再生するネイティブアプリです。SwiftUI + Core Hapticsで実装し、iOS 16以降のiPhoneに対応しています。
 
 ## できること
 
@@ -12,18 +12,24 @@ iPhone SE（第3世代）で、Taptic Engineの触感を体験・調整するネ
 - お気に入りと調整値の保存
 - 常時表示の停止ボタン、タブ切り替え・画面ロック・バックグラウンド移行時の停止
 
-## 音楽機能（2.0）
+## 音楽機能（2.1）
 
 - 初回の確認・音源解析と、振動・曲ごとの調整値の保存
 - 音楽・動画ファイルの読み込み、直接HTTPS URLの解析とストリーミング再生
-- YouTube公式プレーヤーと保存した振動の同期（初回に同じ内容の音源ファイルが必要）
+- YouTube公式プレーヤーと保存した振動の同期（PCは動画URLから初回解析、iPhoneは音源ファイル・音声URLから解析）
 - Googleログインによる再生リスト選択（OAuth設定が必要）
 - 作成済みリスト、アプリ内再生履歴、曲ごとのデータ削除
 - 非公開のYouTube作成済みリストへの自動追加・削除と再試行
 - 一時停止・シーク・読み込み待ちの同期、強さ・低音・ビート密度・同期補正
 - 12秒のオリジナル音源で解析・保存・再生を確認
+- 音楽中心の2タブと右上の振動ツールメニュー、キーボードに押し上げられない下部バー
+- 縦画面の再生バーと振動の波形・フーリエ表示
+- iPhone / PCの解析場所、音に追従 / リズム中心、標準 / オーケストラ向けを選択
+- PCの振動キャッシュと1曲ずつの削除、解析の経過時間表示
 
-YouTube全体の視聴履歴は公式APIで取得できません。解析用音声も提供しないため、動画URLだけから振動を生成する機能はありません。[音楽の使い方](docs/MUSIC.md)、[Googleログイン設定](docs/GOOGLE-LOGIN.md)を参照してください。OAuth未設定でも音源ファイル・直接URL・アプリ内リストは利用できます。
+YouTube全体の視聴履歴と解析用音声は公式APIで取得できません。PCのURL取得は非公式のyt-dlpを使い、動画の制限・YouTube側の変更で失敗することがあります。[音楽の使い方](docs/MUSIC.md)、[PCサーバーの起動](docs/PC-SERVER.md)、[Googleログイン設定](docs/GOOGLE-LOGIN.md)を参照してください。OAuth未設定でも音源ファイル・URL・アプリ内リストは利用できます。音楽AIは後の更新で扱います。
+
+前のUIは `codex/music-haptics` ブランチと `dist/archive/2.0.0/` のIPAに残しています。同じApple Account・アプリIDで上書きすると保存データを引き継げます。
 
 ## Windowsで使う
 
@@ -64,6 +70,9 @@ WindowsでもNode.jsを使ってプロジェクトとリソースの整合性を
 - `MusicAnalyzer.swift`：PCMの順次処理、FFTによる低音・打音・音量解析
 - `MusicModels.swift` / `MusicLibrary.swift`：全曲の振動データ、分割、保存と個別削除
 - `MusicPlayback.swift`：AVPlayer・YouTubeの再生時刻とCore Hapticsの区間予約
+- `HapticVisualization.swift`：保存した強度の波形、直近2.56秒の強弱の周波数表示
+- `MusicComposer.swift`：リズムの構成とオーケストラ向けの持続・自然な打音
+- `PCAnalysis.swift` / `pc-server/`：接続キーによるLAN通信、詳細な音源解析、保存と個別削除
 - `GoogleOAuth.swift` / `YouTubeAccount.swift`：PKCE、Keychain、再生リスト取得・自動同期
 - `Tests/`：不正な値、30秒制限、連打の時刻、メトロノーム末尾の無音区間を検証
 - `UITests/`：小さい画面でタブ・スライダー・種類切り替え・停止を確認し、スクリーンショットを保存

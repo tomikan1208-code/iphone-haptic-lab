@@ -34,10 +34,13 @@ enum MusicComposer {
                 if (60...180).contains(bpm) { scores[bpm - 60] += taps[index].intensity / Double(index - previous) }
             }
         }
-        let best = (0..<scores.count).max { left, right in
-            scores[max(0, left - 1)...min(scores.count - 1, left + 1)].reduce(0, +)
-            < scores[max(0, right - 1)...min(scores.count - 1, right + 1)].reduce(0, +)
-        } ?? 60
+        var best = 60
+        var bestScore = -1.0
+        for index in scores.indices {
+            var score = 0.0
+            for neighbor in max(0, index - 1)...min(scores.count - 1, index + 1) { score += scores[neighbor] }
+            if score > bestScore { bestScore = score; best = index }
+        }
         return Double(best + 60)
     }
 
