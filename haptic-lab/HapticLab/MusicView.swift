@@ -224,7 +224,7 @@ struct MusicView: View {
                                  action: { select(selection) })
                 }
             }
-        }.accessibilityIdentifier("music.searchResults")
+        }
     }
 
     private func songList(_ records: [MusicRecord], empty: String, detail: String) -> some View {
