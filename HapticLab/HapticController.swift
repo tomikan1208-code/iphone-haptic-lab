@@ -144,10 +144,11 @@ final class HapticController: ObservableObject {
         newEngine.stoppedHandler = { [weak self, weak newEngine] reason in
             Task { @MainActor [weak self, weak newEngine] in
                 guard let self, let newEngine, self.engine === newEngine else { return }
+                // An idle notification can arrive after a newer start request.
+                // Each play explicitly starts the engine, so this notification needs no state change.
+                if reason == .idleTimeout { return }
                 self.stop()
-                if reason != .idleTimeout {
-                    self.message = "振動が中断されました。もう一度再生できます。"
-                }
+                self.message = "振動が中断されました。もう一度再生できます。"
             }
         }
         newEngine.resetHandler = { [weak self, weak newEngine] in
