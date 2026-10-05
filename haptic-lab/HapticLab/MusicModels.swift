@@ -276,9 +276,13 @@ struct MusicHapticTrack: Codable, Equatable {
         let point = value(at: time)
         let first = lowerBound(taps, time: max(0, time - 0.06), key: { $0.time })
         let last = lowerBound(taps, time: time + 0.000_000_1, key: { $0.time })
-        let transient = taps[first..<last].filter { settings.includes($0) }.map {
-            $0.intensity * settings.gain * max(0, 1 - max(0, time - $0.time) / 0.06)
-        }.max() ?? 0
+        var transient: Double = 0
+        for tap in taps[first..<last] where settings.includes(tap) {
+            let elapsed: Double = max(0, time - tap.time)
+            let decay: Double = max(0, 1 - elapsed / 0.06)
+            let intensity: Double = tap.intensity * settings.gain * decay
+            transient = max(transient, intensity)
+        }
         return .init(continuous: settings.intensity(for: point), sharpness: settings.sharpness(for: point), transient: transient)
     }
 
