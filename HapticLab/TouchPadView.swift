@@ -1,12 +1,8 @@
 import SwiftUI
 
 struct TouchPadView: View {
-    @EnvironmentObject private var haptics: HapticController
-    @Environment(\.scenePhase) private var scenePhase
     @State private var intensity = 0.5
     @State private var sharpness = 0.5
-    @State private var isTouching = false
-    @State private var gestureSessionStarted = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
@@ -20,67 +16,7 @@ struct TouchPadView: View {
                     Image(systemName: "arrow.up")
                 }
                 .font(.system(size: 11)).foregroundStyle(LabTheme.muted)
-                GeometryReader { geometry in
-                    let size = geometry.size
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 22)
-                            .fill(LinearGradient(colors: [LabTheme.violet.opacity(0.23), LabTheme.mint.opacity(0.06)],
-                                                 startPoint: .topTrailing, endPoint: .bottomLeading))
-                        Canvas { context, canvasSize in
-                            for column in 1..<6 {
-                                for row in 1..<6 {
-                                    let point = CGPoint(x: canvasSize.width * Double(column) / 6,
-                                                        y: canvasSize.height * Double(row) / 6)
-                                    context.fill(Path(ellipseIn: CGRect(x: point.x - 1.3, y: point.y - 1.3,
-                                                                        width: 2.6, height: 2.6)),
-                                                 with: .color(.white.opacity(0.15)))
-                                }
-                            }
-                        }
-                        .clipShape(RoundedRectangle(cornerRadius: 22))
-                        if !isTouching {
-                            VStack(spacing: 9) {
-                                Image(systemName: "hand.point.up.left").font(.system(size: 29))
-                                Text("触れて、動かす").font(.system(size: 14, weight: .medium))
-                            }
-                            .foregroundStyle(.white.opacity(0.55))
-                        }
-                        Circle()
-                            .fill(LabTheme.mint.opacity(isTouching ? 0.16 : 0.05))
-                            .frame(width: isTouching ? 70 : 40, height: isTouching ? 70 : 40)
-                            .overlay {
-                                Circle().strokeBorder(LabTheme.mint.opacity(isTouching ? 0.8 : 0.25), lineWidth: 1)
-                            }
-                            .overlay {
-                                Circle().fill(LabTheme.mint).frame(width: 8, height: 8).opacity(isTouching ? 1 : 0.25)
-                            }
-                            .position(x: 14 + sharpness * (size.width - 28),
-                                      y: 14 + (1 - intensity) * (size.height - 28))
-                    }
-                    .overlay { RoundedRectangle(cornerRadius: 22).strokeBorder(.white.opacity(0.08), lineWidth: 1) }
-                    .contentShape(RoundedRectangle(cornerRadius: 22))
-                    .gesture(DragGesture(minimumDistance: 0)
-                        .onChanged { gesture in
-                            sharpness = bounded(gesture.location.x / size.width, to: 0...1, fallback: 0.5)
-                            intensity = bounded(1 - gesture.location.y / size.height, to: 0...1, fallback: 0.5)
-                            if !gestureSessionStarted {
-                                gestureSessionStarted = true
-                                isTouching = true
-                                haptics.beginPad(intensity: intensity, sharpness: sharpness)
-                            } else {
-                                haptics.updatePad(intensity: intensity, sharpness: sharpness)
-                            }
-                        }
-                        .onEnded { _ in
-                            gestureSessionStarted = false
-                            isTouching = false
-                            haptics.endPad()
-                        })
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("触感パッド。上下で強さ、左右で鋭さを調整")
-                    .accessibilityIdentifier("touch.pad")
-                }
-                .frame(height: 225)
+                TouchSurface(intensity: $intensity, sharpness: $sharpness).frame(height: 225)
                 HStack {
                     Text("やわらかい")
                     Spacer()
@@ -101,14 +37,6 @@ struct TouchPadView: View {
                 .font(.system(size: 12)).foregroundStyle(LabTheme.muted).lineSpacing(5)
                 .padding(.horizontal, 3)
         }
-        .onDisappear { gestureSessionStarted = false; isTouching = false; haptics.endPad() }
-        .onChange(of: scenePhase) { phase in
-            if phase != .active { gestureSessionStarted = false; isTouching = false }
-        }
-        .onChange(of: haptics.isPadPlaying) { playing in
-            // Reset the visual touch state when the global stop button is pressed.
-            if !playing { isTouching = false }
-        }
     }
 
     private func readout(_ title: String, value: Double) -> some View {
@@ -121,5 +49,102 @@ struct TouchPadView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(LabTheme.elevated, in: RoundedRectangle(cornerRadius: 14))
+    }
+}
+
+private struct TouchSurface: View {
+    @EnvironmentObject private var haptics: HapticController
+    @Environment(\.scenePhase) private var scenePhase
+    @Binding var intensity: Double
+    @Binding var sharpness: Double
+    @State private var isTouching = false
+    @State private var gestureSessionStarted = false
+
+    var body: some View {
+        GeometryReader { geometry in
+            surfaceBackground
+                .overlay {
+                    touchIndicator.position(
+                        x: 14 + CGFloat(sharpness) * (geometry.size.width - 28),
+                        y: 14 + CGFloat(1 - intensity) * (geometry.size.height - 28)
+                    )
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 22))
+                .gesture(touchGesture(in: geometry.size))
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("触感パッド。上下で強さ、左右で鋭さを調整")
+                .accessibilityIdentifier("touch.pad")
+        }
+        .onDisappear {
+            gestureSessionStarted = false
+            isTouching = false
+            haptics.endPad()
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase != .active { gestureSessionStarted = false; isTouching = false }
+        }
+        .onChange(of: haptics.isPadPlaying) { playing in
+            if !playing { isTouching = false }
+        }
+    }
+
+    private var surfaceBackground: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 22)
+                .fill(LinearGradient(colors: [LabTheme.violet.opacity(0.23), LabTheme.mint.opacity(0.06)],
+                                     startPoint: .topTrailing, endPoint: .bottomLeading))
+            PadDots().clipShape(RoundedRectangle(cornerRadius: 22))
+            if !isTouching {
+                VStack(spacing: 9) {
+                    Image(systemName: "hand.point.up.left").font(.system(size: 29))
+                    Text("触れて、動かす").font(.system(size: 14, weight: .medium))
+                }
+                .foregroundStyle(.white.opacity(0.55))
+            }
+        }
+        .overlay { RoundedRectangle(cornerRadius: 22).strokeBorder(.white.opacity(0.08), lineWidth: 1) }
+    }
+
+    private var touchIndicator: some View {
+        Circle()
+            .fill(LabTheme.mint.opacity(isTouching ? 0.16 : 0.05))
+            .frame(width: isTouching ? 70 : 40, height: isTouching ? 70 : 40)
+            .overlay { Circle().strokeBorder(LabTheme.mint.opacity(isTouching ? 0.8 : 0.25), lineWidth: 1) }
+            .overlay { Circle().fill(LabTheme.mint).frame(width: 8, height: 8).opacity(isTouching ? 1 : 0.25) }
+    }
+
+    private func touchGesture(in size: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { gesture in
+                sharpness = bounded(Double(gesture.location.x / max(1, size.width)), to: 0...1, fallback: 0.5)
+                intensity = bounded(Double(1 - gesture.location.y / max(1, size.height)), to: 0...1, fallback: 0.5)
+                if !gestureSessionStarted {
+                    gestureSessionStarted = true
+                    isTouching = true
+                    haptics.beginPad(intensity: intensity, sharpness: sharpness)
+                } else {
+                    haptics.updatePad(intensity: intensity, sharpness: sharpness)
+                }
+            }
+            .onEnded { _ in
+                gestureSessionStarted = false
+                isTouching = false
+                haptics.endPad()
+            }
+    }
+}
+
+private struct PadDots: View {
+    var body: some View {
+        Canvas { context, size in
+            for column in 1..<6 {
+                for row in 1..<6 {
+                    let point = CGPoint(x: size.width * CGFloat(column) / 6,
+                                        y: size.height * CGFloat(row) / 6)
+                    let dot = CGRect(x: point.x - 1.3, y: point.y - 1.3, width: 2.6, height: 2.6)
+                    context.fill(Path(ellipseIn: dot), with: .color(.white.opacity(0.15)))
+                }
+            }
+        }
     }
 }

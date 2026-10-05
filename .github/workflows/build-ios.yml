@@ -3,6 +3,14 @@ name: Build iPhone app
 on:
   push:
     branches: [main]
+    paths:
+      - 'HapticLab/**'
+      - 'HapticLab.xcodeproj/**'
+      - 'Tests/**'
+      - 'UITests/**'
+      - 'scripts/**'
+      - '.github/workflows/build-ios.yml'
+      - '.gitattributes'
   workflow_dispatch:
 
 permissions:
@@ -50,4 +58,3 @@ jobs:
             .build/build-ios.log
             .build/test-ios.log
           retention-days: 7
-
