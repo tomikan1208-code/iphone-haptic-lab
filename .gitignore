@@ -5,4 +5,4 @@ xcuserdata/
 .DS_Store
 __pycache__/
 *.pyc
-
+Configuration/GoogleOAuth.local.json

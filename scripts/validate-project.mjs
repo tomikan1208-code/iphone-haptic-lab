@@ -39,6 +39,15 @@ for (const file of fs.readdirSync(path.join(root, 'HapticLab')).filter(file => f
 }
 assert(project.includes('IPHONEOS_DEPLOYMENT_TARGET = 16.0;'));
 assert(project.includes('TEST_TARGET_NAME = HapticLab;'));
+for (const folder of ['Tests', 'UITests']) {
+  for (const file of fs.readdirSync(path.join(root, folder)).filter(file => file.endsWith('.swift'))) {
+    assert(project.includes(`path = ${file};`), `${folder}/${file} is missing from the project`);
+  }
+}
+const demo = fs.readFileSync(path.join(root, 'HapticLab/Resources/MusicDemo.wav'));
+assert.equal(demo.toString('ascii', 0, 4), 'RIFF');
+assert.equal(demo.readUInt32LE(24), 22050);
+assert.equal(demo.readUInt32LE(40), 12 * 22050 * 2);
 const icons = JSON.parse(read('HapticLab/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json'));
 for (const icon of icons.images) {
   const data = fs.readFileSync(path.join(root, 'HapticLab/Resources/Assets.xcassets/AppIcon.appiconset', icon.filename));
@@ -48,4 +57,3 @@ for (const icon of icons.images) {
   assert.equal(data.readUInt32BE(20), pixels);
 }
 console.log(`Project checks passed: ${patterns.length} patterns, ${events} events, ${icons.images.length} app icons.`);
-

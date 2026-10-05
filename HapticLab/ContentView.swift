@@ -1,11 +1,12 @@
 import SwiftUI
 
 enum LabTab: String, CaseIterable, Identifiable {
-    case gallery, experiment, pad, guide
+    case music, gallery, experiment, pad, guide
     var id: String { rawValue }
 
     var title: String {
         switch self {
+        case .music: return "音楽"
         case .gallery: return "見本"
         case .experiment: return "作る"
         case .pad: return "触れる"
@@ -15,6 +16,7 @@ enum LabTab: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
+        case .music: return "music.note"
         case .gallery: return "square.grid.2x2"
         case .experiment: return "slider.horizontal.3"
         case .pad: return "hand.draw"
@@ -25,7 +27,8 @@ enum LabTab: String, CaseIterable, Identifiable {
 
 struct ContentView: View {
     @EnvironmentObject private var haptics: HapticController
-    @State private var tab: LabTab = .gallery
+    @EnvironmentObject private var music: MusicPlayback
+    @State private var tab: LabTab = .music
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,9 +50,11 @@ struct ContentView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 10)
             }
-            ScrollView {
+            if tab == .music { MusicView() }
+            else { ScrollView {
                 Group {
                     switch tab {
+                    case .music: EmptyView()
                     case .gallery: GalleryView()
                     case .experiment: ExperimentView()
                     case .pad: TouchPadView()
@@ -62,12 +67,13 @@ struct ContentView: View {
             }
             .scrollIndicators(.hidden)
             .id(tab)
+            }
             playerBar
             navigationBar
         }
         .background(LabTheme.background.ignoresSafeArea())
         .foregroundStyle(.white)
-        .onChange(of: tab) { _ in haptics.stop() }
+        .onChange(of: tab) { _ in haptics.stop(); music.suspend() }
     }
 
     private var header: some View {
@@ -106,7 +112,7 @@ struct ContentView: View {
                     .font(.system(size: 8, weight: .bold, design: .monospaced))
                     .tracking(1.5)
                     .foregroundStyle(LabTheme.muted)
-                Text(haptics.activeName)
+                Text(tab == .music ? (music.selection?.title ?? "曲を選んでください") : haptics.activeName)
                     .font(.system(size: 12, weight: .medium))
                     .lineLimit(1)
                     .accessibilityIdentifier("playback.status")
@@ -126,7 +132,7 @@ struct ContentView: View {
                 .accessibilityLabel("現在の設定で触感を再生")
                 .accessibilityIdentifier("experiment.quickPlay")
             }
-            Button { haptics.stop() } label: {
+            Button { haptics.stop(); music.stop() } label: {
                 Label("停止", systemImage: "stop.fill")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(LabTheme.coral)
@@ -134,7 +140,7 @@ struct ContentView: View {
                     .padding(.vertical, 11)
                     .background(LabTheme.coral.opacity(0.10), in: Capsule())
             }
-            .accessibilityLabel("すべての振動を停止")
+            .accessibilityLabel("音楽とすべての振動を停止")
             .accessibilityIdentifier("playback.stop")
         }
         .padding(.horizontal, 18)

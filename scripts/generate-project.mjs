@@ -4,6 +4,13 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const oauthFile = path.join(root, 'Configuration', 'GoogleOAuth.local.json');
+const oauthConfig = fs.existsSync(oauthFile) ? JSON.parse(fs.readFileSync(oauthFile, 'utf8')) : {};
+const googleClientID = process.env.GOOGLE_IOS_CLIENT_ID ?? oauthConfig.clientID ?? '';
+if (googleClientID && !/^[0-9]+-[A-Za-z0-9]+\.apps\.googleusercontent\.com$/.test(googleClientID)) {
+  throw new Error('GOOGLE_IOS_CLIENT_ID must be a Google iOS OAuth client ID.');
+}
+const googleCallbackScheme = googleClientID ? googleClientID.split('.').reverse().join('.') : 'com.tomikan1208.hapticlab.oauth';
 const objects = {};
 const id = label => crypto.createHash('sha256').update(`HapticLab:${label}`).digest('hex').slice(0, 24).toUpperCase();
 function add(label, value) {
@@ -33,6 +40,7 @@ const appSources = appReferences.map((reference, index) => add(`build.app.${appF
 }));
 const resourceReferences = [
   add('ref.presets', { isa: 'PBXFileReference', lastKnownFileType: 'text.json', path: 'Presets.json', sourceTree: '<group>' }),
+  add('ref.musicdemo', { isa: 'PBXFileReference', lastKnownFileType: 'audio.wav', path: 'MusicDemo.wav', sourceTree: '<group>' }),
   add('ref.assets', { isa: 'PBXFileReference', lastKnownFileType: 'folder.assetcatalog', path: 'Assets.xcassets', sourceTree: '<group>' })
 ];
 const resourceBuildFiles = resourceReferences.map((reference, index) => add(`build.resource.${index}`, {
@@ -44,17 +52,18 @@ const appGroup = add('group.app', { isa: 'PBXGroup', children: [...appReferences
 
 const targets = [
   { key: 'app', name: 'HapticLab', product: 'HapticLab.app', type: 'com.apple.product-type.application', fileType: 'wrapper.application', sources: appSources, resources: resourceBuildFiles },
-  { key: 'tests', name: 'HapticLabTests', product: 'HapticLabTests.xctest', type: 'com.apple.product-type.bundle.unit-test', fileType: 'wrapper.cfbundle', folder: 'Tests', file: 'HapticPatternTests.swift' },
+  { key: 'tests', name: 'HapticLabTests', product: 'HapticLabTests.xctest', type: 'com.apple.product-type.bundle.unit-test', fileType: 'wrapper.cfbundle', folder: 'Tests' },
   { key: 'uitests', name: 'HapticLabUITests', product: 'HapticLabUITests.xctest', type: 'com.apple.product-type.bundle.ui-testing', fileType: 'wrapper.cfbundle', folder: 'UITests', file: 'HapticLabUITests.swift' }
 ];
 const testGroups = [];
 const products = [];
 for (const target of targets) {
   if (target.folder) {
-    const reference = add(`ref.${target.key}`, { isa: 'PBXFileReference', lastKnownFileType: 'sourcecode.swift', path: target.file, sourceTree: '<group>' });
-    target.sources = [add(`build.${target.key}`, { isa: 'PBXBuildFile', fileRef: reference })];
+    const files = fs.readdirSync(path.join(root, target.folder)).filter(file => file.endsWith('.swift')).sort();
+    const references = files.map(file => add(`ref.${target.key}.${file}`, { isa: 'PBXFileReference', lastKnownFileType: 'sourcecode.swift', path: file, sourceTree: '<group>' }));
+    target.sources = references.map((reference, i) => add(`build.${target.key}.${files[i]}`, { isa: 'PBXBuildFile', fileRef: reference }));
     target.resources = [];
-    testGroups.push(add(`group.${target.key}`, { isa: 'PBXGroup', children: [reference], path: target.folder, sourceTree: '<group>' }));
+    testGroups.push(add(`group.${target.key}`, { isa: 'PBXGroup', children: references, path: target.folder, sourceTree: '<group>' }));
   }
   const product = add(`product.${target.key}`, { isa: 'PBXFileReference', explicitFileType: target.fileType, includeInIndex: 0, path: target.product, sourceTree: 'BUILT_PRODUCTS_DIR' });
   products.push(product);
@@ -79,6 +88,7 @@ for (const target of targets) {
       INFOPLIST_FILE: 'HapticLab/Info.plist', GENERATE_INFOPLIST_FILE: 'NO',
       ASSETCATALOG_COMPILER_APPICON_NAME: 'AppIcon', ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: 'AccentColor',
       ENABLE_PREVIEWS: 'YES', SWIFT_EMIT_LOC_STRINGS: 'NO'
+      , GOOGLE_IOS_CLIENT_ID: googleClientID, GOOGLE_REVERSED_CLIENT_ID: googleCallbackScheme
     });
   } else {
     base.GENERATE_INFOPLIST_FILE = 'YES';
@@ -151,4 +161,3 @@ const scheme = `<?xml version="1.0" encoding="UTF-8"?>
 `;
 fs.writeFileSync(path.join(projectDir, 'xcshareddata', 'xcschemes', 'HapticLab.xcscheme'), scheme);
 console.log(`Generated Xcode project: ${appFiles.length} app sources, unit tests, UI tests.`);
-

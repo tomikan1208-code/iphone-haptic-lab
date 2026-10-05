@@ -24,6 +24,12 @@
 			path = GalleryView.swift;
 			sourceTree = "<group>";
 		};
+		11DEA63A79E352795E73BB11 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = GoogleOAuth.swift;
+			sourceTree = "<group>";
+		};
 		3648876B083986E28419DBA5 = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.swift;
@@ -48,6 +54,42 @@
 			path = HapticPattern.swift;
 			sourceTree = "<group>";
 		};
+		FC8134C1BACF0BEAC8C3DBE5 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicAnalyzer.swift;
+			sourceTree = "<group>";
+		};
+		1997D22C5218C0FB0997387B = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicLibrary.swift;
+			sourceTree = "<group>";
+		};
+		B12AF2972DBF2E43EC621262 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicModels.swift;
+			sourceTree = "<group>";
+		};
+		9A56DCC9BD25A795EE91FAE9 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicPlayback.swift;
+			sourceTree = "<group>";
+		};
+		8B56465797BF799A3046333D = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicPlayerView.swift;
+			sourceTree = "<group>";
+		};
+		D5349AC6E579C0C482051EA9 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicView.swift;
+			sourceTree = "<group>";
+		};
 		17BA6C4D66802E901A561C49 = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.swift;
@@ -58,6 +100,12 @@
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.swift;
 			path = TouchPadView.swift;
+			sourceTree = "<group>";
+		};
+		6C0BB2BCC5D78407083F5D51 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = YouTubeAccount.swift;
 			sourceTree = "<group>";
 		};
 		76ADFCD4788F0F72513A3FA7 = {
@@ -71,6 +119,10 @@
 		5041D0B69A454AC7C1CDDEF5 = {
 			isa = PBXBuildFile;
 			fileRef = 5BE777719960B641B666FD81;
+		};
+		D9C73A63E64872008F488969 = {
+			isa = PBXBuildFile;
+			fileRef = 11DEA63A79E352795E73BB11;
 		};
 		9675745F7CB55E75ECC5D570 = {
 			isa = PBXBuildFile;
@@ -88,6 +140,30 @@
 			isa = PBXBuildFile;
 			fileRef = 3207FE469A052B487C36A69A;
 		};
+		602E753F4BA6FEEABE05E141 = {
+			isa = PBXBuildFile;
+			fileRef = FC8134C1BACF0BEAC8C3DBE5;
+		};
+		126000E58ECAA5CB8424899C = {
+			isa = PBXBuildFile;
+			fileRef = 1997D22C5218C0FB0997387B;
+		};
+		78FE50C53B5D714A7C40BE36 = {
+			isa = PBXBuildFile;
+			fileRef = B12AF2972DBF2E43EC621262;
+		};
+		574484E5D5BA0344D754328C = {
+			isa = PBXBuildFile;
+			fileRef = 9A56DCC9BD25A795EE91FAE9;
+		};
+		B49B0DF3236225FD9F26E6CD = {
+			isa = PBXBuildFile;
+			fileRef = 8B56465797BF799A3046333D;
+		};
+		1042B2C0FFCDDB54EA26A4E4 = {
+			isa = PBXBuildFile;
+			fileRef = D5349AC6E579C0C482051EA9;
+		};
 		983ECF2B09D43633F1914DC3 = {
 			isa = PBXBuildFile;
 			fileRef = 17BA6C4D66802E901A561C49;
@@ -96,10 +172,20 @@
 			isa = PBXBuildFile;
 			fileRef = F38FAE94E7994A0260EDF288;
 		};
+		B9D218942E380DA4805CB68D = {
+			isa = PBXBuildFile;
+			fileRef = 6C0BB2BCC5D78407083F5D51;
+		};
 		68C4AA1F758E906A64E77950 = {
 			isa = PBXFileReference;
 			lastKnownFileType = text.json;
 			path = Presets.json;
+			sourceTree = "<group>";
+		};
+		2A87E830313D9A31CF8A1663 = {
+			isa = PBXFileReference;
+			lastKnownFileType = audio.wav;
+			path = MusicDemo.wav;
 			sourceTree = "<group>";
 		};
 		0BD14CF9AEE8B8115BE42078 = {
@@ -114,12 +200,17 @@
 		};
 		B7FE93C138119C93D105FB56 = {
 			isa = PBXBuildFile;
+			fileRef = 2A87E830313D9A31CF8A1663;
+		};
+		A2AA355F20CCF2C2B05C1478 = {
+			isa = PBXBuildFile;
 			fileRef = 0BD14CF9AEE8B8115BE42078;
 		};
 		63C38E40907F2CB5ACA79DFA = {
 			isa = PBXGroup;
 			children = (
 				68C4AA1F758E906A64E77950,
+				2A87E830313D9A31CF8A1663,
 				0BD14CF9AEE8B8115BE42078,
 			);
 			path = Resources;
@@ -137,12 +228,20 @@
 				E7CBA11D019B60C70AEDD922,
 				A2E680B8DD48A9BF3E4F76F9,
 				5BE777719960B641B666FD81,
+				11DEA63A79E352795E73BB11,
 				3648876B083986E28419DBA5,
 				3AE2BA4070CC889D5B1A8D9B,
 				F35FC03F3B32327908B082F4,
 				3207FE469A052B487C36A69A,
+				FC8134C1BACF0BEAC8C3DBE5,
+				1997D22C5218C0FB0997387B,
+				B12AF2972DBF2E43EC621262,
+				9A56DCC9BD25A795EE91FAE9,
+				8B56465797BF799A3046333D,
+				D5349AC6E579C0C482051EA9,
 				17BA6C4D66802E901A561C49,
 				F38FAE94E7994A0260EDF288,
+				6C0BB2BCC5D78407083F5D51,
 				63C38E40907F2CB5ACA79DFA,
 				CBFD5F5CEFAE1FCCE60AE281,
 			);
@@ -163,12 +262,20 @@
 				76ADFCD4788F0F72513A3FA7,
 				6CAB5CCB792F95820053FB5D,
 				5041D0B69A454AC7C1CDDEF5,
+				D9C73A63E64872008F488969,
 				9675745F7CB55E75ECC5D570,
 				BC8297CF93BDC0F8B76FB7C4,
 				409E776BF93B23433CEE5200,
 				D7ACDC643816AD1A66520F11,
+				602E753F4BA6FEEABE05E141,
+				126000E58ECAA5CB8424899C,
+				78FE50C53B5D714A7C40BE36,
+				574484E5D5BA0344D754328C,
+				B49B0DF3236225FD9F26E6CD,
+				1042B2C0FFCDDB54EA26A4E4,
 				983ECF2B09D43633F1914DC3,
 				E503E78CC2BB93B96FE55502,
+				B9D218942E380DA4805CB68D,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -186,6 +293,7 @@
 			files = (
 				8C49A6DCFC2D7D66191C1C21,
 				B7FE93C138119C93D105FB56,
+				A2AA355F20CCF2C2B05C1478,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -207,6 +315,8 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ENABLE_PREVIEWS = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
+				GOOGLE_IOS_CLIENT_ID = "";
+				GOOGLE_REVERSED_CLIENT_ID = com.tomikan1208.hapticlab.oauth;
 			};
 			name = Debug;
 		};
@@ -228,6 +338,8 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ENABLE_PREVIEWS = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
+				GOOGLE_IOS_CLIENT_ID = "";
+				GOOGLE_REVERSED_CLIENT_ID = com.tomikan1208.hapticlab.oauth;
 			};
 			name = Release;
 		};
@@ -259,20 +371,31 @@
 			productReference = E90F1B9047E41B3357E5F62F;
 			productType = "com.apple.product-type.application";
 		};
-		C7CBCC35686C54485F37C33C = {
+		378A29A97E13BC600245D867 = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.swift;
 			path = HapticPatternTests.swift;
 			sourceTree = "<group>";
 		};
-		98F5AE1E27208B816DDC0F44 = {
+		E46E0A8528084A496B3F304F = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicHapticTests.swift;
+			sourceTree = "<group>";
+		};
+		1612BE72FFDE1E21105E6006 = {
 			isa = PBXBuildFile;
-			fileRef = C7CBCC35686C54485F37C33C;
+			fileRef = 378A29A97E13BC600245D867;
+		};
+		D833091D58E57F003C6AF0CD = {
+			isa = PBXBuildFile;
+			fileRef = E46E0A8528084A496B3F304F;
 		};
 		F779C9C9A01895FC297A88B2 = {
 			isa = PBXGroup;
 			children = (
-				C7CBCC35686C54485F37C33C,
+				378A29A97E13BC600245D867,
+				E46E0A8528084A496B3F304F,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -288,7 +411,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				98F5AE1E27208B816DDC0F44,
+				1612BE72FFDE1E21105E6006,
+				D833091D58E57F003C6AF0CD,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -384,20 +508,20 @@
 			productReference = 6D94A70C10955DA88327FAC3;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		DC71FDC9D9DE6686F4C4F793 = {
+		3FE12416357B548A3806853E = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.swift;
 			path = HapticLabUITests.swift;
 			sourceTree = "<group>";
 		};
-		FE74828F83CEF71BDCA062B6 = {
+		DA57F8C7A5AB8411E2F91355 = {
 			isa = PBXBuildFile;
-			fileRef = DC71FDC9D9DE6686F4C4F793;
+			fileRef = 3FE12416357B548A3806853E;
 		};
 		0EB66C1166D240C9C8670E9C = {
 			isa = PBXGroup;
 			children = (
-				DC71FDC9D9DE6686F4C4F793,
+				3FE12416357B548A3806853E,
 			);
 			path = UITests;
 			sourceTree = "<group>";
@@ -413,7 +537,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FE74828F83CEF71BDCA062B6,
+				DA57F8C7A5AB8411E2F91355,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

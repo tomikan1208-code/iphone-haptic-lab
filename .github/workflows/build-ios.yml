@@ -2,7 +2,7 @@ name: Build iPhone app
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'codex/**']
     paths:
       - 'HapticLab/**'
       - 'HapticLab.xcodeproj/**'
@@ -24,11 +24,14 @@ jobs:
   build:
     runs-on: macos-15
     timeout-minutes: 35
+    env:
+      GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
     steps:
       - uses: actions/checkout@v4
       - name: Generate project and validate assets
         run: |
           node scripts/generate-project.mjs
+          node scripts/generate-music-demo.mjs
           node scripts/generate-icons.mjs
           node scripts/validate-project.mjs
       - name: Build physical iPhone IPA without signing credentials
