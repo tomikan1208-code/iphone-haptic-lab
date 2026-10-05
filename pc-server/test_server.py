@@ -144,6 +144,14 @@ class PCServerTests(unittest.TestCase):
         finally:
             self.companion.worker_slot.release()
 
+    def test_shutdown_requires_key_and_closes_the_service(self):
+        with self.assertRaises(HTTPError) as failure:
+            self.api('/shutdown', 'POST', authenticated=False)
+        self.assertEqual(failure.exception.code, 401)
+        self.assertEqual(self.api('/shutdown', 'POST'), {'stopping': True})
+        self.thread.join(timeout=5)
+        self.assertFalse(self.thread.is_alive())
+
     def test_stereo_antiphase_retains_bass_and_bad_samples_are_rejected(self):
         times = np.arange(RATE * 2) / RATE
         left = (.25 * np.sin(times * 2 * np.pi * 110)).astype(np.float32)

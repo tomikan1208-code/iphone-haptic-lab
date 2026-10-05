@@ -1,4 +1,4 @@
-param([switch]$Lan, [ValidateRange(1,65535)][int]$Port = 8765)
+﻿param([switch]$Lan, [ValidateRange(1,65535)][int]$Port = 8765)
 $ErrorActionPreference = 'Stop'
 $playerRoot = Split-Path -Parent $PSScriptRoot
 $privateRoot = Join-Path $playerRoot '.pc-server'

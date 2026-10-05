@@ -1,4 +1,5 @@
 import XCTest
+import CoreHaptics
 @testable import HapticLab
 
 final class MusicPlayerTests: XCTestCase {
@@ -83,8 +84,22 @@ final class MusicPlayerTests: XCTestCase {
         for address in ["http://192.168.1.10:8765", "http://10.1.2.3:8765", "http://127.0.0.1:8765", "http://desktop.local:8765"] {
             XCTAssertNoThrow(try PCServerConnection(address: address, token: token))
         }
-        for address in ["http://example.com", "http://172.32.1.1", "https://user:password@example.com", "file:///tmp/server", "http://10.1.1.999"] {
+        for address in ["http://example.com", "http://172.32.1.1", "https://user:password@example.com", "file:///tmp/server", "http://10.1.1.999", "http://10.invalid.1.2.3", "http://.10.1.2.3"] {
             XCTAssertThrowsError(try PCServerConnection(address: address, token: token))
+        }
+    }
+
+    @MainActor
+    func testPCTrackWithTenMillisecondEnvelopeDecodesAndBuildsHapticPatterns() throws {
+        var track = MusicHapticTrack(version: 1, audioSHA256: String(repeating: "d", count: 64), duration: 2,
+            envelope: (0...200).map { .init(time: Double($0) * 0.01, bass: 0.7, energy: 0.5, sharpness: 0.4) },
+            taps: [.init(time: 0.37, intensity: 0.8, sharpness: 0.5)])
+        track.analysis = .init(engine: "pc", elapsedSeconds: 1.2, sampleRate: 44100, hopMilliseconds: 10,
+                               fftSize: 4096, serverTrackID: String(repeating: "e", count: 64), style: .following, profile: .orchestral)
+        let decoded = try JSONDecoder().decode(MusicHapticTrack.self, from: JSONEncoder().encode(track)).validated()
+        XCTAssertEqual(decoded.analysis, track.analysis)
+        for specification in decoded.segment(at: 0.1, length: 0.8) {
+            XCTAssertNoThrow(try MusicHapticRenderer.makePattern(specification))
         }
     }
 

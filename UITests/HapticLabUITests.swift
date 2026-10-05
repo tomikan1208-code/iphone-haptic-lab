@@ -32,7 +32,7 @@ final class HapticLabUITests: XCTestCase {
         app.buttons["tab.pad"].tap()
         XCTAssertTrue(app.otherElements["touch.pad"].waitForExistence(timeout: 5))
         screenshot("03-touch-pad", app: app)
-        app.buttons["playback.stop"].tap()
+        app.buttons["tools.stop"].tap()
         XCTAssertTrue(app.staticTexts["待機中"].exists)
 
         app.navigationBars.buttons["メニュー"].tap()
@@ -51,6 +51,11 @@ final class HapticLabUITests: XCTestCase {
         demo.tap()
         XCTAssertTrue(app.staticTexts["music.firstPreparation"].waitForExistence(timeout: 5))
         screenshot("05-first-preparation", app: app)
+        XCTAssertFalse(app.buttons["音楽AI"].exists)
+        app.segmentedControls["analysis.profile"].buttons["オーケストラ向け"].tap()
+        XCTAssertTrue(app.staticTexts["拍ごとのタップを控え、低音・クレッシェンド・余韻をなめらかな持続振動にします。"].exists)
+        screenshot("12-orchestral-preparation", app: app)
+        app.segmentedControls["analysis.profile"].buttons["標準"].tap()
         let prepare = app.buttons["music.prepare"]
         reveal(prepare, app: app)
         prepare.tap()

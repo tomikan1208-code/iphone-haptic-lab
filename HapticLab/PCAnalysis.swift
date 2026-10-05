@@ -60,7 +60,9 @@ struct PCServerConnection: Equatable, Sendable {
 
     static func isLocalHost(_ host: String) -> Bool {
         if host == "localhost" || host == "::1" || host.hasSuffix(".local") { return true }
-        let parts = host.split(separator: ".").compactMap { Int($0) }
+        let octets = host.split(separator: ".", omittingEmptySubsequences: false)
+        guard octets.count == 4, octets.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isNumber) }) else { return false }
+        let parts = octets.compactMap { Int($0) }
         guard parts.count == 4, parts.allSatisfy({ (0...255).contains($0) }) else { return false }
         return parts[0] == 10 || parts[0] == 127 || (parts[0] == 192 && parts[1] == 168)
             || (parts[0] == 172 && (16...31).contains(parts[1])) || (parts[0] == 169 && parts[1] == 254)

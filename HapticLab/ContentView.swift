@@ -75,12 +75,15 @@ struct ContentView: View {
                         }
                     }.frame(maxWidth: .infinity, alignment: .leading)
                 }.buttonStyle(.plain).accessibilityIdentifier("player.expand")
-                Button { music.toggle() } label: {
+                Button {
+                    if music.selection?.kind == .youtube { showPlayer = true }
+                    else { music.toggle() }
+                } label: {
                     Image(systemName: music.isPlaying ? "pause.fill" : "play.fill").frame(width: 36, height: 40)
                 }.disabled(!music.isReady).accessibilityLabel(music.isPlaying ? "一時停止" : "音楽を再生")
                 Button { haptics.stop(); music.stop() } label: {
                     Image(systemName: "xmark").frame(width: 32, height: 40)
-                }.accessibilityLabel("再生を終了").accessibilityIdentifier("playback.stop")
+                }.accessibilityLabel("再生を終了").accessibilityIdentifier("player.close")
             }.padding(.horizontal, 12).padding(.bottom, 4)
         }.background(LabTheme.panel).accessibilityIdentifier("player.miniPlayer")
     }
@@ -125,7 +128,7 @@ private struct ToolScreen<V: View>: View {
                     Button("再生") { haptics.play(PatternFactory.experiment(.saved())) }
                         .accessibilityIdentifier("experiment.quickPlay")
                 }
-                Button("停止") { haptics.stop() }.foregroundStyle(LabTheme.coral).accessibilityIdentifier("playback.stop")
+                Button("停止") { haptics.stop() }.foregroundStyle(LabTheme.coral).accessibilityIdentifier("tools.stop")
             }.padding(16).background(LabTheme.panel)
         }.background(LabTheme.background).foregroundStyle(.white).navigationTitle(title)
             .onDisappear { haptics.stop() }

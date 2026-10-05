@@ -180,6 +180,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.respond(200, companion.health())
             elif self.command == 'GET' and parts == ['tracks']:
                 self.respond(200, companion.stored_tracks())
+            elif self.command == 'POST' and parts == ['shutdown']:
+                self.respond(200, dict(stopping=True))
+                threading.Thread(target=self.server.shutdown, daemon=True).start()
             elif self.command == 'DELETE' and len(parts) == 2 and parts[0] == 'tracks':
                 companion.delete_track(parts[1])
                 self.respond(200, dict(deleted=True))
