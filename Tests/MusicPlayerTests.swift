@@ -45,6 +45,7 @@ final class MusicPlayerTests: XCTestCase {
             taps: [.init(time: 12.345, intensity: 0.8, sharpness: 0.3)])
         var settings = MusicSettings()
         settings.mode = .beats
+        settings.gain = 1
         let bins = HapticVisualSignal.timeline(track: track, settings: settings, count: 100)
         XCTAssertEqual(bins[2], 0.8, accuracy: 0.000001)
         XCTAssertEqual(bins.filter { $0 > 0 }.count, 1)
