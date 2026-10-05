@@ -6,6 +6,7 @@ struct HapticLabApp: App {
     @StateObject private var music = MusicPlayback()
     @StateObject private var library: MusicLibrary
     @StateObject private var youtube = YouTubeAccount()
+    @StateObject private var analysis = AnalysisPreferences()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -27,6 +28,7 @@ struct HapticLabApp: App {
                 .environmentObject(music)
                 .environmentObject(library)
                 .environmentObject(youtube)
+                .environmentObject(analysis)
                 .preferredColorScheme(.dark)
                 .onChange(of: scenePhase) { phase in
                     if phase != .active {

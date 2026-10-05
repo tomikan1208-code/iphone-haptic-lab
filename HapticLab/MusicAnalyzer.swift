@@ -289,6 +289,9 @@ final class MusicMediaDownload: NSObject, URLSessionDownloadDelegate, @unchecked
         do {
             guard let response = downloadTask.response as? HTTPURLResponse, (200..<300).contains(response.statusCode),
                   response.url?.scheme == "https" else { throw MusicError.network("音源を取得できませんでした。URLの有効期限やアクセス権を確認してください。") }
+            if response.mimeType?.lowercased().contains("text/html") == true {
+                throw MusicError.network("このURLは音源ではなくWebページです。音声ファイルが直接返るダウンロードURLを指定してください。")
+            }
             let size = try location.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
             guard Int64(size) <= MusicAnalyzer.maximumBytes else { throw MusicError.tooLong }
             try FileManager.default.moveItem(at: location, to: destination)

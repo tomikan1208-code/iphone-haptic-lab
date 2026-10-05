@@ -80,6 +80,12 @@ struct MusicPreparationProgress {
     let selection: MusicSelection
     var fraction: Double = 0
     var message = "解析の準備中"
+    let startedAt = Date()
+    var remainingText: String {
+        let elapsed = Date().timeIntervalSince(startedAt)
+        guard fraction > 0.1, fraction < 0.95, elapsed > 2 else { return "" }
+        return " · 残り目安 \(Int(min(86_400, elapsed * (1 - fraction) / fraction)))秒"
+    }
 }
 
 @MainActor
@@ -143,7 +149,10 @@ final class MusicLibrary: ObservableObject {
         try disk.removeOrphans(records: records)
     }
 
-    func prepare(_ selection: MusicSelection, audioFile: URL? = nil) {
+    func prepare(_ selection: MusicSelection, audioFile: URL? = nil, audioDownloadURL: URL? = nil,
+                 method: MusicAnalysisMethod = .device, style: MusicGenerationStyle = .following,
+                 profile: MusicArrangement = .standard,
+                 connection: PCServerConnection? = nil) {
         guard preparation == nil, storageAvailable else {
             message = storageAvailable ? "解析中の曲が終わってから追加してください。" : "保存先を利用できません。"
             return
@@ -163,19 +172,36 @@ final class MusicLibrary: ObservableObject {
             }
         }
         let worker = Task.detached(priority: .userInitiated) {
+            let started = Date()
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try Task.checkCancellation()
+            if method == .pc, selection.kind == .youtube, audioFile == nil, audioDownloadURL == nil {
+                guard let connection else { throw MusicError.network("メニューの「解析方法・PCサーバー」でPCを設定してください。") }
+                return try await PCAnalysisClient(connection: connection).analyze(selection: selection, file: nil, style: style, profile: profile, progress: report)
+            }
             if let audioFile {
                 let access = audioFile.startAccessingSecurityScopedResource()
                 defer { if access { audioFile.stopAccessingSecurityScopedResource() } }
                 let size = try audioFile.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
                 guard Int64(size) <= MusicAnalyzer.maximumBytes else { throw MusicError.tooLong }
                 try FileManager.default.copyItem(at: audioFile, to: localURL)
-            } else if selection.kind == .remote, let url = URL(string: selection.url) {
+            } else if let url = audioDownloadURL ?? (selection.kind == .remote ? URL(string: selection.url) : nil) {
                 _ = try await MusicMediaDownload(destination: localURL, progress: report).download(url)
             } else { throw MusicError.unsupportedMedia }
             try Task.checkCancellation()
-            return try await MusicAnalyzer.analyze(localURL, progress: report)
+            if method == .pc {
+                guard let connection else { throw MusicError.network("PCサーバーを設定してください。") }
+                return try await PCAnalysisClient(connection: connection).analyze(selection: selection, file: localURL, style: style, profile: profile, progress: report)
+            }
+            var track = try await MusicAnalyzer.analyze(localURL, progress: report)
+            track.analysis = MusicAnalysisInfo(engine: "device", elapsedSeconds: 0, sampleRate: 22_050,
+                hopMilliseconds: 20, fftSize: 1_024, style: style)
+            // Preserve natural timing and crescendos for orchestral music instead of applying a fixed beat grid.
+            if profile == .orchestral { track = try MusicComposer.orchestral(track) }
+            else if style == .musical { track = try MusicComposer.compose(track) }
+            track.analysis = MusicAnalysisInfo(engine: "device", elapsedSeconds: Date().timeIntervalSince(started),
+                sampleRate: 22_050, hopMilliseconds: 20, fftSize: 1_024, style: style, tempoBPM: track.analysis?.tempoBPM, profile: profile)
+            return track
         }
         self.worker = worker
         preparationTask = Task { [weak self] in
@@ -190,7 +216,8 @@ final class MusicLibrary: ObservableObject {
                 report(0.98, "振動を保存しています")
                 try self.commit(track, selection: selection, localURL: selection.kind == .file ? localURL : nil)
                 self.recentlyPreparedID = selection.id
-                self.message = "振動を保存しました。次回から解析せずに再生できます。"
+                let elapsed = track.analysis.map { String(format: "（%.1f秒）", $0.elapsedSeconds) } ?? ""
+                self.message = "振動を保存しました\(elapsed)。次回から解析せずに再生できます。"
             } catch {
                 if !(error is CancellationError), let self, self.preparation?.id == jobID {
                     self.message = error.localizedDescription
@@ -233,6 +260,7 @@ final class MusicLibrary: ObservableObject {
             record.selection.duration = track.duration
             record.trackFilename = filename
             record.trackBytes = data.count
+            record.analysis = track.analysis
             record.mediaFilename = mediaFilename
             var next = records.filter { $0.id != selection.id }
             next.append(record)

@@ -6,3 +6,4 @@ xcuserdata/
 __pycache__/
 *.pyc
 Configuration/GoogleOAuth.local.json
+.pc-server/

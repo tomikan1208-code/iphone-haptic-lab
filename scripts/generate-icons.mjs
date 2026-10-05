@@ -11,7 +11,7 @@ fs.mkdirSync(path.join(assets, 'AccentColor.colorset'), { recursive: true });
 const contents = { info: { author: 'xcode', version: 1 } };
 fs.writeFileSync(path.join(assets, 'Contents.json'), JSON.stringify(contents, null, 2) + '\n');
 fs.writeFileSync(path.join(assets, 'AccentColor.colorset', 'Contents.json'), JSON.stringify({
-  colors: [{ idiom: 'universal', color: { 'color-space': 'srgb', components: { red: '0.490', green: '0.940', blue: '0.800', alpha: '1.000' } } }], ...contents
+  colors: [{ idiom: 'universal', color: { 'color-space': 'srgb', components: { red: '1.000', green: '0.220', blue: '0.250', alpha: '1.000' } } }], ...contents
 }, null, 2) + '\n');
 
 const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -66,4 +66,3 @@ fs.writeFileSync(path.join(iconDir, 'icon-1024.png'), icon(1024));
 images.push({ idiom: 'ios-marketing', size: '1024x1024', scale: '1x', filename: 'icon-1024.png' });
 fs.writeFileSync(path.join(iconDir, 'Contents.json'), JSON.stringify({ images, ...contents }, null, 2) + '\n');
 console.log('Generated opaque iPhone app icons and accent color.');
-

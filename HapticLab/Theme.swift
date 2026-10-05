@@ -1,13 +1,13 @@
 import SwiftUI
 
 enum LabTheme {
-    static let background = Color(red: 0.035, green: 0.047, blue: 0.075)
-    static let panel = Color(red: 0.075, green: 0.094, blue: 0.137)
-    static let elevated = Color(red: 0.106, green: 0.129, blue: 0.180)
-    static let mint = Color(red: 0.49, green: 0.94, blue: 0.80)
+    static let background = Color(red: 0.055, green: 0.055, blue: 0.055)
+    static let panel = Color(red: 0.11, green: 0.11, blue: 0.11)
+    static let elevated = Color(red: 0.17, green: 0.17, blue: 0.17)
+    static let mint = Color(red: 1, green: 0.22, blue: 0.25)
     static let violet = Color(red: 0.72, green: 0.65, blue: 1)
     static let coral = Color(red: 1, green: 0.54, blue: 0.51)
-    static let muted = Color(red: 0.58, green: 0.64, blue: 0.73)
+    static let muted = Color(red: 0.66, green: 0.66, blue: 0.66)
 
     static func accent(for category: String) -> Color {
         switch category {
@@ -141,4 +141,3 @@ struct TactileWave: View {
         .accessibilityHidden(true)
     }
 }
-

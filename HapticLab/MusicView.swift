@@ -25,12 +25,11 @@ struct MusicView: View {
     @State private var showAccount = false
     @State private var deleting: MusicRecord?
     @State private var openPlayerAfterDismiss = false
+    @FocusState private var urlFocused: Bool
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                SectionIntro(eyebrow: "FEEL YOUR MUSIC", title: "音楽を、触感に。",
-                    detail: "一度作れば、何度でも。\n低音のうねりとビートを手の中へ。")
+            VStack(alignment: .leading, spacing: 16) {
                 inputPanel
                 if let progress = library.preparation { preparationPanel(progress) }
                 if let message = library.message { MusicMessage(text: message) { library.message = nil } }
@@ -42,6 +41,7 @@ struct MusicView: View {
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
+        .scrollDismissesKeyboard(.interactively)
         .sheet(item: $pending, onDismiss: {
             if openPlayerAfterDismiss { openPlayerAfterDismiss = false; showPlayer = true }
         }) { request in
@@ -89,9 +89,9 @@ struct MusicView: View {
     private var inputPanel: some View {
         VStack(alignment: .leading, spacing: 13) {
             HStack {
-                Label("曲を追加", systemImage: "plus.circle.fill").font(.system(size: 15, weight: .semibold))
+                Text("ライブラリに追加").font(.system(size: 13, weight: .medium))
                 Spacer()
-                Button { showAccount = true } label: {
+                Button { urlFocused = false; showAccount = true } label: {
                     Label(youtube.connected ? "接続済み" : "ログイン", systemImage: "person.crop.circle")
                         .font(.system(size: 12, weight: .medium)).foregroundStyle(LabTheme.mint)
                 }
@@ -102,6 +102,7 @@ struct MusicView: View {
                     .font(.system(size: 13)).textContentType(.URL).keyboardType(.URL)
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                     .submitLabel(.go).onSubmit { resolveURL() }
+                    .focused($urlFocused)
                     .accessibilityIdentifier("music.url")
                 Button(action: resolveURL) {
                     if resolving { ProgressView().tint(LabTheme.mint) }
@@ -110,8 +111,8 @@ struct MusicView: View {
                 .disabled(resolving || urlText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .accessibilityLabel("URLから曲を選択").accessibilityIdentifier("music.openURL")
             }
-            .padding(14).background(LabTheme.background, in: RoundedRectangle(cornerRadius: 12))
-            Button { importing = true } label: {
+            .padding(12).background(LabTheme.background, in: RoundedRectangle(cornerRadius: 8))
+            Button { urlFocused = false; importing = true } label: {
                 Label("音楽・動画ファイルから選ぶ", systemImage: "folder")
                     .font(.system(size: 13, weight: .medium)).foregroundStyle(LabTheme.muted)
                     .padding(.vertical, 4)
@@ -120,7 +121,7 @@ struct MusicView: View {
             Button {
                 guard let url = Bundle.main.url(forResource: "MusicDemo", withExtension: "wav") else { return }
                 let selection = MusicSelection(id: "bundled-music-demo", kind: .file, title: "Pulse Garden · 12秒のサンプル",
-                                           artist: "触感ラボ オリジナル", url: "")
+                                           artist: "オリジナルサンプル", url: "")
                 if library.record(for: selection)?.isPrepared == true { open(selection, withHaptics: true) }
                 else { pending = MusicPreparationRequest(selection: selection, audioURL: url) }
             } label: {
@@ -128,7 +129,7 @@ struct MusicView: View {
             }
             .accessibilityIdentifier("music.demo")
         }
-        .labPanel()
+        .padding(14).background(LabTheme.panel, in: RoundedRectangle(cornerRadius: 12))
     }
 
     private func preparationPanel(_ progress: MusicPreparationProgress) -> some View {
@@ -138,6 +139,10 @@ struct MusicView: View {
                 Text("振動を作成中").font(.system(size: 15, weight: .semibold))
                 Spacer()
                 Text("\(Int(progress.fraction * 100))%").font(.system(size: 12, design: .monospaced)).foregroundStyle(LabTheme.mint)
+            }
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                Text("経過 \(Int(context.date.timeIntervalSince(progress.startedAt)))秒" + progress.remainingText)
+                    .font(.system(size: 11)).foregroundStyle(LabTheme.muted)
             }
             Text(progress.selection.title).font(.system(size: 13)).lineLimit(2)
             ProgressView(value: progress.fraction).tint(LabTheme.mint)
@@ -196,7 +201,8 @@ struct MusicView: View {
             }
             ForEach(records) { record in
                 MusicSongRow(selection: record.selection, prepared: record.isPrepared, bytes: record.trackBytes,
-                             action: { select(record.selection) }, delete: { deleting = record })
+                             action: { select(record.selection) }, delete: { deleting = record },
+                             regenerate: { pending = MusicPreparationRequest(selection: record.selection, audioURL: library.disk.mediaURL(record)) })
             }
         }
     }
@@ -251,6 +257,7 @@ struct MusicView: View {
 
     private func resolveURL() {
         guard !resolving else { return }
+        urlFocused = false
         do {
             let selection = try MusicSelection.parse(urlText)
             resolving = true
@@ -291,32 +298,56 @@ struct MusicPreparationView: View {
     let initialAudio: URL?
     let preview: () -> Void
     @EnvironmentObject private var library: MusicLibrary
+    @EnvironmentObject private var preferences: AnalysisPreferences
     @Environment(\.dismiss) private var dismiss
     @State private var importing = false
+    @State private var method: MusicAnalysisMethod = .device
+    @State private var style: MusicGenerationStyle = .following
+    @State private var profile: MusicArrangement = .standard
+    @State private var audioURLText = ""
+    @State private var showPCSettings = false
+    @State private var errorText: String?
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    Image(systemName: "waveform.badge.plus").font(.system(size: 42)).foregroundStyle(LabTheme.mint)
-                    Text("この曲の振動を作成しますか？").font(.system(size: 24, weight: .bold))
+                    Text("この曲の振動を作成しますか？").font(.system(size: 22, weight: .bold))
                         .accessibilityIdentifier("music.firstPreparation")
                     Text(selection.title).font(.system(size: 17, weight: .semibold))
                     Text(selection.artist).font(.system(size: 13)).foregroundStyle(LabTheme.muted)
-                    Text(selection.kind == .youtube
-                         ? "YouTubeから解析用の音声は取得できません。同じ動画と同じ長さ・同じ開始位置の音源ファイルを選んで、振動を作成します。再生時の映像と音声はYouTubeからストリーミングします。"
-                         : "初回に音源を解析して、低音とビートから振動を作成・保存します。次回から解析せずに再生できます。")
+                    Picker("解析する場所", selection: $method) {
+                        ForEach(MusicAnalysisMethod.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }.pickerStyle(.segmented).accessibilityIdentifier("analysis.method")
+                    Picker("振動の作り方", selection: $style) {
+                        ForEach(MusicGenerationStyle.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }.pickerStyle(.segmented).accessibilityIdentifier("analysis.style")
+                    Text(style.detail).font(.system(size: 13)).foregroundStyle(LabTheme.muted)
+                    Picker("仕上げ", selection: $profile) {
+                        ForEach(MusicArrangement.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }.pickerStyle(.segmented).accessibilityIdentifier("analysis.profile")
+                    if profile == .orchestral {
+                        Text("拍ごとのタップを控え、低音・クレッシェンド・余韻をなめらかな持続振動にします。")
+                            .font(.system(size: 12)).foregroundStyle(LabTheme.muted)
+                    }
+                    Text(method == .pc
+                         ? "PCが音源を取得・解析し、振動をPCとiPhoneへ保存します。次回の再生にはPCは不要です。YouTubeは公開動画のURLだけで作成できます。"
+                         : selection.kind == .youtube
+                           ? "iPhoneだけで作る場合は、同じ動画の音源ファイルか音声のダウンロードURLを選びます。URLだけで音源取得まで行う場合はPCを選んでください。"
+                           : "iPhone内で音源を解析し、振動を保存します。次回から解析せずに再生できます。")
                         .font(.system(size: 14)).foregroundStyle(LabTheme.muted).lineSpacing(5)
-                    HStack(spacing: 16) {
-                        Label("初回だけ解析", systemImage: "sparkles")
-                        Label("曲ごとに削除", systemImage: "trash")
-                    }.font(.system(size: 12)).foregroundStyle(LabTheme.mint)
+                    if method == .pc {
+                        Button("PCの接続設定") { showPCSettings = true }.foregroundStyle(LabTheme.mint)
+                    } else if selection.kind == .youtube {
+                        TextField("音声の直接ダウンロードURL（任意）", text: $audioURLText)
+                            .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                            .padding(12).background(LabTheme.panel, in: RoundedRectangle(cornerRadius: 8))
+                            .accessibilityIdentifier("analysis.audioURL")
+                    }
+                    if let errorText { Text(errorText).font(.system(size: 12)).foregroundStyle(LabTheme.coral) }
                     Text("1曲20分・512 MBまで。解析中はアプリを開いたままにしてください。")
                         .font(.system(size: 12)).foregroundStyle(LabTheme.muted)
-                    PrimaryButton(title: selection.kind == .youtube ? "音源を選んで振動を作成" : "解析して振動を作成", symbol: "waveform") {
-                        if selection.kind == .youtube || (selection.kind == .file && initialAudio == nil) { importing = true }
-                        else { library.prepare(selection, audioFile: initialAudio); dismiss() }
-                    }
+                    PrimaryButton(title: method == .pc && selection.kind == .youtube ? "URLから取得して振動を作成" : "解析して振動を作成", symbol: "waveform") { start() }
                     .disabled(library.preparation != nil).accessibilityIdentifier("music.prepare")
                     if selection.kind != .file {
                         Button("今は映像・音声だけ再生する") { preview() }
@@ -331,13 +362,38 @@ struct MusicPreparationView: View {
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("閉じる") { dismiss() } } }
         }
         .preferredColorScheme(.dark)
+        .onAppear { method = preferences.method; style = preferences.style; profile = preferences.profile }
+        .sheet(isPresented: $showPCSettings) {
+            NavigationStack {
+                AnalysisSettingsView().toolbar {
+                    ToolbarItem(placement: .confirmationAction) { Button("完了") { showPCSettings = false } }
+                }
+            }.preferredColorScheme(.dark)
+        }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.audio, .movie], allowsMultipleSelection: false) { result in
             do {
                 guard let url = try result.get().first else { return }
-                library.prepare(selection, audioFile: url)
+                library.prepare(selection, audioFile: url, method: method, style: style, profile: profile, connection: preferences.connection)
                 dismiss()
             } catch { library.message = error.localizedDescription }
         }
+    }
+    private func start() {
+        errorText = nil
+        preferences.method = method
+        preferences.style = style
+        preferences.profile = profile
+        if method == .pc, preferences.connection == nil { showPCSettings = true; return }
+        do {
+            let audioURL = audioURLText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : try MusicSelection.audioDownloadURL(audioURLText)
+            if (selection.kind == .youtube && method == .device && audioURL == nil) || (selection.kind == .file && initialAudio == nil) {
+                importing = true
+                return
+            }
+            library.prepare(selection, audioFile: initialAudio, audioDownloadURL: audioURL,
+                            method: method, style: style, profile: profile, connection: preferences.connection)
+            dismiss()
+        } catch { errorText = error.localizedDescription }
     }
 }
 
@@ -347,14 +403,13 @@ struct MusicSongRow: View {
     var bytes = 0
     let action: () -> Void
     var delete: (() -> Void)?
+    var regenerate: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 12) {
             Button(action: action) {
                 HStack(spacing: 12) {
-                    Image(systemName: selection.kind == .youtube ? "play.rectangle.fill" : "music.note")
-                        .font(.system(size: 20)).foregroundStyle(prepared ? LabTheme.mint : LabTheme.violet)
-                        .frame(width: 40, height: 44).background(LabTheme.elevated, in: RoundedRectangle(cornerRadius: 9))
+                    MusicArtwork(selection: selection, compact: true).frame(width: 108, height: 68)
                     VStack(alignment: .leading, spacing: 5) {
                         Text(selection.title).font(.system(size: 14, weight: .semibold)).lineLimit(2).multilineTextAlignment(.leading)
                         Text(selection.artist).font(.system(size: 11)).foregroundStyle(LabTheme.muted).lineLimit(1)
@@ -371,12 +426,13 @@ struct MusicSongRow: View {
             .buttonStyle(.plain).accessibilityIdentifier("music.song.\(selection.id)")
             if let delete {
                 Menu {
+                    if let regenerate { Button(action: regenerate) { Label("振動を作り直す", systemImage: "waveform.badge.plus") } }
                     Button(role: .destructive, action: delete) { Label("保存データを削除", systemImage: "trash") }
                 } label: { Image(systemName: "ellipsis").foregroundStyle(LabTheme.muted).frame(width: 30, height: 44) }
                 .accessibilityLabel("\(selection.title)の操作")
             }
         }
-        .padding(12).background(LabTheme.panel, in: RoundedRectangle(cornerRadius: 15))
+        .padding(.vertical, 10)
     }
 }
 

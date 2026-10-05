@@ -71,6 +71,15 @@ struct MusicSelection: Codable, Identifiable, Equatable {
     static func validVideoID(_ id: String) -> Bool {
         id.range(of: "^[A-Za-z0-9_-]{11}$", options: .regularExpression) != nil
     }
+
+    static func audioDownloadURL(_ input: String) throws -> URL {
+        guard let components = URLComponents(string: input.trimmingCharacters(in: .whitespacesAndNewlines)),
+              components.scheme?.lowercased() == "https", let host = components.host, !host.isEmpty,
+              components.user == nil, components.password == nil, let url = components.url,
+              !host.lowercased().contains("youtube.com"), host.lowercased() != "youtu.be",
+              !["html", "htm", "m3u8", "mpd"].contains(url.pathExtension.lowercased()) else { throw MusicError.invalidURL }
+        return url
+    }
 }
 
 struct MusicSettings: Codable, Equatable {
@@ -98,6 +107,17 @@ struct MusicSettings: Codable, Equatable {
                       density: bounded(density, to: 0...1, fallback: 0.7),
                       offset: bounded(offset, to: -1...1, fallback: 0))
     }
+
+    func intensity(for point: MusicEnvelopePoint) -> Double {
+        let level: Double
+        switch mode {
+        case .beats: level = 0
+        case .bass: level = point.bass * bass * 0.65
+        case .energy: level = point.energy * 0.55
+        case .mix: level = point.bass * bass * 0.5 + point.energy * 0.10
+        }
+        return level * gain
+    }
 }
 
 struct MusicRecord: Codable, Identifiable, Equatable {
@@ -108,6 +128,7 @@ struct MusicRecord: Codable, Identifiable, Equatable {
     var mediaFilename: String?
     var trackBytes: Int = 0
     var settings = MusicSettings()
+    var analysis: MusicAnalysisInfo?
     var id: String { selection.id }
     var isPrepared: Bool { trackFilename != nil }
 }
@@ -133,13 +154,23 @@ struct MusicHapticTrack: Codable, Equatable {
     let duration: Double
     let envelope: [MusicEnvelopePoint]
     let taps: [MusicTap]
+    var analysis: MusicAnalysisInfo? = nil
 
     func validated() throws -> MusicHapticTrack {
         guard version == Self.currentVersion, duration.isFinite, duration > 0,
               duration <= Self.maximumDuration,
               audioSHA256.range(of: "^[0-9a-f]{64}$", options: .regularExpression) != nil,
-              !envelope.isEmpty, envelope.count <= 65_000, taps.count <= 12_001 else {
+              !envelope.isEmpty, envelope.count <= 125_000, taps.count <= 12_001 else {
             throw MusicError.corruptTrack
+        }
+        if let analysis {
+            guard ["device", "pc"].contains(analysis.engine), analysis.elapsedSeconds.isFinite,
+                  (0...86_400).contains(analysis.elapsedSeconds), (8_000...192_000).contains(analysis.sampleRate),
+                  analysis.hopMilliseconds.isFinite, (1...100).contains(analysis.hopMilliseconds),
+                  (128...16_384).contains(analysis.fftSize),
+                  analysis.serverTrackID == nil || analysis.serverTrackID?.range(of: "^[0-9a-f]{64}$", options: .regularExpression) != nil else {
+                throw MusicError.corruptTrack
+            }
         }
         var previous = -Double.infinity
         for point in envelope {
@@ -190,13 +221,7 @@ struct MusicHapticTrack: Codable, Equatable {
             points.append(contentsOf: envelope[first..<last].filter { $0.time > start })
             points.append(value(at: end))
             func intensity(_ point: MusicEnvelopePoint) -> Double {
-                let level: Double
-                switch settings.mode {
-                case .bass: level = point.bass * settings.bass * 0.65
-                case .energy: level = point.energy * 0.55
-                default: level = point.bass * settings.bass * 0.5 + point.energy * 0.10
-                }
-                return level * settings.gain
+                settings.intensity(for: point)
             }
             if points.contains(where: { intensity($0) > 0.001 }) {
                 var curves: [HapticCurveSpec] = []

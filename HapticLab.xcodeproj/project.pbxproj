@@ -54,10 +54,22 @@
 			path = HapticPattern.swift;
 			sourceTree = "<group>";
 		};
+		BD1FDBE556FBC84571ABAB64 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = HapticVisualization.swift;
+			sourceTree = "<group>";
+		};
 		FC8134C1BACF0BEAC8C3DBE5 = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.swift;
 			path = MusicAnalyzer.swift;
+			sourceTree = "<group>";
+		};
+		FD4FA09751C92EA36947819D = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicComposer.swift;
 			sourceTree = "<group>";
 		};
 		1997D22C5218C0FB0997387B = {
@@ -88,6 +100,12 @@
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.swift;
 			path = MusicView.swift;
+			sourceTree = "<group>";
+		};
+		D8EC3098F0102F9EAB90D487 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = PCAnalysis.swift;
 			sourceTree = "<group>";
 		};
 		17BA6C4D66802E901A561C49 = {
@@ -140,9 +158,17 @@
 			isa = PBXBuildFile;
 			fileRef = 3207FE469A052B487C36A69A;
 		};
+		F574AA6984C7586D77506CC8 = {
+			isa = PBXBuildFile;
+			fileRef = BD1FDBE556FBC84571ABAB64;
+		};
 		602E753F4BA6FEEABE05E141 = {
 			isa = PBXBuildFile;
 			fileRef = FC8134C1BACF0BEAC8C3DBE5;
+		};
+		C78E8D9EA96B301F73A1839D = {
+			isa = PBXBuildFile;
+			fileRef = FD4FA09751C92EA36947819D;
 		};
 		126000E58ECAA5CB8424899C = {
 			isa = PBXBuildFile;
@@ -163,6 +189,10 @@
 		1042B2C0FFCDDB54EA26A4E4 = {
 			isa = PBXBuildFile;
 			fileRef = D5349AC6E579C0C482051EA9;
+		};
+		5176F910AC1B29560B6D3DB3 = {
+			isa = PBXBuildFile;
+			fileRef = D8EC3098F0102F9EAB90D487;
 		};
 		983ECF2B09D43633F1914DC3 = {
 			isa = PBXBuildFile;
@@ -233,12 +263,15 @@
 				3AE2BA4070CC889D5B1A8D9B,
 				F35FC03F3B32327908B082F4,
 				3207FE469A052B487C36A69A,
+				BD1FDBE556FBC84571ABAB64,
 				FC8134C1BACF0BEAC8C3DBE5,
+				FD4FA09751C92EA36947819D,
 				1997D22C5218C0FB0997387B,
 				B12AF2972DBF2E43EC621262,
 				9A56DCC9BD25A795EE91FAE9,
 				8B56465797BF799A3046333D,
 				D5349AC6E579C0C482051EA9,
+				D8EC3098F0102F9EAB90D487,
 				17BA6C4D66802E901A561C49,
 				F38FAE94E7994A0260EDF288,
 				6C0BB2BCC5D78407083F5D51,
@@ -267,12 +300,15 @@
 				BC8297CF93BDC0F8B76FB7C4,
 				409E776BF93B23433CEE5200,
 				D7ACDC643816AD1A66520F11,
+				F574AA6984C7586D77506CC8,
 				602E753F4BA6FEEABE05E141,
+				C78E8D9EA96B301F73A1839D,
 				126000E58ECAA5CB8424899C,
 				78FE50C53B5D714A7C40BE36,
 				574484E5D5BA0344D754328C,
 				B49B0DF3236225FD9F26E6CD,
 				1042B2C0FFCDDB54EA26A4E4,
+				5176F910AC1B29560B6D3DB3,
 				983ECF2B09D43633F1914DC3,
 				E503E78CC2BB93B96FE55502,
 				B9D218942E380DA4805CB68D,
@@ -383,6 +419,12 @@
 			path = MusicHapticTests.swift;
 			sourceTree = "<group>";
 		};
+		F9ED0ECA5AEC380659EE1414 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicPlayerTests.swift;
+			sourceTree = "<group>";
+		};
 		1612BE72FFDE1E21105E6006 = {
 			isa = PBXBuildFile;
 			fileRef = 378A29A97E13BC600245D867;
@@ -391,11 +433,16 @@
 			isa = PBXBuildFile;
 			fileRef = E46E0A8528084A496B3F304F;
 		};
+		EC6446C664114E31D6769033 = {
+			isa = PBXBuildFile;
+			fileRef = F9ED0ECA5AEC380659EE1414;
+		};
 		F779C9C9A01895FC297A88B2 = {
 			isa = PBXGroup;
 			children = (
 				378A29A97E13BC600245D867,
 				E46E0A8528084A496B3F304F,
+				F9ED0ECA5AEC380659EE1414,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -413,6 +460,7 @@
 			files = (
 				1612BE72FFDE1E21105E6006,
 				D833091D58E57F003C6AF0CD,
+				EC6446C664114E31D6769033,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

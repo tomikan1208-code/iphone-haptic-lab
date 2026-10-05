@@ -148,6 +148,7 @@ final class MusicPlayback: ObservableObject {
     @Published private(set) var duration = 0.0
     @Published private(set) var hasHaptics = false
     @Published private(set) var isBuffering = false
+    @Published private(set) var containsVideo = false
     @Published var message: String?
     @Published var settings = MusicSettings() { didSet { renderer.settings = settings.normalized } }
     let player = AVPlayer()
@@ -155,6 +156,7 @@ final class MusicPlayback: ObservableObject {
     weak var webView: WKWebView?
     var onPlay: ((MusicSelection) -> Void)?
     private var track: MusicHapticTrack?
+    var visualizationTrack: MusicHapticTrack? { track }
     private var observer: Any?
     private var statusObserver: NSKeyValueObservation?
     private var controlObserver: NSKeyValueObservation?
@@ -192,6 +194,7 @@ final class MusicPlayback: ObservableObject {
         stop()
         self.selection = selection
         self.track = track
+        containsVideo = selection.kind == .youtube
         self.settings = settings.normalized
         hasHaptics = track != nil
         duration = selection.duration ?? track?.duration ?? 0
@@ -208,6 +211,12 @@ final class MusicPlayback: ObservableObject {
             }
             let item = AVPlayerItem(url: url)
             player.replaceCurrentItem(with: item)
+            Task { [weak self, weak item] in
+                guard let item else { return }
+                let videoTracks = try? await item.asset.loadTracks(withMediaType: .video)
+                guard let self, self.player.currentItem === item else { return }
+                self.containsVideo = !(videoTracks ?? []).isEmpty
+            }
             statusObserver = item.observe(\.status, options: [.initial, .new]) { [weak self, weak item] _, _ in
                 Task { @MainActor [weak self, weak item] in
                     guard let self, let item, self.player.currentItem === item else { return }

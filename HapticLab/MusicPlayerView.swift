@@ -5,38 +5,70 @@ struct MusicPlayerScreen: View {
     @EnvironmentObject private var playback: MusicPlayback
     @EnvironmentObject private var library: MusicLibrary
     @Environment(\.dismiss) private var dismiss
+    @State private var showSpectrum = false
+    @State private var showSettings = false
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 mediaPlayer
-                    .frame(height: 220).background(.black)
+                    .frame(height: playback.containsVideo ? 211 : 170).background(.black)
                     .accessibilityIdentifier("music.mediaPlayer")
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 12) {
                         songHeader
-                        controls
                         if let message = playback.message { MusicMessage(text: message) { playback.message = nil } }
-                        if playback.hasHaptics { settingsPanel }
-                        else {
+                        if !playback.hasHaptics {
                             Text("映像・音声のみで再生します。振動を付けるには、ライブラリからこの曲を選び、初回の作成を行ってください。")
                                 .font(.system(size: 13)).foregroundStyle(LabTheme.muted)
                         }
-                    }.padding(20)
+                    }.padding(16)
                 }
                 .scrollIndicators(.hidden)
+                VStack(spacing: 8) {
+                    if playback.hasHaptics {
+                        HStack {
+                            Text(showSpectrum ? "振動の強弱の周期 · 0.4〜25 Hz" : "保存した振動の波形")
+                                .font(.system(size: 10)).foregroundStyle(LabTheme.muted)
+                            Spacer()
+                            Button(showSpectrum ? "波形" : "周波数") { showSpectrum.toggle() }
+                                .font(.system(size: 11)).foregroundStyle(LabTheme.mint)
+                                .accessibilityIdentifier("haptics.toggle")
+                        }
+                        Group {
+                            if showSpectrum {
+                                HapticSpectrumView(track: playback.visualizationTrack, position: playback.position, settings: playback.settings)
+                            } else {
+                                HapticTimelineView(track: playback.visualizationTrack, position: playback.position,
+                                                   settings: playback.settings, playing: playback.isPlaying)
+                            }
+                        }.frame(height: 48)
+                    }
+                    controls
+                }.padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 12).background(LabTheme.panel)
             }
             .background(LabTheme.background).foregroundStyle(.white)
-            .navigationTitle("音楽を再生").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("再生中").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("閉じる") { playback.pause(); dismiss() } }
                 ToolbarItem(placement: .primaryAction) {
-                    Button { playback.pause() } label: { Label("停止", systemImage: "stop.fill").foregroundStyle(LabTheme.coral) }
-                        .accessibilityIdentifier("music.stop")
+                    HStack {
+                        Button { showSettings = true } label: { Image(systemName: "slider.horizontal.3") }
+                            .disabled(!playback.hasHaptics).accessibilityLabel("振動を調整").accessibilityIdentifier("music.settings")
+                        Button { playback.pause() } label: { Image(systemName: "stop.fill").foregroundStyle(LabTheme.coral) }
+                            .accessibilityLabel("停止").accessibilityIdentifier("music.stop")
+                    }
                 }
             }
         }
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $showSettings) {
+            NavigationStack {
+                ScrollView { settingsPanel.padding(16) }.background(LabTheme.background)
+                    .navigationTitle("振動を調整").navigationBarTitleDisplayMode(.inline)
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完了") { showSettings = false } } }
+            }.preferredColorScheme(.dark)
+        }
         .onDisappear { playback.pause() }
         .onChange(of: playback.settings) { settings in
             if let id = playback.selection?.id { library.saveSettings(settings, id: id) }
@@ -47,7 +79,8 @@ struct MusicPlayerScreen: View {
         if let selection = playback.selection {
             if let videoID = selection.videoID {
                 YouTubeMusicPlayer(videoID: videoID, playback: playback).id(selection.id)
-            } else { VideoPlayer(player: playback.player) }
+            } else if playback.containsVideo { VideoPlayer(player: playback.player) }
+            else { MusicArtwork(selection: selection).padding(10) }
         } else {
             Image(systemName: "music.note").font(.system(size: 40)).foregroundStyle(LabTheme.muted)
         }
