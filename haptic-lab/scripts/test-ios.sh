@@ -12,7 +12,7 @@ xcodebuild test \
   -project HapticLab.xcodeproj -scheme HapticLab -configuration Debug \
   -destination "platform=iOS Simulator,id=$device" -derivedDataPath .build/simulator \
   -resultBundlePath .build/TestResults.xcresult -parallel-testing-enabled NO \
-  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+  ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
   > .build/test-ios.log 2>&1 || result=$?
 xcrun xcresulttool get test-results summary --path .build/TestResults.xcresult > .build/test-summary.json || true
 if [[ "$result" != '0' ]]; then
