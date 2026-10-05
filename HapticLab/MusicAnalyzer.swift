@@ -56,7 +56,35 @@ final class MusicSignalExtractor {
         if readOffset > 0 { pending.removeFirst(readOffset) }
     }
 
-    func finish(hash: String) throws -> MusicHapticTrack {
+    func append(_ samples: [Float], at presentationTime: Double) throws {
+        guard presentationTime.isFinite, abs(presentationTime) <= MusicHapticTrack.maximumDuration + 1 else {
+            throw MusicError.unsupportedMedia
+        }
+        let framePosition = Int((presentationTime * Self.sampleRate).rounded())
+        let gap = framePosition - totalFrames
+        if gap > 0 { try appendSilence(frames: gap) }
+        let skipped = max(0, -gap) * channels
+        if skipped < samples.count { try append(Array(samples.dropFirst(skipped))) }
+    }
+
+    private func appendSilence(frames: Int) throws {
+        guard frames <= Int(MusicHapticTrack.maximumDuration * Self.sampleRate) else { throw MusicError.tooLong }
+        var remaining = frames
+        while remaining > 0 {
+            let count = min(4_096, remaining)
+            try append(Array(repeating: 0, count: count * channels))
+            remaining -= count
+        }
+    }
+
+    func finish(hash: String, expectedDuration: Double? = nil) throws -> MusicHapticTrack {
+        if let expectedDuration {
+            guard expectedDuration.isFinite, expectedDuration > 0, expectedDuration <= MusicHapticTrack.maximumDuration else {
+                throw MusicError.tooLong
+            }
+            let missing = Int((expectedDuration * Self.sampleRate).rounded()) - totalFrames
+            if missing > 0 { try appendSilence(frames: missing) }
+        }
         let duration = Double(totalFrames) / Self.sampleRate
         guard duration > 0 else { throw MusicError.unsupportedMedia }
         if !pending.isEmpty {
@@ -179,16 +207,18 @@ enum MusicAnalyzer {
             guard let description = CMSampleBufferGetFormatDescription(sample),
                   let format = CMAudioFormatDescriptionGetStreamBasicDescription(description),
                   let block = CMSampleBufferGetDataBuffer(sample) else { throw MusicError.unsupportedMedia }
+            guard abs(format.pointee.mSampleRate - MusicSignalExtractor.sampleRate) < 1 else { throw MusicError.unsupportedMedia }
             if extractor == nil { extractor = try MusicSignalExtractor(channels: Int(format.pointee.mChannelsPerFrame)) }
             let bytes = CMBlockBufferGetDataLength(block)
             guard bytes % MemoryLayout<Float>.size == 0, bytes <= 8 * 1_024 * 1_024 else { throw MusicError.unsupportedMedia }
+            if bytes == 0 { continue }
             var samples = [Float](repeating: 0, count: bytes / MemoryLayout<Float>.size)
             let status = samples.withUnsafeMutableBytes { buffer in
                 CMBlockBufferCopyDataBytes(block, atOffset: 0, dataLength: bytes, destination: buffer.baseAddress!)
             }
             guard status == kCMBlockBufferNoErr else { throw MusicError.unsupportedMedia }
-            try extractor?.append(samples)
             let position = CMSampleBufferGetPresentationTimeStamp(sample).seconds
+            try extractor?.append(samples, at: position)
             if position - lastProgress > 0.25 {
                 progress(0.1 + min(1, position / duration) * 0.78, "低音とビートを解析中 · \(musicTime(position)) / \(musicTime(duration))")
                 lastProgress = position
@@ -204,7 +234,7 @@ enum MusicAnalyzer {
             digest.update(data: bytes)
         }
         let hash = digest.finalize().map { String(format: "%02x", $0) }.joined()
-        return try extractor.finish(hash: hash)
+        return try extractor.finish(hash: hash, expectedDuration: duration)
     }
 }
 

@@ -20,11 +20,11 @@ final class MusicHapticRenderer {
     var settings = MusicSettings() { didSet { if oldValue != settings { stopPlayers() } } }
     let supported = CHHapticEngine.capabilitiesForHardware().supportsHaptics
 
-    func synchronize(track: MusicHapticTrack?, position: Double, playing: Bool, rate: Double) {
+    func synchronize(track: MusicHapticTrack?, position: Double, playing: Bool, rate: Double, clockPosition: Double? = nil) {
         guard supported, let track, position.isFinite, position >= 0, playing,
               rate.isFinite, (0.25...2).contains(rate) else { stop(); return }
         let host = CACurrentMediaTime()
-        guard clockGate.accept(position: position, playing: playing, rate: rate, hostTime: host) else { stopPlayers(); return }
+        guard clockGate.accept(position: clockPosition ?? position, playing: playing, rate: rate, hostTime: host) else { stopPlayers(); return }
         let media = position - settings.normalized.offset
         guard media >= 0, media < track.duration else { stopPlayers(); return }
         watchdog?.cancel()
@@ -108,7 +108,7 @@ final class MusicHapticRenderer {
         return new
     }
 
-    private func schedule(_ specification: HapticPatternSpec, at time: Double, engine: CHHapticEngine) throws {
+    static func makePattern(_ specification: HapticPatternSpec) throws -> CHHapticPattern {
         let specification = try specification.validated()
         let events = specification.events.map {
             CHHapticEvent(eventType: $0.kind == .tap ? .hapticTransient : .hapticContinuous, parameters: [
@@ -116,11 +116,16 @@ final class MusicHapticRenderer {
                 .init(parameterID: .hapticSharpness, value: Float($0.sharpness))
             ], relativeTime: $0.time, duration: $0.duration)
         }
-        let curves = specification.curves.map {
-            CHHapticParameterCurve(parameterID: $0.parameter == .intensity ? .hapticIntensityControl : .hapticSharpnessControl,
-                controlPoints: $0.points.map { .init(relativeTime: $0.time, value: Float($0.value)) }, relativeTime: 0)
+        let curves = specification.curves.map { curve in
+            let start = curve.points[0].time
+            return CHHapticParameterCurve(parameterID: curve.parameter == .intensity ? .hapticIntensityControl : .hapticSharpnessControl,
+                controlPoints: curve.points.map { .init(relativeTime: $0.time - start, value: Float($0.value)) }, relativeTime: start)
         }
-        let player = try engine.makeAdvancedPlayer(with: CHHapticPattern(events: events, parameterCurves: curves))
+        return try CHHapticPattern(events: events, parameterCurves: curves)
+    }
+
+    private func schedule(_ specification: HapticPatternSpec, at time: Double, engine: CHHapticEngine) throws {
+        let player = try engine.makeAdvancedPlayer(with: Self.makePattern(specification))
         let id = UUID(), token = generation
         player.completionHandler = { [weak self] error in
             Task { @MainActor [weak self] in
@@ -296,7 +301,7 @@ final class MusicPlayback: ObservableObject {
                 "この動画をアプリ内で再生できません（YouTube: \(error)）。公開状態や埋め込みの許可を確認してください。"
             return
         }
-        if snapshot["ready"] as? Bool == true { isReady = true }
+        if snapshot["ready"] as? Bool == true, !isReady { isReady = true }
         guard let state = snapshot["state"] as? Int, let time = snapshot["time"] as? Double,
               let span = snapshot["duration"] as? Double, let rate = snapshot["rate"] as? Double,
               let sent = snapshot["sent"] as? Double, time.isFinite, span.isFinite, sent.isFinite else { return }
@@ -304,23 +309,27 @@ final class MusicPlayback: ObservableObject {
         guard (-0.1...0.35).contains(latency) else { renderer.stop(); return }
         let currentID = snapshot["videoID"] as? String
         let playing = state == 1 && currentID == videoID
-        position = max(0, time)
-        duration = max(0, span)
-        isPlaying = playing
-        isBuffering = state == 3
-        synchronize(position: time + (playing ? max(0, latency) * rate : 0), playing: playing, rate: rate)
+        if abs(position - max(0, time)) > 0.02 { position = max(0, time) }
+        if abs(duration - max(0, span)) > 0.001 { duration = max(0, span) }
+        if isPlaying != playing { isPlaying = playing }
+        if isBuffering != (state == 3) { isBuffering = state == 3 }
+        synchronize(position: time + (playing ? max(0, latency) * rate : 0), playing: playing, rate: rate, clockPosition: time)
     }
 
-    private func nativeSnapshot(time: Double) {
+    private func nativeSnapshot(time observed: Double) {
+        let latest = player.currentTime().seconds
+        let time = latest.isFinite ? latest : observed
         guard selection != nil, selection?.kind != .youtube, time.isFinite else { return }
-        position = max(0, time)
-        if let span = player.currentItem?.duration.seconds, span.isFinite, span > 0 { duration = span }
-        isPlaying = player.timeControlStatus == .playing
-        isBuffering = player.timeControlStatus == .waitingToPlayAtSpecifiedRate
-        synchronize(position: position, playing: isPlaying, rate: Double(player.rate))
+        if abs(position - max(0, time)) > 0.02 { position = max(0, time) }
+        if let span = player.currentItem?.duration.seconds, span.isFinite, span > 0, abs(duration - span) > 0.001 { duration = span }
+        let playing = player.timeControlStatus == .playing
+        let buffering = player.timeControlStatus == .waitingToPlayAtSpecifiedRate
+        if isPlaying != playing { isPlaying = playing }
+        if isBuffering != buffering { isBuffering = buffering }
+        synchronize(position: max(0, time), playing: playing, rate: Double(player.rate))
     }
 
-    private func synchronize(position: Double, playing: Bool, rate: Double) {
+    private func synchronize(position: Double, playing: Bool, rate: Double, clockPosition: Double? = nil) {
         guard duration > 0 else { renderer.stop(); return }
         if let seekTarget {
             if abs(position - seekTarget) <= 0.5 { self.seekTarget = nil }
@@ -339,7 +348,7 @@ final class MusicPlayback: ObservableObject {
             }
             return
         }
-        renderer.synchronize(track: track, position: position, playing: playing, rate: rate)
+        renderer.synchronize(track: track, position: position, playing: playing, rate: rate, clockPosition: clockPosition)
     }
 
     private func evaluate(_ command: String) {
@@ -363,6 +372,7 @@ struct YouTubeMusicPlayer: UIViewRepresentable {
         webView.backgroundColor = .black
         webView.scrollView.isScrollEnabled = false
         playback.webView = webView
+        context.coordinator.webView = webView
         playback.beginYouTubeLoading(videoID: videoID)
         let origin = "https://\(Bundle.main.bundleIdentifier ?? "com.tomikan1208.hapticlab")"
         // The bundle-ID HTTPS base supplies the app identity required by YouTube (error 153).
@@ -403,12 +413,13 @@ struct YouTubeMusicPlayer: UIViewRepresentable {
 
     final class Coordinator: NSObject, WKScriptMessageHandler {
         weak var playback: MusicPlayback?
+        weak var webView: WKWebView?
         let videoID: String
         init(playback: MusicPlayback, videoID: String) { self.playback = playback; self.videoID = videoID }
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard message.frameInfo.isMainFrame, let data = message.body as? [String: Any] else { return }
             Task { @MainActor [weak self] in
-                guard let self else { return }
+                guard let self, let webView = self.webView, self.playback?.webView === webView else { return }
                 self.playback?.receiveYouTube(data, videoID: self.videoID)
             }
         }

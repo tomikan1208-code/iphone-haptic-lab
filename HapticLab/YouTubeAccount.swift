@@ -240,6 +240,28 @@ final class YouTubeAccount: ObservableObject {
         }
         try saveManaged(state, key: key)
         guard let playlistID = state.playlistID else { return }
+        // Reconcile the dedicated list after reinstalls, remote deletions, or lost POST responses.
+        var remoteMembers: [String: String] = [:]
+        var duplicateItems: [String] = []
+        var itemPage: String?
+        repeat {
+            var query = ["part": "snippet", "playlistId": playlistID, "maxResults": "50"]
+            query["pageToken"] = itemPage
+            let page: YouTubePage<YouTubePlaylistItem> = try await request("playlistItems", query: query)
+            for item in page.items ?? [] {
+                guard let videoID = item.videoID else { continue }
+                if remoteMembers[videoID] != nil {
+                    duplicateItems.append(item.id)
+                } else { remoteMembers[videoID] = item.id }
+            }
+            itemPage = page.nextPageToken
+        } while itemPage != nil
+        for id in duplicateItems {
+            do { _ = try await requestData("playlistItems", method: "DELETE", query: ["id": id]) }
+            catch let error as YouTubeHTTPError where error.status == 404 { /* Already removed. */ }
+        }
+        state.members = remoteMembers
+        try saveManaged(state, key: key)
         for (videoID, itemID) in state.members where !desiredIDs.contains(videoID) {
             do { _ = try await requestData("playlistItems", method: "DELETE", query: ["id": itemID]) }
             catch let error as YouTubeHTTPError where error.status == 404 { /* Already removed on YouTube. */ }

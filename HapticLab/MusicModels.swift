@@ -264,6 +264,6 @@ struct MusicPlaybackGate {
 }
 
 func musicTime(_ seconds: Double) -> String {
-    let value = seconds.isFinite ? max(0, Int(seconds)) : 0
+    let value = seconds.isFinite ? max(0, Int(min(seconds, 315_360_000))) : 0
     return String(format: "%d:%02d", value / 60, value % 60)
 }

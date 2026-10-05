@@ -55,6 +55,16 @@ final class MusicHapticTests: XCTestCase {
         XCTAssertTrue(track.segment(at: 1.2, length: 1).isEmpty)
     }
 
+    @MainActor
+    func testDenseEnvelopeSplitsIntoPatternsAcceptedByCoreHaptics() throws {
+        let track = try MusicHapticTrack(version: 1, audioSHA256: String(repeating: "a", count: 64), duration: 1.2,
+            envelope: (0...60).map { .init(time: Double($0) * 0.02, bass: 0.5, energy: 0.7, sharpness: 0.4) }, taps: []).validated()
+        let specification = try XCTUnwrap(track.segment(at: 0.1, length: 0.8, rate: 2).first)
+        XCTAssertGreaterThan(specification.curves.filter { $0.parameter == .intensity }.count, 1)
+        let pattern = try MusicHapticRenderer.makePattern(specification)
+        XCTAssertEqual(pattern.duration, 0.4, accuracy: 0.000_01)
+    }
+
     func testSilenceCreatesNoHapticPatternsAndCorruptionIsRejected() throws {
         let silent = fixture(level: 0)
         XCTAssertTrue(silent.segment(at: 0, length: 0.6).isEmpty)
@@ -93,6 +103,17 @@ final class MusicHapticTests: XCTestCase {
         let b = try stereo.finish(hash: String(repeating: "b", count: 64))
         XCTAssertGreaterThan(b.envelope.map(\.bass).max() ?? 0, 0.9)
         XCTAssertEqual(a.envelope[20].bass, b.envelope[20].bass, accuracy: 0.000_1)
+    }
+
+    func testMediaTimestampsKeepLeadingAndTrailingSilence() throws {
+        let extractor = try MusicSignalExtractor(channels: 1)
+        let samples = (0..<22_050).map { Float(sin(Double($0) * .pi * 2 * 80 / 22_050) * 0.4) }
+        try extractor.append(samples, at: 0.5)
+        let track = try extractor.finish(hash: String(repeating: "a", count: 64), expectedDuration: 2)
+        XCTAssertEqual(track.duration, 2, accuracy: 0.000_01)
+        XCTAssertEqual(track.value(at: 0.3).energy, 0)
+        XCTAssertGreaterThan(track.value(at: 1).bass, 0.8)
+        XCTAssertEqual(track.value(at: 1.8).energy, 0)
     }
 
     func testKnownPercussionOnsetsAreDetectedNearTheirMediaTimes() throws {
