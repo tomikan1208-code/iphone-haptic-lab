@@ -1,0 +1,86 @@
+[
+  {
+    "id": "click", "name": "クリック", "subtitle": "短く、くっきり。\nボタンを押すような感触。", "symbol": "button.programmable", "category": "tap", "duration": 0.1,
+    "events": [{ "kind": "tap", "time": 0, "duration": 0, "intensity": 0.85, "sharpness": 1 }], "curves": []
+  },
+  {
+    "id": "soft", "name": "ソフトタップ", "subtitle": "丸く、やわらかい。\nクリックとの違いを比較。", "symbol": "circle.dotted", "category": "tap", "duration": 0.1,
+    "events": [{ "kind": "tap", "time": 0, "duration": 0, "intensity": 0.65, "sharpness": 0.05 }], "curves": []
+  },
+  {
+    "id": "double", "name": "二連打", "subtitle": "コツ、コツ。\n2回の間隔を感じる。", "symbol": "ellipsis", "category": "tap", "duration": 0.45,
+    "events": [
+      { "kind": "tap", "time": 0, "duration": 0, "intensity": 0.5, "sharpness": 0.75 },
+      { "kind": "tap", "time": 0.22, "duration": 0, "intensity": 0.9, "sharpness": 0.9 }
+    ], "curves": []
+  },
+  {
+    "id": "heartbeat", "name": "心拍", "subtitle": "ドクン、ドクン。\n強弱のある2拍を繰り返す。", "symbol": "heart", "category": "rhythm", "duration": 2.6,
+    "events": [
+      { "kind": "tap", "time": 0, "duration": 0, "intensity": 0.9, "sharpness": 0.12 },
+      { "kind": "tap", "time": 0.18, "duration": 0, "intensity": 0.5, "sharpness": 0.08 },
+      { "kind": "tap", "time": 0.8, "duration": 0, "intensity": 0.9, "sharpness": 0.12 },
+      { "kind": "tap", "time": 0.98, "duration": 0, "intensity": 0.5, "sharpness": 0.08 },
+      { "kind": "tap", "time": 1.6, "duration": 0, "intensity": 0.9, "sharpness": 0.12 },
+      { "kind": "tap", "time": 1.78, "duration": 0, "intensity": 0.5, "sharpness": 0.08 }
+    ], "curves": []
+  },
+  {
+    "id": "rain", "name": "雨つぶ", "subtitle": "小さな点が、ぱらぱら。\n不規則なリズムの触感。", "symbol": "cloud.drizzle", "category": "rhythm", "duration": 2.8,
+    "events": [
+      { "kind": "tap", "time": 0, "duration": 0, "intensity": 0.25, "sharpness": 0.9 },
+      { "kind": "tap", "time": 0.13, "duration": 0, "intensity": 0.45, "sharpness": 1 },
+      { "kind": "tap", "time": 0.42, "duration": 0, "intensity": 0.3, "sharpness": 0.9 },
+      { "kind": "tap", "time": 0.71, "duration": 0, "intensity": 0.65, "sharpness": 1 },
+      { "kind": "tap", "time": 0.85, "duration": 0, "intensity": 0.2, "sharpness": 0.9 },
+      { "kind": "tap", "time": 1.22, "duration": 0, "intensity": 0.4, "sharpness": 0.95 },
+      { "kind": "tap", "time": 1.41, "duration": 0, "intensity": 0.3, "sharpness": 0.9 },
+      { "kind": "tap", "time": 1.81, "duration": 0, "intensity": 0.55, "sharpness": 1 },
+      { "kind": "tap", "time": 2.04, "duration": 0, "intensity": 0.3, "sharpness": 0.9 },
+      { "kind": "tap", "time": 2.31, "duration": 0, "intensity": 0.45, "sharpness": 1 },
+      { "kind": "tap", "time": 2.6, "duration": 0, "intensity": 0.2, "sharpness": 0.8 }
+    ], "curves": []
+  },
+  {
+    "id": "rumble", "name": "やわらかい持続", "subtitle": "ゆったり、ブーン。\n丸い触感が続く。", "symbol": "water.waves", "category": "texture", "duration": 2,
+    "events": [{ "kind": "continuous", "time": 0, "duration": 2, "intensity": 0.5, "sharpness": 0.05 }], "curves": []
+  },
+  {
+    "id": "texture", "name": "細かなざらざら", "subtitle": "鋭さを上げた持続振動。\n柔らかい持続と比較。", "symbol": "waveform.path", "category": "texture", "duration": 2,
+    "events": [{ "kind": "continuous", "time": 0, "duration": 2, "intensity": 0.5, "sharpness": 1 }], "curves": []
+  },
+  {
+    "id": "wave", "name": "うねり", "subtitle": "強まり、ゆっくり消える。\n波のような強弱。", "symbol": "waveform", "category": "texture", "duration": 4,
+    "events": [{ "kind": "continuous", "time": 0, "duration": 4, "intensity": 1, "sharpness": 0.3 }],
+    "curves": [{ "parameter": "intensity", "points": [
+      { "time": 0, "value": 0 }, { "time": 1, "value": 0.85 }, { "time": 2, "value": 0.15 },
+      { "time": 3, "value": 1 }, { "time": 4, "value": 0 }
+    ] }]
+  },
+  {
+    "id": "charge", "name": "ためて、弾ける", "subtitle": "じわっと高まり、カチッ。\n持続とクリックの組み合わせ。", "symbol": "bolt", "category": "texture", "duration": 2.3,
+    "events": [
+      { "kind": "continuous", "time": 0, "duration": 1.8, "intensity": 1, "sharpness": 0 },
+      { "kind": "tap", "time": 1.85, "duration": 0, "intensity": 1, "sharpness": 1 }
+    ],
+    "curves": [
+      { "parameter": "intensity", "points": [{ "time": 0, "value": 0.08 }, { "time": 1.7, "value": 0.8 }, { "time": 1.8, "value": 1 }] },
+      { "parameter": "sharpness", "points": [{ "time": 0, "value": 0.05 }, { "time": 1.8, "value": 0.95 }] }
+    ]
+  },
+  {
+    "id": "drum", "name": "ミニドラム", "subtitle": "ドン、チッ、タン、チッ。\n音のない8ビート。", "symbol": "music.note", "category": "rhythm", "duration": 2.4,
+    "events": [
+      { "kind": "tap", "time": 0, "duration": 0, "intensity": 1, "sharpness": 0.1 },
+      { "kind": "tap", "time": 0.25, "duration": 0, "intensity": 0.25, "sharpness": 1 },
+      { "kind": "tap", "time": 0.5, "duration": 0, "intensity": 0.75, "sharpness": 0.85 },
+      { "kind": "tap", "time": 0.75, "duration": 0, "intensity": 0.25, "sharpness": 1 },
+      { "kind": "tap", "time": 1, "duration": 0, "intensity": 1, "sharpness": 0.1 },
+      { "kind": "tap", "time": 1.25, "duration": 0, "intensity": 0.25, "sharpness": 1 },
+      { "kind": "tap", "time": 1.5, "duration": 0, "intensity": 0.75, "sharpness": 0.85 },
+      { "kind": "tap", "time": 1.75, "duration": 0, "intensity": 0.35, "sharpness": 1 },
+      { "kind": "tap", "time": 2, "duration": 0, "intensity": 0.9, "sharpness": 0.2 }
+    ], "curves": []
+  }
+]
+

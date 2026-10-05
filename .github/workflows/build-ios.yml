@@ -1,0 +1,53 @@
+name: Build iPhone app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hapticlab-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate project and validate assets
+        run: |
+          node scripts/generate-project.mjs
+          node scripts/generate-icons.mjs
+          node scripts/validate-project.mjs
+      - name: Build physical iPhone IPA without signing credentials
+        run: bash scripts/build-ios.sh
+      - name: Test patterns and app navigation on iPhone simulator
+        run: bash scripts/test-ios.sh
+      - name: Upload installable package for local signing
+        uses: actions/upload-artifact@v4
+        with:
+          name: HapticLab-iPhone
+          path: .build/artifact/
+          retention-days: 14
+          if-no-files-found: error
+      - name: Upload native screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: HapticLab-preview
+          path: .build/screenshots/
+          retention-days: 7
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: HapticLab-test-results
+          path: |
+            .build/TestResults.xcresult
+            .build/build-ios.log
+            .build/test-ios.log
+          retention-days: 7
+
