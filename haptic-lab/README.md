@@ -81,6 +81,7 @@ WindowsでもNode.jsを使ってプロジェクトとリソースの整合性を
 - `Resources/Presets.json`：触感の見本。時刻・持続時間は秒、強さ・鋭さは0〜1
 - SwiftUIの各画面：見本、調整、パッド、使い方
 - `MusicAnalyzer.swift`：PCMの順次処理、低音・中低音・高域解析、音の24帯域を保存
+- `MusicPrecisionAnalysis.swift`：iPhoneの44.1 kHz／10 ms精密解析、低音3帯域と帯域別打音の触感マッピング
 - `MusicModels.swift` / `MusicLibrary.swift`：全曲の振動データ、分割、保存と個別削除
 - `MusicPlayback.swift`：AVPlayer・YouTubeの再生時刻とCore Hapticsの区間予約
 - `HapticVisualization.swift`：保存した音の周波数、振動の強さ、前後2秒の波形
