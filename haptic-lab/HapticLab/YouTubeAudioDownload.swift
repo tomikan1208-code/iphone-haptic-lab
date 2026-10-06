@@ -33,6 +33,9 @@ struct MusicDownloadRange: Equatable, Sendable {
         } else if response.statusCode == 206 {
             throw MusicError.network("音声の取得範囲を確認できませんでした。")
         }
+        if response.statusCode == 200, start != 0 || count != total {
+            throw MusicError.network("音声の分割取得に対応しない応答でした。再試行してください。")
+        }
         // Reject servers that ignore the requested range before accepting the body.
         let length = response.value(forHTTPHeaderField: "Content-Length").flatMap(Int64.init) ?? response.expectedContentLength
         guard length < 0 || length == count else {

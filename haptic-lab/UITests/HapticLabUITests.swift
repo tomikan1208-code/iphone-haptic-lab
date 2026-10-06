@@ -181,8 +181,10 @@ final class HapticLabUITests: XCTestCase {
         XCTAssertTrue(banner.isHittable)
         screenshot("17-preparation-banner", app: app)
         banner.tap()
-        XCTAssertTrue(app.buttons["music.cancelAnalysis"].waitForExistence(timeout: 5))
-        app.buttons["music.cancelAnalysis"].tap()
+        let cancel = app.buttons["music.cancelAnalysis"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 5))
+        reveal(cancel, app: app)
+        cancel.tap()
         XCTAssertTrue(input.waitForExistence(timeout: 5))
         XCTAssertFalse(banner.exists)
         let back = app.buttons["youtube.browserBack"]

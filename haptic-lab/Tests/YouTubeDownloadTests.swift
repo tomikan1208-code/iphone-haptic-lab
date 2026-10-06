@@ -19,7 +19,8 @@ final class YouTubeDownloadTests: XCTestCase {
             HTTPURLResponse(url: url, statusCode: status, httpVersion: nil, headerFields: headers)!
         }
         XCTAssertNoThrow(try range.validate(response(206, ["Content-Range": "bytes 100-199/300", "Content-Length": "100"])))
-        XCTAssertNoThrow(try range.validate(response(200, ["Content-Length": "100"])))
+        XCTAssertThrowsError(try range.validate(response(200, ["Content-Length": "100"])))
+        XCTAssertNoThrow(try MusicDownloadRange(start: 0, end: 299, total: 300).validate(response(200, ["Content-Length": "300"])))
         XCTAssertThrowsError(try range.validate(response(200, ["Content-Length": "300"])))
         XCTAssertThrowsError(try range.validate(response(206, ["Content-Range": "bytes 0-99/300", "Content-Length": "100"])))
         XCTAssertThrowsError(try range.validate(response(206, [:])))
