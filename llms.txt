@@ -1,0 +1,28 @@
+# Reson
+
+> Reson is an iPhone player for YouTube videos with synchronized haptics, primarily for music. HapticLab is the internal project and IPA name, not the current product concept.
+
+Public repository: https://github.com/tomikan1208-code/iphone-haptic-lab
+Distribution: https://github.com/tomikan1208-code/iphone-haptic-lab/releases/latest
+Application sources are in haptic-lab/. Workflows are at the repository root.
+
+## User guides
+
+- [README](README.md): Product, supported devices, installation and optional integrations.
+- [Install](haptic-lab/docs/INSTALL.md): Windows/macOS + iPhone; release assets, local signing, Developer Mode, renewal and first playback.
+- [Windows](haptic-lab/docs/INSTALL-WINDOWS.md): Sideloadly steps.
+- [AI installation](haptic-lab/docs/AI-INSTALL.md): Copyable prompts, environment facts and troubleshooting.
+- [Playback](haptic-lab/docs/MUSIC.md): Search YouTube, prepare haptics, play, adjust and use saved tracks.
+- [Build](haptic-lab/docs/BUILD.md): Fork + GitHub Actions, Xcode and release publishing.
+
+## Optional APIs
+
+- [PC server](haptic-lab/docs/PC-SERVER.md): Install uv, start on Windows/macOS/Linux, connect over LAN, stop.
+- [HTTP API](haptic-lab/docs/API.md): Bearer authentication, uploads, jobs, saved haptic JSON and examples.
+- [OpenAPI 3.1](haptic-lab/docs/api/openapi.json): Machine-readable contract, also served at authenticated GET /openapi.json.
+- [Python client](haptic-lab/pc-server/client.py): Dependency-free client; analyze the bundled HapticLab/Resources/MusicDemo.wav first.
+- [Google OAuth](haptic-lab/docs/GOOGLE-LOGIN.md): Optional own-playlist login; user's own iOS client ID and rebuild.
+
+## Constraints
+
+iOS 16+ on a physical Core Haptics-capable iPhone. No Android app. A simulator cannot reproduce the physical haptics. Initial IPA installation requires Windows/macOS and local Apple Account signing. Free signing expires after 7 days; renew with the same Apple Account and app ID without deleting the app. Basic YouTube search, playback and on-device analysis require no Google login or PC server. PC API runs locally; there is no shared hosted analysis API or paid key. Do not ask users to share Apple passwords, verification codes, Google tokens or PC connection keys in chat. An API result is haptic data, not remote control of the phone's vibration.

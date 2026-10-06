@@ -1,0 +1,187 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Reson PC analysis API",
+    "version": "1.0.0",
+    "description": "Optional local companion for Reson, an iPhone player for YouTube videos with synchronized haptics. All endpoints require the bearer token in .pc-server/connection.json. This is a LAN API, not a hosted service. Audio is temporary; generated haptic tracks are persisted."
+  },
+  "servers": [{"url": "http://127.0.0.1:8765", "description": "Same computer. On iPhone use the PC's private LAN address."}],
+  "security": [{"connectionKey": []}],
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "Check the connection and protocol version",
+        "responses": {
+          "200": {"description": "Connected", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Health"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "operationId": "getOpenAPI",
+        "summary": "Read this API specification",
+        "responses": {
+          "200": {"description": "OpenAPI 3.1 document", "content": {"application/json": {"schema": {"type": "object"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/jobs": {
+      "post": {
+        "operationId": "analyzeYouTubeVideo",
+        "summary": "Queue a YouTube video for analysis",
+        "description": "Requires yt-dlp and a downloadable video of at most 20 minutes. Video availability can change. Up to 8 unfinished jobs, processed one at a time. Poll GET /jobs/{jobID} until done, failed or canceled.",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/VideoRequest"}, "example": {"videoID": "BaW_jenozKc", "title": "Example", "style": "following", "profile": "standard"}}}},
+        "responses": {
+          "202": {"$ref": "#/components/responses/Accepted"},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/jobs/upload": {
+      "post": {
+        "operationId": "analyzeAudioFile",
+        "summary": "Upload an audio or video file for analysis",
+        "description": "Send raw bytes, not multipart/form-data. Content-Length is required; chunked uploads are unsupported. Limit: 512 MiB, 20 minutes of decoded audio. FFmpeg-supported unprotected files such as WAV, M4A, MP3 and MP4. Metadata goes in headers.",
+        "x-upload-max-bytes": 536870912,
+        "parameters": [
+          {"in": "header", "name": "X-Media-Title", "description": "Base64 of the UTF-8 title. Omit to use the default title.", "schema": {"type": "string", "contentEncoding": "base64"}},
+          {"in": "header", "name": "X-Generation-Style", "schema": {"$ref": "#/components/schemas/Style"}},
+          {"in": "header", "name": "X-Music-Profile", "schema": {"$ref": "#/components/schemas/Profile"}}
+        ],
+        "requestBody": {"required": true, "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary"}}}},
+        "responses": {
+          "202": {"$ref": "#/components/responses/Accepted"},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/jobs/{jobID}": {
+      "parameters": [{"$ref": "#/components/parameters/JobID"}],
+      "get": {
+        "operationId": "getJob",
+        "summary": "Poll progress and retrieve the completed track",
+        "description": "When state is done, track contains the haptic data. Analysis failures are reported as state=failed with HTTP 200. Job IDs exist only for the current server process; saved track IDs survive restart.",
+        "responses": {
+          "200": {"description": "Job status", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Job"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      },
+      "delete": {
+        "operationId": "cancelJob",
+        "summary": "Cancel a queued or running job",
+        "description": "Removes temporary source audio. Existing saved tracks are kept.",
+        "responses": {
+          "200": {"description": "Cancellation requested", "content": {"application/json": {"schema": {"type": "object", "required": ["canceled"], "properties": {"canceled": {"const": true}}}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/tracks": {
+      "get": {
+        "operationId": "listTracks",
+        "summary": "List saved haptic tracks, newest first",
+        "responses": {
+          "200": {"description": "Track metadata", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/TrackMetadata"}}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/tracks/{trackID}": {
+      "parameters": [{"$ref": "#/components/parameters/TrackID"}],
+      "get": {
+        "operationId": "getTrack",
+        "summary": "Retrieve a saved haptic track, including after server restart",
+        "responses": {
+          "200": {"description": "Haptic track", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HapticTrack"}}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      },
+      "delete": {
+        "operationId": "deleteTrack",
+        "summary": "Delete one saved PC track",
+        "description": "Idempotent for a valid track ID. Does not delete the copy stored on iPhone.",
+        "responses": {
+          "200": {"description": "Deleted or already absent", "content": {"application/json": {"schema": {"type": "object", "required": ["deleted"], "properties": {"deleted": {"const": true}}}}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/shutdown": {
+      "post": {
+        "operationId": "stopServer",
+        "summary": "Stop the server and cancel unfinished jobs",
+        "description": "Saved tracks are kept.",
+        "responses": {
+          "200": {"description": "Stopping", "content": {"application/json": {"schema": {"type": "object", "required": ["stopping"], "properties": {"stopping": {"const": true}}}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {"connectionKey": {"type": "http", "scheme": "bearer", "description": "Generated locally in .pc-server/connection.json. Separate from Apple Account, Google OAuth and YouTube API credentials."}},
+    "parameters": {
+      "JobID": {"in": "path", "name": "jobID", "required": true, "schema": {"type": "string", "format": "uuid"}},
+      "TrackID": {"in": "path", "name": "trackID", "required": true, "schema": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+    },
+    "responses": {
+      "Accepted": {"description": "Queued; poll using id", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Job"}}}},
+      "BadRequest": {"description": "Invalid payload, ID, style, profile, upload size, or queue full", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+      "Unauthorized": {"description": "Missing or incorrect bearer token, or non-local client address", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+      "NotFound": {"description": "Unknown job, saved track, or endpoint", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+    },
+    "schemas": {
+      "Error": {"type": "object", "required": ["error"], "properties": {"error": {"type": "string"}}},
+      "Style": {"type": "string", "enum": ["following", "musical"], "default": "following", "description": "following: audio-following haptics. musical: rhythm-oriented arrangement."},
+      "Profile": {"type": "string", "enum": ["standard", "orchestral"], "default": "standard", "description": "orchestral keeps natural onsets and smooth sustained dynamics, taking precedence over musical rhythm arrangement."},
+      "Level": {"type": "number", "minimum": 0, "maximum": 1},
+      "Health": {
+        "type": "object", "required": ["protocolVersion", "profile", "youtubeAvailable", "apiVersion", "openapi"],
+        "properties": {"protocolVersion": {"const": 1}, "profile": {"type": "string"}, "youtubeAvailable": {"type": "boolean"}, "apiVersion": {"const": "1.0.0"}, "openapi": {"const": "/openapi.json"}}
+      },
+      "VideoRequest": {
+        "type": "object", "required": ["videoID"],
+        "properties": {"videoID": {"type": "string", "pattern": "^[A-Za-z0-9_-]{11}$"}, "title": {"type": "string", "description": "Stored title is truncated to 300 characters.", "default": "YouTube動画"}, "style": {"$ref": "#/components/schemas/Style"}, "profile": {"$ref": "#/components/schemas/Profile"}}
+      },
+      "Job": {
+        "type": "object", "required": ["id", "state", "progress", "message"],
+        "properties": {"id": {"type": "string", "format": "uuid"}, "state": {"type": "string", "enum": ["queued", "running", "done", "failed", "canceled"]}, "progress": {"$ref": "#/components/schemas/Level"}, "message": {"type": "string"}, "trackID": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "track": {"$ref": "#/components/schemas/HapticTrack"}},
+        "allOf": [{"if": {"properties": {"state": {"const": "done"}}}, "then": {"required": ["trackID", "track"]}}]
+      },
+      "TrackMetadata": {
+        "type": "object", "required": ["id", "title", "duration", "createdAt", "style", "profile"],
+        "properties": {"id": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "title": {"type": "string"}, "duration": {"type": "number", "exclusiveMinimum": 0, "maximum": 1200}, "createdAt": {"type": "number", "description": "Unix time in seconds"}, "videoID": {"type": ["string", "null"]}, "style": {"$ref": "#/components/schemas/Style"}, "profile": {"$ref": "#/components/schemas/Profile"}}
+      },
+      "EnvelopePoint": {
+        "type": "object", "required": ["time", "bass", "energy", "sharpness", "mid", "high"],
+        "properties": {"time": {"type": "number", "minimum": 0, "description": "Seconds from the beginning of the audio"}, "bass": {"$ref": "#/components/schemas/Level"}, "energy": {"$ref": "#/components/schemas/Level"}, "sharpness": {"$ref": "#/components/schemas/Level"}, "mid": {"$ref": "#/components/schemas/Level"}, "high": {"$ref": "#/components/schemas/Level"}}
+      },
+      "Tap": {
+        "type": "object", "required": ["time", "intensity", "sharpness"],
+        "properties": {"time": {"type": "number", "minimum": 0}, "intensity": {"$ref": "#/components/schemas/Level"}, "sharpness": {"$ref": "#/components/schemas/Level"}}
+      },
+      "SpectrumFrame": {
+        "type": "object", "required": ["time", "levels"],
+        "properties": {"time": {"type": "number", "minimum": 0}, "levels": {"type": "array", "minItems": 24, "maxItems": 24, "items": {"$ref": "#/components/schemas/Level"}, "description": "24 logarithmic bands from 20 Hz to 8 kHz"}}
+      },
+      "Analysis": {
+        "type": "object", "required": ["engine", "elapsedSeconds", "sampleRate", "hopMilliseconds", "fftSize", "serverTrackID", "style", "profile"],
+        "properties": {"engine": {"const": "pc"}, "elapsedSeconds": {"type": "number", "minimum": 0}, "sampleRate": {"const": 44100}, "hopMilliseconds": {"const": 10}, "fftSize": {"const": 4096}, "serverTrackID": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "style": {"$ref": "#/components/schemas/Style"}, "tempoBPM": {"type": ["number", "null"]}, "profile": {"$ref": "#/components/schemas/Profile"}}
+      },
+      "HapticTrack": {
+        "type": "object", "required": ["version", "audioSHA256", "duration", "envelope", "taps", "spectrum", "analysis"],
+        "properties": {"version": {"const": 2}, "audioSHA256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "duration": {"type": "number", "exclusiveMinimum": 0, "maximum": 1200}, "envelope": {"type": "array", "minItems": 1, "maxItems": 125000, "items": {"$ref": "#/components/schemas/EnvelopePoint"}}, "taps": {"type": "array", "maxItems": 12001, "items": {"$ref": "#/components/schemas/Tap"}}, "spectrum": {"type": "array", "minItems": 1, "maxItems": 125000, "items": {"$ref": "#/components/schemas/SpectrumFrame"}}, "analysis": {"$ref": "#/components/schemas/Analysis"}}
+      }
+    }
+  }
+}
