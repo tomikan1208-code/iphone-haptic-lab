@@ -1,7 +1,8 @@
-# WindowsからiPhone SE（第3世代）に入れる
+# WindowsからResonをiPhoneへ入れる
 
-Resonは音楽から振動を作成・保存・再生できるアプリです。iOS 16以降のiPhoneに対応しています。
-音楽の使い方は同梱の `MUSIC.md`、PC解析は `PC-SERVER.md`、Googleログイン設定は `GOOGLE-LOGIN.md` を参照してください。
+ResonはYouTube動画（主に音楽）を振動付きで再生するアプリです。iOS 16以降、Core Hapticsに対応したiPhone実機を使います。全体の流れは [共通インストール手順](INSTALL.md)、再生操作は [使い方](MUSIC.md)、追加のPC解析は [PC-SERVER.md](PC-SERVER.md) を参照してください。
+
+最初に [最新Release](https://github.com/tomikan1208-code/iphone-haptic-lab/releases/latest) の **Assets → Reson-install.zip** をWindowsへダウンロードして展開します。中の `HapticLab-unsigned.ipa` が対象です。GitHubの `Source code (zip)` はIPAではありません。Releaseがない場合は [Fork + Actionsでビルド](BUILD.md) できます。
 
 ## 最初にあなたが行う操作
 
@@ -44,7 +45,7 @@ IPAはビルド済みのアプリをまとめたファイルです。未署名�
 
 ## 公式の参照先
 
-- [Sideloadly FAQ](https://sideloadly.io/faq.html)：対応OS、無料署名7日、接続、自動更新、開発者の信頼設定
+- [Sideloadly公式FAQ](https://sideloadly.io/)：対応OS、無料署名7日、接続、自動更新、開発者の信頼設定
 - [Appleの無料アカウントの制限](https://developer.apple.com/help/account/basics/about-your-developer-account)：7日、端末あたり3アプリ
 - [AppleのDeveloper Mode解説](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device)
 

@@ -22,6 +22,7 @@ import uuid
 ROOT = Path(__file__).resolve().parent.parent
 PRIVATE = ROOT / '.pc-server'
 DATA = PRIVATE / 'data'
+OPENAPI = ROOT / 'docs' / 'api' / 'openapi.json'
 MAX_BYTES = 512 * 1024 * 1024
 STYLES = {'following', 'musical'}
 
@@ -40,7 +41,8 @@ class Companion:
 
     def health(self):
         return dict(protocolVersion=1, profile='44.1 kHz / 4096 FFT / 10 ms',
-            youtubeAvailable=importlib.util.find_spec('yt_dlp') is not None)
+            youtubeAvailable=importlib.util.find_spec('yt_dlp') is not None,
+            apiVersion='1.0.0', openapi='/openapi.json')
 
     def create_job(self, title, style, video_id=None, profile='standard'):
         if style not in STYLES:
@@ -154,6 +156,14 @@ class Companion:
         for suffix in ['.json', '.meta.json']:
             (self.tracks / (identity + suffix)).unlink(missing_ok=True)
 
+    def load_track(self, identity):
+        if not re.fullmatch(r'[0-9a-f]{64}', identity):
+            raise ValueError('保存IDが正しくありません。')
+        path = self.tracks / (identity + '.json')
+        if not path.is_file():
+            raise FileNotFoundError('PCの保存データが見つかりません。')
+        return json.loads(path.read_text(encoding='utf-8'))
+
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = 'HTTP/1.1'
@@ -183,8 +193,12 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if self.command == 'GET' and parts == ['health']:
                 self.respond(200, companion.health())
+            elif self.command == 'GET' and parts == ['openapi.json']:
+                self.respond(200, json.loads(OPENAPI.read_text(encoding='utf-8')))
             elif self.command == 'GET' and parts == ['tracks']:
                 self.respond(200, companion.stored_tracks())
+            elif self.command == 'GET' and len(parts) == 2 and parts[0] == 'tracks':
+                self.respond(200, companion.load_track(parts[1]))
             elif self.command == 'POST' and parts == ['shutdown']:
                 self.respond(200, dict(stopping=True))
                 threading.Thread(target=self.server.shutdown, daemon=True).start()

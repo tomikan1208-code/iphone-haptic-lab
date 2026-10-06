@@ -7,7 +7,7 @@ GoogleのiOS用OAuthクライアントIDが必要です。パスワードやク�
 3. OAuthクライアントを **iOS**、バンドルID `com.tomikan1208.hapticlab` で作成します。署名ツールがIDを変更する場合は実際のIDと登録を一致させてください。
 4. `数字-文字列.apps.googleusercontent.com` というクライアントIDを控えます。
 5. GitHubリポジトリの **Settings → Secrets and variables → Actions → Variables** に `GOOGLE_IOS_CLIENT_ID` というRepository variableを作り、IDを値に入れます。
-6. `codex/music-player` ブランチで `Build iPhone app` を実行して、新しいIPAを上書きインストールします。
+6. 自分のForkの現在のソースブランチで `Build iPhone app` を実行して、新しいIPAを上書きインストールします。[Forkとビルドの手順](BUILD.md)。
 
 ローカルでは `Configuration/GoogleOAuth.example.json` を `Configuration/GoogleOAuth.local.json` へコピーし、`clientID` に値を入れて `node scripts/generate-project.mjs` を実行します。localファイルはGitから除外しています。環境変数 `GOOGLE_IOS_CLIENT_ID` がある場合はそちらを優先します。逆順のコールバックスキームも自動設定します。
 
