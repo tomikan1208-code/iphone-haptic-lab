@@ -6,20 +6,34 @@ final class HapticLabUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--music-test-library", "--reset-music-test-library"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["音楽プレイヤー"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["ライブラリ"].exists)
+        let title = app.staticTexts["Reson"]
+        XCTAssertTrue(title.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["ライブラリ"].exists)
         XCTAssertFalse(app.staticTexts["あなたの音楽"].exists)
         XCTAssertFalse(app.buttons["tab.experiment"].exists)
         XCTAssertFalse(app.buttons["tab.pad"].exists)
         XCTAssertFalse(app.buttons["tab.guide"].exists)
-        XCTAssertTrue(app.buttons["music.demo"].exists)
-        screenshot("00-music", app: app)
-        app.buttons["tab.gallery"].tap()
-        XCTAssertTrue(app.buttons["preset.click"].exists)
-        screenshot("01-gallery", app: app)
-
+        XCTAssertFalse(app.buttons["music.import"].exists)
+        XCTAssertFalse(app.buttons["music.demo"].exists)
+        XCTAssertFalse(app.buttons["tab.music"].exists)
+        XCTAssertFalse(app.buttons["tab.gallery"].exists)
+        let input = app.textFields["music.searchQuery"]
+        XCTAssertTrue(input.isHittable)
+        XCTAssertGreaterThan(input.frame.minY, title.frame.maxY)
+        XCTAssertLessThan(input.frame.minY - title.frame.maxY, 40)
+        XCTAssertGreaterThan(app.buttons["music.account"].frame.minX, app.buttons["player.menu"].frame.maxX)
+        XCTAssertFalse(app.staticTexts["接続済み"].exists)
+        screenshot("00-search", app: app)
         app.buttons["player.menu"].tap()
         screenshot("09-menu", app: app)
+        app.buttons["menu.gallery"].tap()
+        let sample = app.buttons["preset.click"]
+        XCTAssertTrue(sample.waitForExistence(timeout: 5))
+        reveal(sample, app: app)
+        sample.tap()
+        app.buttons["tools.stop"].tap()
+        screenshot("01-gallery", app: app)
+        app.navigationBars.buttons["メニュー"].tap()
         app.buttons["tab.experiment"].tap()
         XCTAssertTrue(app.sliders["control.intensity"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["experiment.quickPlay"].isHittable)
@@ -43,14 +57,16 @@ final class HapticLabUITests: XCTestCase {
         screenshot("04-guide", app: app)
     }
 
-    func testMusicFirstPreparationSavedPlaybackAndDeletion() {
+    func testSavedPlaylistPlaybackRegenerationAndDeletion() {
         let app = XCUIApplication()
-        app.launchArguments = ["--music-test-library", "--reset-music-test-library"]
+        app.launchArguments = ["--music-test-library", "--reset-music-test-library", "--music-test-prepared"]
         app.launch()
-        let demo = app.buttons["music.demo"]
-        XCTAssertTrue(demo.waitForExistence(timeout: 10))
-        reveal(demo, app: app)
-        demo.tap()
+        let song = app.buttons["music.song.music-ui-fixture"]
+        XCTAssertTrue(song.waitForExistence(timeout: 40))
+        let menu = app.buttons["Playback Fixtureの操作"]
+        reveal(menu, app: app)
+        menu.tap()
+        app.buttons["振動を作り直す"].tap()
         XCTAssertTrue(app.staticTexts["music.firstPreparation"].waitForExistence(timeout: 5))
         let quality = app.segmentedControls["analysis.quality"]
         XCTAssertTrue(quality.buttons["精密（帯域別）"].isSelected)
@@ -67,15 +83,15 @@ final class HapticLabUITests: XCTestCase {
         let prepare = app.buttons["music.prepare"]
         reveal(prepare, app: app)
         prepare.tap()
-        let song = app.buttons["music.song.bundled-music-demo"]
-        reveal(song, app: app)
-        XCTAssertTrue(song.waitForExistence(timeout: 40))
+        expectation(for: NSPredicate { _, _ in song.isHittable }, evaluatedWith: song)
+        waitForExpectations(timeout: 40)
         reveal(song, app: app)
         screenshot("06-music-prepared", app: app)
         app.terminate()
         app.launchArguments = ["--music-test-library"]
         app.launch()
-        app.segmentedControls["music.librarySections"].buttons["作成済み"].tap()
+        app.buttons["tab.playlists"].tap()
+        app.buttons["music.preparedPlaylist"].tap()
         reveal(song, app: app)
         XCTAssertTrue(song.waitForExistence(timeout: 10))
         reveal(song, app: app)
@@ -92,15 +108,45 @@ final class HapticLabUITests: XCTestCase {
         let gain = app.sliders["music.gain"]
         XCTAssertTrue(gain.isHittable)
         gain.adjust(toNormalizedSliderPosition: 1)
-        XCTAssertEqual(app.staticTexts["music.gainValue"].label, "4.00倍")
+        XCTAssertEqual(app.staticTexts["music.gainValue"].label, "400%")
         screenshot("18-direct-strength-control", app: app)
         app.buttons["閉じる"].tap()
         song.tap()
         XCTAssertTrue(app.sliders["music.gain"].waitForExistence(timeout: 10))
-        XCTAssertEqual(app.staticTexts["music.gainValue"].label, "4.00倍")
+        XCTAssertEqual(app.staticTexts["music.gainValue"].label, "400%")
         gain.adjust(toNormalizedSliderPosition: 0)
-        XCTAssertEqual(app.staticTexts["music.gainValue"].label, "0.00倍")
+        XCTAssertEqual(app.staticTexts["music.gainValue"].label, "0%")
         gain.adjust(toNormalizedSliderPosition: 0.5)
+        app.buttons["music.settings"].tap()
+        let crispPreset = app.buttons["music.crispPreset"]
+        XCTAssertTrue(crispPreset.waitForExistence(timeout: 5))
+        crispPreset.tap()
+        XCTAssertEqual(app.sliders["music.gain.settings"].value as? String, "80%")
+        XCTAssertEqual(app.sliders["music.continuous"].value as? String, "25%")
+        XCTAssertEqual(app.sliders["music.transient"].value as? String, "100%")
+        XCTAssertEqual(app.sliders["music.transientSharpness"].value as? String, "90%")
+        XCTAssertEqual(app.sliders["music.density"].value as? String, "100%")
+        let transient = app.sliders["music.transient"]
+        reveal(transient, app: app)
+        transient.adjust(toNormalizedSliderPosition: 0.75)
+        let savedTransient = transient.value as? String
+        XCTAssertNotEqual(savedTransient, "100%")
+        let sharpness = app.sliders["music.transientSharpness"]
+        reveal(sharpness, app: app)
+        sharpness.adjust(toNormalizedSliderPosition: 0.95)
+        let savedSharpness = sharpness.value as? String
+        XCTAssertNotEqual(savedSharpness, "90%")
+        screenshot("19-separated-touch-controls", app: app)
+        app.buttons["完了"].tap()
+        app.buttons["閉じる"].tap()
+        song.tap()
+        XCTAssertTrue(app.buttons["music.settings"].waitForExistence(timeout: 10))
+        app.buttons["music.settings"].tap()
+        XCTAssertTrue(crispPreset.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.sliders["music.continuous"].value as? String, "25%")
+        XCTAssertEqual(transient.value as? String, savedTransient)
+        XCTAssertEqual(sharpness.value as? String, savedSharpness)
+        app.buttons["完了"].tap()
         let play = app.buttons["music.play"]
         reveal(play, app: app)
         let ready = NSPredicate(format: "enabled == true")
@@ -116,7 +162,9 @@ final class HapticLabUITests: XCTestCase {
         app.buttons["閉じる"].tap()
         let navigation = app.otherElements["player.navigation"]
         let beforeKeyboard = navigation.frame.maxY
-        app.segmentedControls["music.librarySections"].buttons["検索"].tap()
+        app.buttons["tab.history"].tap()
+        XCTAssertTrue(song.exists)
+        app.buttons["tab.search"].tap()
         let input = app.textFields["music.searchQuery"]
         for _ in 0..<3 { if !input.isHittable { app.swipeDown() } }
         input.tap()
@@ -126,8 +174,7 @@ final class HapticLabUITests: XCTestCase {
         XCTAssertGreaterThan(navigation.frame.minY, app.keyboards.firstMatch.frame.minY)
         screenshot("11-keyboard", app: app)
         input.typeText("\n")
-        app.segmentedControls["music.librarySections"].buttons["作成済み"].tap()
-        let menu = app.buttons["Pulse Garden · 12秒のサンプルの操作"]
+        app.buttons["tab.playlists"].tap()
         XCTAssertTrue(menu.waitForExistence(timeout: 5))
         reveal(menu, app: app)
         menu.tap()
@@ -155,15 +202,23 @@ final class HapticLabUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--music-test-library", "--reset-music-test-library"]
         app.launch()
-        let sections = app.segmentedControls["music.librarySections"]
-        XCTAssertTrue(sections.waitForExistence(timeout: 10))
+        let search = app.buttons["tab.search"]
+        XCTAssertTrue(search.waitForExistence(timeout: 10))
+        XCTAssertTrue(search.isSelected)
+        XCTAssertFalse(app.segmentedControls["music.librarySections"].exists)
         XCTAssertTrue(app.textFields["music.searchQuery"].exists)
-        sections.buttons["履歴"].tap()
+        app.buttons["tab.history"].tap()
+        XCTAssertTrue(app.buttons["tab.history"].isSelected)
         XCTAssertFalse(app.textFields["music.searchQuery"].exists)
         XCTAssertTrue(app.staticTexts["まだ再生履歴がありません"].exists)
-        sections.buttons["再生リスト"].tap()
+        app.buttons["tab.playlists"].tap()
+        XCTAssertTrue(app.buttons["tab.playlists"].isSelected)
+        XCTAssertTrue(app.buttons["music.preparedPlaylist"].exists)
         XCTAssertTrue(app.staticTexts["再生リストから選ぶ"].exists)
-        sections.buttons["検索"].tap()
+        app.buttons["music.preparedPlaylist"].tap()
+        XCTAssertTrue(app.staticTexts["まだ振動がありません"].exists)
+        app.buttons["music.playlistsBack"].tap()
+        search.tap()
         XCTAssertTrue(app.textFields["music.searchQuery"].exists)
     }
 

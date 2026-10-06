@@ -29,7 +29,7 @@ enum HapticVisualSignal {
         let lastTap = lowerBound(track.taps, time: max(0, sourceTime + 0.000_000_1), key: { $0.time })
         let tap = track.taps[firstTap..<lastTap].filter { settings.includes($0) }.max { left, right in
             func level(_ value: MusicTap) -> Double {
-                settings.amplified(value.intensity) * max(0, 1 - (sourceTime - value.time) / 0.06)
+                settings.intensity(for: value) * max(0, 1 - (sourceTime - value.time) / 0.06)
             }
             return level(left) < level(right)
         }
@@ -40,13 +40,14 @@ enum HapticVisualSignal {
                     : (70..<140).contains(frequency) ? 0.55 : (140..<300).contains(frequency) ? 0.25 : 0
                 let tapWeight: Double
                 if let tap {
+                    // Frequency attribution follows the analyzed sound, not the user's touch sharpness.
                     tapWeight = tap.sharpness < 0.35 ? ((30..<300).contains(frequency) ? 1 : 0)
                         : tap.sharpness < 0.75 ? ((300..<2_000).contains(frequency) ? 1 : 0)
                         : ((2_000...8_000).contains(frequency) ? 1 : 0)
                 } else { tapWeight = 0 }
                 switch settings.mode {
                 case .bass: return level * bassWeight * settings.bass
-                case .mix: return level * (bassWeight * settings.bass * 0.65 + 0.08 + tapWeight * output.transient)
+                case .mix: return level * ((bassWeight * settings.bass * 0.65 + 0.08) * settings.continuousGain + tapWeight * output.transient)
                 case .beats: return level * tapWeight
                 case .energy: return level
                 }
@@ -55,7 +56,7 @@ enum HapticVisualSignal {
             case .bass: return frequency < 120 ? level * settings.bass : 0
             case .mix:
                 let weight = frequency < 120 ? settings.bass * 0.65 : (frequency < 500 ? 0.20 : 0)
-                return level * (weight + 0.08 + output.transient)
+                return level * ((weight + 0.08) * settings.continuousGain + output.transient)
             case .energy, .beats: return level
             }
         }
@@ -89,7 +90,7 @@ struct HapticTimelineView: View {
             let last = lowerBound(track.taps, time: start + span - normalized.offset, key: { $0.time })
             for tap in track.taps[first..<last] where normalized.includes(tap) {
                 let x = (tap.time + normalized.offset - start) / span * size.width
-                let height = normalized.amplified(tap.intensity) * (size.height - 8)
+                let height = normalized.intensity(for: tap) * (size.height - 8)
                 var pulse = Path()
                 pulse.move(to: CGPoint(x: x, y: size.height - 4))
                 pulse.addLine(to: CGPoint(x: x, y: size.height - 4 - height))

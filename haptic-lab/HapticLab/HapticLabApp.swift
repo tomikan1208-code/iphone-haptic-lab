@@ -38,6 +38,18 @@ struct HapticLabApp: App {
                 .environmentObject(analysis)
                 .tint(LabTheme.mint)
                 .preferredColorScheme(.dark)
+                .task {
+                    #if DEBUG
+                    if ProcessInfo.processInfo.arguments.contains("--music-test-library"),
+                       ProcessInfo.processInfo.arguments.contains("--music-test-prepared"),
+                       library.prepared.isEmpty,
+                       let audioURL = Bundle.main.url(forResource: "MusicDemo", withExtension: "wav") {
+                        let selection = MusicSelection(id: "music-ui-fixture", kind: .file, title: "Playback Fixture",
+                                                       artist: "UI Test", url: "")
+                        library.prepare(selection, audioFile: audioURL, quality: .precision)
+                    }
+                    #endif
+                }
                 .onChange(of: scenePhase) { phase in
                     if phase != .active {
                         haptics.suspend()

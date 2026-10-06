@@ -20,7 +20,7 @@ struct MusicPlayerScreen: View {
                             songHeader
                             if let message = playback.message { MusicMessage(text: message) { playback.message = nil } }
                             if !playback.hasHaptics {
-                                Text("映像・音声のみで再生します。振動を付けるには、ライブラリからこの曲を選び、初回の作成を行ってください。")
+                                Text("映像・音声のみで再生します。振動を付けるには、検索や履歴からこの曲を選び、初回の作成を行ってください。")
                                     .font(.system(size: 13)).foregroundStyle(LabTheme.muted)
                             }
                         }.padding(16)
@@ -148,18 +148,19 @@ struct MusicPlayerScreen: View {
     private var strengthControl: some View {
         VStack(spacing: 2) {
             HStack {
-                Text("振動の強さ").font(.system(size: 12, weight: .semibold))
+                Text("全体の強さ").font(.system(size: 12, weight: .semibold))
                 Spacer()
-                Text(String(format: "%.2f倍", playback.settings.gain))
+                Text("\(Int((playback.settings.gain * 100).rounded()))%")
                     .font(.system(size: 12, weight: .semibold, design: .monospaced)).foregroundStyle(LabTheme.mint)
                     .accessibilityIdentifier("music.gainValue")
             }
             HStack(spacing: 8) {
                 Text("オフ")
                 Slider(value: $playback.settings.gain, in: MusicSettings.gainRange, step: 0.05)
-                    .tint(LabTheme.mint).accessibilityLabel("振動の強さ")
-                    .accessibilityValue(String(format: "%.2f倍", playback.settings.gain)).accessibilityIdentifier("music.gain")
-                Text("4倍")
+                    .tint(LabTheme.mint).accessibilityLabel("全体の強さ")
+                    .accessibilityValue("\(Int((playback.settings.gain * 100).rounded()))%")
+                    .accessibilityIdentifier("music.gain")
+                Text("400%")
             }.font(.system(size: 9)).foregroundStyle(LabTheme.muted)
         }
     }
@@ -167,20 +168,36 @@ struct MusicPlayerScreen: View {
     private var settingsPanel: some View {
         VStack(alignment: .leading, spacing: 23) {
             Text("触感を調整").font(.system(size: 17, weight: .semibold))
-            Picker("振動モード", selection: $playback.settings.mode) {
-                ForEach(MusicSettings.Mode.allCases, id: \.self) { Text($0.title).tag($0) }
-            }.pickerStyle(.segmented).accessibilityIdentifier("music.mode")
-            ParameterSlider(title: "振動の強さ", valueLabel: String(format: "%.2f倍", playback.settings.gain), leading: "オフ", trailing: "最大4倍",
+            Button { playback.settings.emphasizeTaps() } label: {
+                Label("打音をくっきり", systemImage: "sparkles")
+                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(LabTheme.mint)
+            }.accessibilityIdentifier("music.crispPreset")
+            ParameterSlider(title: "全体の強さ", valueLabel: "\(Int((playback.settings.gain * 100).rounded()))%", leading: "オフ", trailing: "最大400%",
                             identifier: "music.gain.settings", value: $playback.settings.gain, range: MusicSettings.gainRange, step: 0.05)
-            Text("1倍より上で振動を増幅します。実際の振動出力は100%までです。再解析は不要で、再生中にも変えられます。")
-                .font(.system(size: 12)).foregroundStyle(LabTheme.muted).fixedSize(horizontal: false, vertical: true)
-            ParameterSlider(title: "低音の量", valueLabel: "\(Int(playback.settings.bass * 100))%", leading: "控えめ", trailing: "たっぷり",
-                            identifier: "music.bass", value: $playback.settings.bass, range: 0...1)
+            ParameterSlider(title: "持続振動", valueLabel: "\(Int((playback.settings.continuousGain * 100).rounded()))%", leading: "オフ", trailing: "100%",
+                            identifier: "music.continuous", value: $playback.settings.continuousGain, range: 0...1)
+            ParameterSlider(title: "瞬間振動", valueLabel: "\(Int((playback.settings.transientGain * 100).rounded()))%", leading: "オフ", trailing: "100%",
+                            identifier: "music.transient", value: $playback.settings.transientGain, range: 0...1)
+            ParameterSlider(title: "瞬間の鋭さ", valueLabel: "\(Int((playback.settings.transientSharpness * 100).rounded()))%", leading: "柔らかく", trailing: "鋭く",
+                            identifier: "music.transientSharpness", value: $playback.settings.transientSharpness, range: 0...1)
             ParameterSlider(title: "ビートの密度", valueLabel: "\(Int(playback.settings.density * 100))%", leading: "大きな打音だけ", trailing: "細かな打音も",
                             identifier: "music.density", value: $playback.settings.density, range: 0...1)
-            ParameterSlider(title: "同期の補正", valueLabel: String(format: "%+.0f ms", playback.settings.offset * 1_000), leading: "振動を早く", trailing: "振動を遅く",
-                            identifier: "music.offset", value: $playback.settings.offset, range: -1...1, step: 0.01)
-            Text("調整はこの曲に保存されます。Bluetoothで音が遅れる場合は、振動を遅くする方向へ調整してください。")
+            Text("持続と瞬間は別々に調整できます。瞬間の鋭さは50%で元の触感を保ち、上げるほど硬く、下げるほど柔らかくなります。再解析は不要です。")
+                .font(.system(size: 12)).foregroundStyle(LabTheme.muted).fixedSize(horizontal: false, vertical: true)
+            DisclosureGroup("低音・同期の詳細") {
+                VStack(alignment: .leading, spacing: 23) {
+                    Picker("振動モード", selection: $playback.settings.mode) {
+                        ForEach(MusicSettings.Mode.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }.pickerStyle(.segmented).accessibilityIdentifier("music.mode")
+                    ParameterSlider(title: "低音の量", valueLabel: "\(Int(playback.settings.bass * 100))%", leading: "控えめ", trailing: "たっぷり",
+                                    identifier: "music.bass", value: $playback.settings.bass, range: 0...1)
+                    ParameterSlider(title: "同期の補正", valueLabel: String(format: "%+.0f ms", playback.settings.offset * 1_000), leading: "振動を早く", trailing: "振動を遅く",
+                                    identifier: "music.offset", value: $playback.settings.offset, range: -1...1, step: 0.01)
+                    Text("Bluetoothで音が遅れる場合は、振動を遅くする方向へ調整してください。")
+                        .font(.system(size: 12)).foregroundStyle(LabTheme.muted).fixedSize(horizontal: false, vertical: true)
+                }.padding(.top, 16)
+            }.tint(LabTheme.mint).accessibilityIdentifier("music.advancedSettings")
+            Text("調整はこの曲に保存されます。全体の強さを100%より上げると増幅し、実際の振動出力は端末の最大値までです。")
                 .font(.system(size: 12)).foregroundStyle(LabTheme.muted).fixedSize(horizontal: false, vertical: true)
         }
         .labPanel()

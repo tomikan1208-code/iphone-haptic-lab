@@ -155,8 +155,10 @@ final class MusicHapticTests: XCTestCase {
         XCTAssertEqual(reloaded.prepared.count, 1)
         XCTAssertEqual(reloaded.history.count, 1)
         XCTAssertEqual(reloaded.records[0].settings.gain, 0.25)
-        library.saveSettings(MusicSettings(mode: .beats, gain: 2.5), id: record.id)
-        XCTAssertEqual(MusicLibrary(root: root).records[0].settings.gain, 2.5)
+        let separated = MusicSettings(mode: .mix, gain: 2.5, density: 1, offset: 0.15,
+                                      continuousGain: 0.25, transientGain: 0.8, transientSharpness: 0.9)
+        library.saveSettings(separated, id: record.id)
+        XCTAssertEqual(MusicLibrary(root: root).records[0].settings, separated)
         XCTAssertEqual(try reloaded.disk.track(reloaded.records[0]), track)
         let mediaURL = try XCTUnwrap(reloaded.disk.mediaURL(record))
         let trackURL = reloaded.disk.tracks.appendingPathComponent(try XCTUnwrap(record.trackFilename))

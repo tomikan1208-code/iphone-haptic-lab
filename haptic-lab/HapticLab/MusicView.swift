@@ -1,10 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-private enum MusicListSection: String, CaseIterable {
-    case search = "検索", prepared = "作成済み", history = "履歴", youtube = "再生リスト"
-}
-
 private struct MusicPreparationRequest: Identifiable {
     let selection: MusicSelection
     var audioURL: URL?
@@ -12,18 +8,18 @@ private struct MusicPreparationRequest: Identifiable {
 }
 
 struct MusicView: View {
+    @Binding var tab: PlayerTab
+    @Binding var showAccount: Bool
     @EnvironmentObject private var library: MusicLibrary
     @EnvironmentObject private var playback: MusicPlayback
     @EnvironmentObject private var haptics: HapticController
     @EnvironmentObject private var youtube: YouTubeAccount
     @EnvironmentObject private var preferences: AnalysisPreferences
     @StateObject private var search = YouTubeSearch()
-    @State private var section: MusicListSection = .search
+    @State private var showingPrepared = false
     @State private var playAfterPreparation: MusicSelection?
     @State private var pending: MusicPreparationRequest?
-    @State private var importing = false
     @State private var showPlayer = false
-    @State private var showAccount = false
     @State private var deleting: MusicRecord?
     @State private var openPlayerAfterDismiss = false
     @State private var showPreparation = false
@@ -35,7 +31,14 @@ struct MusicView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    libraryPanel
+                    switch tab {
+                    case .search: searchPanel
+                    case .history:
+                        Text("履歴").font(.system(size: 22, weight: .bold))
+                        songList(library.history, empty: "まだ再生履歴がありません", detail: "このアプリで再生した曲がここに並びます。")
+                    case .playlists: playlistPanel
+                    }
+                    if let message = library.message { MusicMessage(text: message) { library.message = nil } }
                     if playback.selection != nil { currentSongPanel }
                 }
                 .padding(.horizontal, 16)
@@ -86,15 +89,6 @@ struct MusicView: View {
         .sheet(isPresented: $showPlayer, onDismiss: { playback.pause() }) {
             MusicPlayerScreen().environmentObject(playback).environmentObject(library)
         }
-        .sheet(isPresented: $showAccount) {
-            YouTubeAccountView().environmentObject(youtube).environmentObject(library)
-        }
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.audio, .movie], allowsMultipleSelection: false) { result in
-            do {
-                guard let url = try result.get().first else { return }
-                pending = MusicPreparationRequest(selection: MusicSelection.file(url), audioURL: url)
-            } catch { library.message = error.localizedDescription }
-        }
         .alert("この曲の保存データを削除しますか？", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
             Button("削除", role: .destructive) {
                 guard let record = deleting else { return }
@@ -110,7 +104,8 @@ struct MusicView: View {
         .onChange(of: library.recentlyPreparedID) { id in
             if let id {
                 pending = nil
-                section = .prepared
+                tab = .playlists
+                showingPrepared = true
                 let wasShowingPreparation = showPreparation
                 showPreparation = false
                 if let selection = playAfterPreparation, selection.id == id {
@@ -121,34 +116,13 @@ struct MusicView: View {
             }
         }
         .onChange(of: library.records) { records in youtube.synchronize(records: records) }
-        .onChange(of: section) { _ in urlFocused = false }
+        .onChange(of: tab) { _ in urlFocused = false }
+        .onChange(of: showAccount) { showing in if showing { urlFocused = false } }
         .task {
             playback.onPlay = { [weak library] selection in library?.saveHistory(selection) }
             if youtube.connected { await youtube.loadPlaylists() }
             youtube.synchronize(records: library.records, force: true)
         }
-    }
-
-    private var inputPanel: some View {
-        HStack(spacing: 18) {
-            Button { urlFocused = false; importing = true } label: {
-                Label("ファイルを読み込む", systemImage: "folder")
-                    .font(.system(size: 13, weight: .medium)).foregroundStyle(LabTheme.muted)
-                    .padding(.vertical, 4)
-            }
-            .accessibilityIdentifier("music.import")
-            Button {
-                guard let url = Bundle.main.url(forResource: "MusicDemo", withExtension: "wav") else { return }
-                let selection = MusicSelection(id: "bundled-music-demo", kind: .file, title: "Pulse Garden · 12秒のサンプル",
-                                           artist: "オリジナルサンプル", url: "")
-                if library.record(for: selection)?.isPrepared == true { open(selection, withHaptics: true) }
-                else { pending = MusicPreparationRequest(selection: selection, audioURL: url) }
-            } label: {
-                Label("12秒のサンプルで試す", systemImage: "sparkles").font(.system(size: 12)).foregroundStyle(LabTheme.mint)
-            }
-            .accessibilityIdentifier("music.demo")
-        }
-        .padding(.vertical, 4)
     }
 
     private var currentSongPanel: some View {
@@ -168,27 +142,32 @@ struct MusicView: View {
         .buttonStyle(.plain).labPanel().accessibilityIdentifier("music.nowPlaying")
     }
 
-    private var libraryPanel: some View {
+    private var playlistPanel: some View {
         VStack(alignment: .leading, spacing: 15) {
-            HStack {
-                Text("ライブラリ").font(.system(size: 19, weight: .bold))
-                Spacer()
-                Button { urlFocused = false; showAccount = true } label: {
-                    Label(youtube.connected ? "接続済み" : "ログイン", systemImage: "person.crop.circle")
-                        .font(.system(size: 12)).foregroundStyle(LabTheme.mint)
-                }.accessibilityIdentifier("music.account")
-            }
-            inputPanel
-            if let message = library.message { MusicMessage(text: message) { library.message = nil } }
-            Picker("音楽リスト", selection: $section) {
-                ForEach(MusicListSection.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented).accessibilityIdentifier("music.librarySections")
-            switch section {
-            case .search: searchPanel
-            case .prepared: songList(library.prepared, empty: "まだ振動がありません", detail: "検索から動画を選ぶと、振動を作成してここに保存します。")
-            case .history: songList(library.history, empty: "まだ再生履歴がありません", detail: "このアプリで再生した曲がここに並びます。")
-            case .youtube: youtubePanel
+            if showingPrepared {
+                Button { showingPrepared = false } label: {
+                    Label("再生リスト一覧", systemImage: "chevron.left")
+                        .font(.system(size: 13)).foregroundStyle(LabTheme.mint)
+                }.accessibilityIdentifier("music.playlistsBack")
+                Text("作成済み").font(.system(size: 22, weight: .bold))
+                songList(library.prepared, empty: "まだ振動がありません", detail: "検索から動画を選ぶと、振動を作成してここに保存します。")
+            } else {
+                Text("再生リスト").font(.system(size: 22, weight: .bold))
+                Button { showingPrepared = true } label: {
+                    HStack(spacing: 14) {
+                        Image(systemName: "waveform").font(.system(size: 24)).foregroundStyle(LabTheme.mint)
+                            .frame(width: 48, height: 48)
+                            .background(LabTheme.elevated, in: RoundedRectangle(cornerRadius: 12))
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("作成済み").font(.system(size: 15, weight: .semibold))
+                            Text("\(library.prepared.count)曲 · 保存した振動")
+                                .font(.system(size: 12)).foregroundStyle(LabTheme.muted)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").foregroundStyle(LabTheme.muted)
+                    }.padding(16).background(LabTheme.panel, in: RoundedRectangle(cornerRadius: 16))
+                }.buttonStyle(.plain).accessibilityIdentifier("music.preparedPlaylist")
+                youtubePanel
             }
         }
     }
@@ -249,7 +228,7 @@ struct MusicView: View {
     private func songList(_ records: [MusicRecord], empty: String, detail: String) -> some View {
         VStack(spacing: 10) {
             if records.isEmpty {
-                MusicEmptyState(title: empty, detail: detail, symbol: section == .history ? "clock" : "waveform")
+                MusicEmptyState(title: empty, detail: detail, symbol: tab == .history ? "clock" : "waveform")
             }
             ForEach(records) { record in
                 MusicSongRow(selection: record.selection, prepared: record.isPrepared, bytes: record.trackBytes,

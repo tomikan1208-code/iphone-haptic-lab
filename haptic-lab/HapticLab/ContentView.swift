@@ -1,43 +1,56 @@
 import SwiftUI
 
 enum PlayerTab: String, CaseIterable, Identifiable {
-    case music, gallery
+    case search, history, playlists
     var id: String { rawValue }
-    var title: String { self == .music ? "音楽" : "振動サンプル" }
-    var symbol: String { self == .music ? "play.rectangle.fill" : "waveform" }
+    var title: String {
+        switch self {
+        case .search: return "検索"
+        case .history: return "履歴"
+        case .playlists: return "再生リスト"
+        }
+    }
+    var symbol: String {
+        switch self {
+        case .search: return "magnifyingglass"
+        case .history: return "clock"
+        case .playlists: return "music.note.list"
+        }
+    }
 }
 
 struct ContentView: View {
     @EnvironmentObject private var haptics: HapticController
     @EnvironmentObject private var music: MusicPlayback
-    @State private var tab: PlayerTab = .music
+    @EnvironmentObject private var youtube: YouTubeAccount
+    @State private var tab: PlayerTab = .search
     @State private var showTools = false
     @State private var showPlayer = false
+    @State private var showAccount = false
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
-                Image(systemName: "play.rectangle.fill").font(.system(size: 24)).foregroundStyle(LabTheme.mint)
-                Text("音楽プレイヤー").font(.system(size: 19, weight: .bold))
+                Image(systemName: "waveform").font(.system(size: 24)).foregroundStyle(LabTheme.mint)
+                Text("Reson").font(.system(size: 23, weight: .bold, design: .rounded)).tracking(0.5)
                 Spacer()
                 Button { showTools = true } label: {
                     Image(systemName: "ellipsis").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
                 }.accessibilityLabel("メニュー").accessibilityIdentifier("player.menu")
+                Button { showAccount = true } label: {
+                    Image(systemName: youtube.connected ? "person.crop.circle.fill" : "person.crop.circle")
+                        .font(.system(size: 25)).frame(width: 44, height: 44)
+                        .foregroundStyle(youtube.connected ? LabTheme.mint : .white)
+                }
+                .accessibilityLabel("YouTubeアカウント")
+                .accessibilityValue(youtube.connected ? "接続済み" : "未接続")
+                .accessibilityIdentifier("music.account")
             }.padding(.horizontal, 16).padding(.vertical, 5)
             if let message = haptics.message {
                 MusicMessage(text: message) { haptics.message = nil }.padding(.horizontal, 16)
             }
-            if tab == .music { MusicView() }
-            else { ScrollView { GalleryView().padding(16) }.scrollIndicators(.hidden) }
+            MusicView(tab: $tab, showAccount: $showAccount)
             if music.selection != nil { miniPlayer }
-            if tab == .gallery {
-                HStack {
-                    Text(haptics.activeName).font(.system(size: 12)).accessibilityIdentifier("playback.status")
-                    Spacer()
-                    Button("停止") { haptics.stop() }.foregroundStyle(LabTheme.coral)
-                        .accessibilityIdentifier("playback.stop")
-                }.padding(16).background(LabTheme.panel)
-            }
             HStack(spacing: 0) {
                 ForEach(PlayerTab.allCases) { item in
                     Button { tab = item } label: {
@@ -56,8 +69,12 @@ struct ContentView: View {
         .foregroundStyle(.white)
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .onChange(of: tab) { _ in haptics.stop(); music.suspend() }
+        .onChange(of: showTools) { showing in
+            if showing { haptics.stop(); music.suspend() }
+        }
         .sheet(isPresented: $showTools) { PlayerToolsView() }
         .sheet(isPresented: $showPlayer, onDismiss: { music.pause() }) { MusicPlayerScreen() }
+        .sheet(isPresented: $showAccount) { YouTubeAccountView() }
     }
 
     private var miniPlayer: some View {
@@ -101,6 +118,8 @@ struct PlayerToolsView: View {
                         .accessibilityIdentifier("menu.analysis")
                 }
                 Section("振動ツール") {
+                    NavigationLink { tool(GalleryView(), title: "振動サンプル") } label: { Label("振動サンプル", systemImage: "waveform") }
+                        .accessibilityIdentifier("menu.gallery")
                     NavigationLink { tool(ExperimentView(), title: "振動を調整") } label: { Label("振動を調整", systemImage: "slider.horizontal.3") }
                         .accessibilityIdentifier("tab.experiment")
                     NavigationLink { tool(TouchPadView(), title: "タッチパッド") } label: { Label("タッチパッド", systemImage: "hand.draw") }

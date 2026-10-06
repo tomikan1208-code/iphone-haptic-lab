@@ -117,11 +117,88 @@ final class MusicPlayerTests: XCTestCase {
     func testOlderGainValuesDecodeUnchangedAndInvalidBoostCannotExceedHardwareBounds() throws {
         let legacy = try JSONDecoder().decode(MusicSettings.self, from: Data(#"{"mode":"mix","gain":0.25,"bass":0.65,"density":0.7,"offset":0}"#.utf8))
         XCTAssertEqual(legacy.normalized.gain, 0.25)
+        XCTAssertEqual(legacy.continuousGain, 1)
+        XCTAssertEqual(legacy.transientGain, 1)
+        XCTAssertEqual(legacy.transientSharpness, 0.5)
+        XCTAssertEqual(legacy.sharpness(for: MusicTap(time: 0, intensity: 0.8, sharpness: 0.3)), 0.3)
         XCTAssertEqual(MusicSettings(gain: 5).normalized.gain, 4)
         XCTAssertEqual(MusicSettings(gain: -1).normalized.gain, 0)
         XCTAssertEqual(MusicSettings(gain: .nan).normalized.gain, 0.7)
         XCTAssertEqual(MusicSettings(gain: .infinity).normalized.gain, 0.7)
         XCTAssertEqual(MusicSettings(gain: 4).amplified(.nan), 0)
+    }
+
+    func testContinuousTransientAndSharpnessControlsRemainIndependent() throws {
+        let track = fixture()
+        var settings = MusicSettings(mode: .mix, gain: 1, density: 1)
+        let original = track.output(at: 0.5, settings: settings)
+        settings.continuousGain = 0.25
+        let reduced = track.output(at: 0.5, settings: settings)
+        XCTAssertEqual(reduced.continuous, original.continuous * 0.25, accuracy: 0.000001)
+        XCTAssertEqual(reduced.transient, original.transient)
+        settings.transientGain = 0.4
+        let softened = track.output(at: 0.5, settings: settings)
+        XCTAssertEqual(softened.continuous, reduced.continuous)
+        XCTAssertEqual(softened.transient, original.transient * 0.4, accuracy: 0.000001)
+        let originalPatterns = track.segment(at: 0.5, length: 0.1, settings: settings)
+        settings.transientSharpness = 0.9
+        let sharperPatterns = track.segment(at: 0.5, length: 0.1, settings: settings)
+        let tap = try XCTUnwrap(sharperPatterns.first { $0.id == "music-taps" }?.events.first)
+        let previousTap = try XCTUnwrap(originalPatterns.first { $0.id == "music-taps" }?.events.first)
+        XCTAssertGreaterThan(tap.sharpness, previousTap.sharpness)
+        XCTAssertEqual(tap.intensity, previousTap.intensity)
+        XCTAssertEqual(sharperPatterns.first { $0.id == "music-bed" }, originalPatterns.first { $0.id == "music-bed" })
+        settings.transientGain = 0
+        XCTAssertFalse(track.segment(at: 0.5, length: 0.1, settings: settings).contains { $0.id == "music-taps" })
+        XCTAssertEqual(track.output(at: 0.5, settings: settings).transient, 0)
+        settings.continuousGain = 0
+        XCTAssertTrue(track.segment(at: 0.5, length: 0.1, settings: settings).isEmpty)
+        XCTAssertEqual(HapticVisualSignal.level(track: track, time: 0.5, settings: settings), 0)
+    }
+
+    func testComponentGainsApplyBeforeClippingAndBothDisplaysMatchHardware() throws {
+        let track = MusicHapticTrack(version: 2, audioSHA256: String(repeating: "d", count: 64), duration: 1,
+            envelope: [0.0, 1.0].map { .init(time: $0, bass: 1, energy: 1, sharpness: 0.3, mid: 0, high: 0) },
+            taps: [.init(time: 0.5, intensity: 0.8, sharpness: 0.25)],
+            spectrum: [0.0, 1.0].map { .init(time: $0, levels: Array(repeating: 0.4, count: 24)) })
+        let settings = MusicSettings(gain: 4, bass: 1, density: 1,
+                                     continuousGain: 0.25, transientGain: 0.25, transientSharpness: 0.9)
+        let output = track.output(at: 0.5, settings: settings)
+        XCTAssertEqual(output.continuous, 0.73, accuracy: 0.000001)
+        XCTAssertEqual(output.transient, 0.8, accuracy: 0.000001)
+        let patterns = track.segment(at: 0.5, length: 0.1, settings: settings)
+        let bed = try XCTUnwrap(patterns.first { $0.id == "music-bed" })
+        let taps = try XCTUnwrap(patterns.first { $0.id == "music-taps" })
+        XCTAssertEqual(bed.curves[0].points[0].value, output.continuous, accuracy: 0.000001)
+        XCTAssertEqual(taps.events[0].intensity, output.transient, accuracy: 0.000001)
+        XCTAssertEqual(taps.events[0].sharpness, 0.85, accuracy: 0.000001)
+        for pattern in patterns { XCTAssertNoThrow(try pattern.validated()) }
+        let snapshot = try XCTUnwrap(HapticVisualSignal.spectrum(track: track, time: 0.5, settings: settings, active: true))
+        XCTAssertEqual(snapshot.haptics.max() ?? -1, output.level, accuracy: 0.000001)
+        XCTAssertEqual(snapshot.audio, Array(repeating: 0.4, count: 24))
+        XCTAssertEqual(HapticVisualSignal.level(track: track, time: 0.5, settings: settings), output.level)
+    }
+
+    func testTouchControlsNormalizeAndPresetPreservesTimingAndBass() throws {
+        let normalized = MusicSettings(continuousGain: .nan, transientGain: 2, transientSharpness: -1).normalized
+        XCTAssertEqual(normalized.continuousGain, 1)
+        XCTAssertEqual(normalized.transientGain, 1)
+        XCTAssertEqual(normalized.transientSharpness, 0)
+        var settings = MusicSettings(mode: .bass, bass: 0.2, offset: 0.15)
+        settings.emphasizeTaps()
+        XCTAssertEqual(settings.mode, .mix)
+        XCTAssertEqual(settings.gain, 0.8)
+        XCTAssertEqual(settings.continuousGain, 0.25)
+        XCTAssertEqual(settings.transientGain, 1)
+        XCTAssertEqual(settings.transientSharpness, 0.9)
+        XCTAssertEqual(settings.density, 1)
+        XCTAssertEqual(settings.bass, 0.2)
+        XCTAssertEqual(settings.offset, 0.15)
+        XCTAssertEqual(try JSONDecoder().decode(MusicSettings.self, from: JSONEncoder().encode(settings)), settings)
+        settings.transientSharpness = 0
+        XCTAssertEqual(settings.sharpness(for: MusicTap(time: 0, intensity: 0.8, sharpness: 0.3)), 0)
+        settings.transientSharpness = 1
+        XCTAssertEqual(settings.sharpness(for: MusicTap(time: 0, intensity: 0.8, sharpness: 0.3)), 1)
     }
 
     func testBoostedContinuousDisplayInterpolatesClippedHardwareCurveAcrossArbitrarySegmentBoundaries() throws {

@@ -7,11 +7,11 @@ struct MusicLibrarySnapshot: Codable {
 
     func validated() throws -> MusicLibrarySnapshot {
         guard version == 1, records.count <= 5_000,
-              Set(records.map(\.id)).count == records.count else { throw MusicError.storage("音楽ライブラリを読み込めません。保存データを確認してください。") }
+              Set(records.map(\.id)).count == records.count else { throw MusicError.storage("保存した曲を読み込めません。保存データを確認してください。") }
         for record in records {
             guard !record.id.isEmpty, record.trackBytes >= 0,
                   [record.trackFilename, record.mediaFilename].compactMap({ $0 }).allSatisfy(MusicLibraryDisk.safeFilename) else {
-                throw MusicError.storage("音楽ライブラリの保存先が不正です。")
+                throw MusicError.storage("曲の保存先が不正です。")
             }
             if record.selection.kind == .youtube {
                 guard let id = record.selection.videoID, MusicSelection.validVideoID(id) else { throw MusicError.corruptTrack }

@@ -101,12 +101,23 @@ struct MusicSettings: Codable, Equatable {
     var density: Double = 0.7
     // Positive values delay haptics relative to the video's media clock.
     var offset: Double = 0
+    var continuousGain: Double = 1
+    var transientGain: Double = 1
+    // 0.5 preserves each recorded tap; lower values soften it, higher values sharpen it.
+    var transientSharpness: Double = 0.5
+
+    private enum CodingKeys: String, CodingKey {
+        case mode, gain, bass, density, offset, continuousGain, transientGain, transientSharpness
+    }
 
     var normalized: MusicSettings {
         MusicSettings(mode: mode, gain: bounded(gain, to: Self.gainRange, fallback: 0.7),
                       bass: bounded(bass, to: 0...1, fallback: 0.65),
                       density: bounded(density, to: 0...1, fallback: 0.7),
-                      offset: bounded(offset, to: -1...1, fallback: 0))
+                      offset: bounded(offset, to: -1...1, fallback: 0),
+                      continuousGain: bounded(continuousGain, to: 0...1, fallback: 1),
+                      transientGain: bounded(transientGain, to: 0...1, fallback: 1),
+                      transientSharpness: bounded(transientSharpness, to: 0...1, fallback: 0.5))
     }
 
     func intensity(for point: MusicEnvelopePoint) -> Double {
@@ -122,7 +133,7 @@ struct MusicSettings: Codable, Equatable {
                 level = point.bass * bass * 0.65 + mid * 0.20 + point.energy * 0.08
             } else { level = point.bass * bass * 0.5 + point.energy * 0.10 }
         }
-        return amplified(level)
+        return amplified(level * bounded(continuousGain, to: 0...1, fallback: 1))
     }
 
     // Amplify saved dynamics while keeping every hardware event and visual inside 0...1.
@@ -131,12 +142,46 @@ struct MusicSettings: Codable, Equatable {
     }
 
     func includes(_ tap: MusicTap) -> Bool {
-        (mode == .mix || mode == .beats) && tap.intensity >= (1 - density) * 0.7
+        (mode == .mix || mode == .beats) && transientGain > 0 && tap.intensity >= (1 - density) * 0.7
+    }
+
+    func intensity(for tap: MusicTap) -> Double {
+        amplified(tap.intensity * bounded(transientGain, to: 0...1, fallback: 1))
+    }
+
+    func sharpness(for tap: MusicTap) -> Double {
+        let source = bounded(tap.sharpness, to: 0...1, fallback: 0.5)
+        let control = bounded(transientSharpness, to: 0...1, fallback: 0.5)
+        if control <= 0.5 { return source * control * 2 }
+        return source + (1 - source) * (control - 0.5) * 2
+    }
+
+    mutating func emphasizeTaps() {
+        mode = .mix
+        gain = 0.8
+        continuousGain = 0.25
+        transientGain = 1
+        transientSharpness = 0.9
+        density = 1
     }
 
     func sharpness(for point: MusicEnvelopePoint) -> Double {
         // Older tracks retain their original rendering; new tracks use the full mapped range.
         point.mid == nil ? point.sharpness * 0.65 : point.sharpness
+    }
+}
+
+extension MusicSettings {
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(mode: try values.decodeIfPresent(Mode.self, forKey: .mode) ?? .mix,
+                  gain: try values.decodeIfPresent(Double.self, forKey: .gain) ?? 0.7,
+                  bass: try values.decodeIfPresent(Double.self, forKey: .bass) ?? 0.65,
+                  density: try values.decodeIfPresent(Double.self, forKey: .density) ?? 0.7,
+                  offset: try values.decodeIfPresent(Double.self, forKey: .offset) ?? 0,
+                  continuousGain: try values.decodeIfPresent(Double.self, forKey: .continuousGain) ?? 1,
+                  transientGain: try values.decodeIfPresent(Double.self, forKey: .transientGain) ?? 1,
+                  transientSharpness: try values.decodeIfPresent(Double.self, forKey: .transientSharpness) ?? 0.5)
     }
 }
 
@@ -316,7 +361,7 @@ struct MusicHapticTrack: Codable, Equatable {
         for tap in taps[first..<last] where settings.includes(tap) {
             let elapsed: Double = max(0, time - tap.time)
             let decay: Double = max(0, 1 - elapsed / 0.06)
-            let intensity: Double = settings.amplified(tap.intensity) * decay
+            let intensity: Double = settings.intensity(for: tap) * decay
             transient = max(transient, intensity)
         }
         return .init(continuous: continuousIntensity(at: time, settings: settings), sharpness: settings.sharpness(for: point), transient: transient)
@@ -365,7 +410,7 @@ struct MusicHapticTrack: Codable, Equatable {
             let last = lowerBound(taps, time: end, key: { $0.time })
             let events = taps[first..<last].filter { settings.includes($0) }.map {
                 HapticEventSpec(kind: .tap, time: ($0.time - start) / rate, duration: 0,
-                                intensity: settings.amplified($0.intensity), sharpness: $0.sharpness)
+                                intensity: settings.intensity(for: $0), sharpness: settings.sharpness(for: $0))
             }
             if !events.isEmpty {
                 result.append(HapticPatternSpec(id: "music-taps", name: "音楽 · ビート", subtitle: "", symbol: "waveform",
