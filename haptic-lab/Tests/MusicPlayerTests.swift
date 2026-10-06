@@ -50,6 +50,23 @@ final class MusicPlayerTests: XCTestCase {
         XCTAssertEqual(MusicSettings(gain: 4).amplified(.nan), 0)
     }
 
+    func testBoostedContinuousDisplayInterpolatesClippedHardwareCurveAcrossArbitrarySegmentBoundaries() throws {
+        let track = MusicHapticTrack(version: 1, audioSHA256: String(repeating: "a", count: 64), duration: 2,
+            envelope: [.init(time: 0, bass: 0, energy: 0.1, sharpness: 0.3),
+                       .init(time: 1, bass: 0, energy: 0.9, sharpness: 0.3),
+                       .init(time: 2, bass: 0, energy: 0.9, sharpness: 0.3)], taps: [])
+        let settings = MusicSettings(mode: .energy, gain: 4)
+        let pattern = try XCTUnwrap(track.segment(at: 0.23, length: 0.57, settings: settings).first)
+        let points = try XCTUnwrap(pattern.curves.first { $0.parameter == .intensity }?.points)
+        XCTAssertEqual(points.count, 2)
+        let fraction = (0.5 - 0.23) / 0.57
+        let hardware = points[0].value + (points[1].value - points[0].value) * fraction
+        XCTAssertEqual(hardware, 0.61, accuracy: 0.000001)
+        XCTAssertEqual(track.output(at: 0.5, settings: settings).continuous, hardware, accuracy: 0.000001)
+        XCTAssertEqual(HapticVisualSignal.level(track: track, time: 0.5, settings: settings), hardware, accuracy: 0.000001)
+        XCTAssertNoThrow(try pattern.validated())
+    }
+
     func testSavedSpectrumMeasuresAudioFrequencyInsteadOfStrengthModulation() throws {
         for frequency in [80.0, 300.0, 3_000.0] {
             let extractor = try MusicSignalExtractor(channels: 1)

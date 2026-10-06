@@ -276,6 +276,18 @@ struct MusicHapticTrack: Codable, Equatable {
     }
 
     // The UI reads the same mapping and tap filter used by segment(). Never anticipate future taps.
+    private func continuousIntensity(at time: Double, settings: MusicSettings) -> Double {
+        guard !envelope.isEmpty else { return 0 }
+        let index = lowerBound(envelope, time: time, key: { $0.time })
+        if index == 0 { return settings.intensity(for: envelope[0]) }
+        if index == envelope.count { return settings.intensity(for: envelope[envelope.count - 1]) }
+        let left = envelope[index - 1], right = envelope[index]
+        let fraction = bounded((time - left.time) / (right.time - left.time), to: 0...1, fallback: 0)
+        // Hardware interpolates the clipped control points, not the unclipped source envelope.
+        let from = settings.intensity(for: left), to = settings.intensity(for: right)
+        return from + (to - from) * fraction
+    }
+
     func output(at time: Double, settings: MusicSettings) -> MusicHapticOutput {
         guard time.isFinite, time >= 0, time < duration else { return .init(continuous: 0, sharpness: 0, transient: 0) }
         let settings = settings.normalized
@@ -289,7 +301,7 @@ struct MusicHapticTrack: Codable, Equatable {
             let intensity: Double = settings.amplified(tap.intensity) * decay
             transient = max(transient, intensity)
         }
-        return .init(continuous: settings.intensity(for: point), sharpness: settings.sharpness(for: point), transient: transient)
+        return .init(continuous: continuousIntensity(at: time, settings: settings), sharpness: settings.sharpness(for: point), transient: transient)
     }
 
     // Tap intervals are half-open, so a tap at a chunk boundary plays exactly once.
@@ -309,7 +321,7 @@ struct MusicHapticTrack: Codable, Equatable {
             points.append(contentsOf: envelope[first..<last].filter { $0.time > start })
             points.append(value(at: end))
             func intensity(_ point: MusicEnvelopePoint) -> Double {
-                settings.intensity(for: point)
+                continuousIntensity(at: point.time, settings: settings)
             }
             if points.contains(where: { intensity($0) > 0.001 }) {
                 var curves: [HapticCurveSpec] = []
