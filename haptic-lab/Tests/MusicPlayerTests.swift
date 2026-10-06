@@ -3,6 +3,77 @@ import CoreHaptics
 @testable import HapticLab
 
 final class MusicPlayerTests: XCTestCase {
+    func testYouTubeDurationGateAcceptsRealAudioPaddingAndRejectsUnknownDuration() {
+        var gate = MusicDurationGate()
+        XCTAssertEqual(gate.check(duration: 547, expected: 546.97, playing: true, hostTime: 1), .matching)
+        for span in [0, -1, Double.nan, Double.infinity] {
+            XCTAssertEqual(gate.check(duration: span, expected: 546.97, playing: true, hostTime: 2), .waiting)
+        }
+    }
+
+    func testYouTubeDurationGateWaitsForStablePlaybackAndRecoversWithoutLooseningTolerance() {
+        var gate = MusicDurationGate()
+        XCTAssertEqual(gate.check(duration: 30, expected: 547, playing: true, hostTime: 10), .waiting)
+        XCTAssertEqual(gate.check(duration: 30, expected: 547, playing: true, hostTime: 10.5), .waiting)
+        XCTAssertEqual(gate.check(duration: 60, expected: 547, playing: true, hostTime: 10.9), .waiting)
+        XCTAssertEqual(gate.check(duration: 60, expected: 547, playing: true, hostTime: 11.95), .different)
+        XCTAssertEqual(gate.check(duration: 547, expected: 547, playing: true, hostTime: 12), .matching)
+        XCTAssertEqual(gate.check(duration: 30, expected: 547, playing: true, hostTime: 13), .waiting)
+    }
+
+    func testPausedMismatchingDurationCannotBecomeConfirmedThroughElapsedTime() {
+        var gate = MusicDurationGate()
+        XCTAssertEqual(gate.check(duration: 30, expected: 547, playing: false, hostTime: 0), .waiting)
+        XCTAssertEqual(gate.check(duration: 30, expected: 547, playing: false, hostTime: 100), .waiting)
+        XCTAssertEqual(gate.check(duration: 30, expected: 547, playing: true, hostTime: 101), .waiting)
+        XCTAssertEqual(gate.check(duration: 30, expected: 547, playing: true, hostTime: 102), .different)
+    }
+
+    @MainActor
+    func testIframeLoadingForeignVideoAndPausedSnapshotsDoNotReplaceSavedSongDuration() throws {
+        let playback = MusicPlayback()
+        let selection = try MusicSelection.youtube(id: "lkiV3U0GfGg")
+        playback.load(selection, track: fixture(), mediaURL: nil, settings: MusicSettings())
+        for (state, videoID, span) in [(-1, "lkiV3U0GfGg", 30.0), (3, "lkiV3U0GfGg", 30.0),
+                                      (1, "dQw4w9WgXcQ", 30.0), (1, "lkiV3U0GfGg", 0.0),
+                                      (2, "lkiV3U0GfGg", 30.0)] {
+            playback.receiveYouTube(iframeSnapshot(state: state, videoID: videoID, duration: span), videoID: "lkiV3U0GfGg")
+            XCTAssertEqual(playback.duration, 8)
+            XCTAssertEqual(playback.position, 0)
+            XCTAssertFalse(playback.isPlaying)
+            XCTAssertNil(playback.message)
+        }
+        playback.receiveYouTube(iframeSnapshot(duration: 8, time: 2), videoID: "lkiV3U0GfGg")
+        XCTAssertEqual(playback.position, 2)
+        XCTAssertTrue(playback.isPlaying)
+        XCTAssertNil(playback.message)
+        playback.stop()
+    }
+
+    @MainActor
+    func testConfirmedIframeDurationDiagnosticClearsAutomaticallyWhenMainVideoReturns() async throws {
+        let playback = MusicPlayback()
+        playback.load(try MusicSelection.youtube(id: "lkiV3U0GfGg"), track: fixture(), mediaURL: nil, settings: MusicSettings())
+        playback.receiveYouTube(iframeSnapshot(duration: 30), videoID: "lkiV3U0GfGg")
+        XCTAssertNil(playback.message)
+        XCTAssertEqual(playback.duration, 8)
+        try await Task.sleep(nanoseconds: 1_100_000_000)
+        playback.receiveYouTube(iframeSnapshot(duration: 30, time: 1.1), videoID: "lkiV3U0GfGg")
+        XCTAssertTrue(playback.message?.contains("動画 0:30・解析 0:08") == true)
+        XCTAssertEqual(playback.position, 0)
+        XCTAssertEqual(playback.duration, 8)
+        playback.receiveYouTube(iframeSnapshot(duration: 8, time: 0.1), videoID: "lkiV3U0GfGg")
+        XCTAssertNil(playback.message)
+        XCTAssertEqual(playback.position, 0.1)
+        XCTAssertTrue(playback.isPlaying)
+        playback.stop()
+    }
+
+    private func iframeSnapshot(state: Int = 1, videoID: String = "lkiV3U0GfGg", duration: Double, time: Double = 0) -> [String: Any] {
+        ["state": state, "videoID": videoID, "duration": duration, "time": time, "rate": 1.0,
+         "sent": Date().timeIntervalSince1970 * 1_000]
+    }
+
     func testGainCanAmplifyQuietSavedTrackToFullOutputWithoutChangingAudioBands() throws {
         let track = MusicHapticTrack(version: 2, audioSHA256: String(repeating: "a", count: 64), duration: 2,
             envelope: [0.0, 2.0].map { .init(time: $0, bass: 0.72, energy: 0.5, sharpness: 0.4, mid: 0.4, high: 0.2) }, taps: [],

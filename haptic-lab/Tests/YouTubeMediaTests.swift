@@ -48,7 +48,8 @@ final class YouTubeMediaTests: XCTestCase {
             return destination
         }
         let library = MusicLibrary(root: root, services: services)
-        let selection = try MusicSelection.youtube(id: "dQw4w9WgXcQ", title: "テスト動画")
+        var selection = try MusicSelection.youtube(id: "dQw4w9WgXcQ", title: "テスト動画")
+        selection.duration = 12
         library.prepare(selection)
         try await waitForPreparation(library)
         let record = try XCTUnwrap(library.record(for: selection))
@@ -57,6 +58,7 @@ final class YouTubeMediaTests: XCTestCase {
         XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: library.disk.working.path).isEmpty)
         XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: library.disk.media.path).isEmpty)
         let track = try library.disk.track(record)
+        XCTAssertEqual(track.duration, 12, accuracy: 0.1)
         XCTAssertEqual(track.version, 2)
         XCTAssertEqual(track.spectrum?.first?.levels.count, 24)
         XCTAssertGreaterThan(track.spectrum?.count ?? 0, 500)

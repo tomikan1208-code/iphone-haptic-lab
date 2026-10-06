@@ -168,7 +168,8 @@ final class MusicPlayback: ObservableObject {
     private var interruptionObserver: NSObjectProtocol?
     private var routeObserver: NSObjectProtocol?
     private var loggedPlay = false
-    private var mismatchReported = false
+    private var durationGate = MusicDurationGate()
+    private var durationMessage: String?
     private var seekTarget: Double?
     private var seekDeadline = 0.0
     private var seekGeneration = 0
@@ -205,7 +206,8 @@ final class MusicPlayback: ObservableObject {
         position = 0
         message = nil
         loggedPlay = false
-        mismatchReported = false
+        durationGate.reset()
+        durationMessage = nil
         seekTarget = nil
         isReady = false
         if selection.kind != .youtube {
@@ -305,7 +307,7 @@ final class MusicPlayback: ObservableObject {
     }
 
     func beginYouTubeLoading(videoID: String) {
-        if selection?.videoID == videoID { isReady = false; renderer.stop() }
+        if selection?.videoID == videoID { isReady = false; durationGate.reset(); renderer.stop() }
     }
 
     func receiveYouTube(_ snapshot: [String: Any], videoID: String) {
@@ -326,11 +328,35 @@ final class MusicPlayback: ObservableObject {
             renderer.stop(); mediaClock.reset(to: position); return
         }
         let currentID = snapshot["videoID"] as? String
-        let playing = state == 1 && currentID == videoID
-        if abs(position - max(0, time)) > 0.02 { position = max(0, time) }
-        if abs(duration - max(0, span)) > 0.001 { duration = max(0, span) }
+        // Ignore the clock/duration of an unloaded iframe or another video. These
+        // snapshots previously replaced the selected song's duration and raised a
+        // mismatch even when the selected song was not playing.
+        guard currentID == videoID, span > 0, [0, 1, 2].contains(state) else {
+            isPlaying = false
+            isBuffering = state == 3
+            durationGate.reset()
+            renderer.stop()
+            mediaClock.reset(to: position)
+            return
+        }
+        let playing = state == 1
         if isPlaying != playing { isPlaying = playing }
-        if isBuffering != (state == 3) { isBuffering = state == 3 }
+        isBuffering = false
+        if let track {
+            let result = durationGate.check(duration: span, expected: track.duration,
+                                            playing: playing, hostTime: CACurrentMediaTime())
+            guard result == .matching else {
+                renderer.stop()
+                mediaClock.reset(to: position)
+                if result == .different {
+                    showDurationWaiting(videoDuration: span, audioDuration: track.duration)
+                }
+                return
+            }
+        }
+        clearDurationWaiting()
+        if abs(position - max(0, time)) > 0.02 { position = max(0, time) }
+        if abs(duration - span) > 0.001 { duration = span }
         let correctedTime = max(0, time + (playing ? max(0, latency) * rate : 0))
         mediaClock.update(position: correctedTime, playing: playing, rate: rate, hostTime: CACurrentMediaTime(), clockPosition: time)
         synchronize(position: visualizationPosition, playing: playing, rate: rate, clockPosition: time)
@@ -361,15 +387,25 @@ final class MusicPlayback: ObservableObject {
             }
         }
         if playing, !loggedPlay, let selection { loggedPlay = true; onPlay?(selection) }
-        if let track, duration > 0, abs(duration - track.duration) > max(1, track.duration * 0.015) {
+        if playing, let track, duration > 0, abs(duration - track.duration) > max(1, track.duration * 0.015) {
             renderer.stop()
-            if !mismatchReported {
-                message = "動画と解析した音源の長さが違うため、振動を停止しました。同じ音源で作り直してください。"
-                mismatchReported = true
-            }
+            showDurationWaiting(videoDuration: duration, audioDuration: track.duration)
             return
         }
+        clearDurationWaiting()
         renderer.synchronize(track: track, position: position, playing: playing, rate: rate, clockPosition: clockPosition)
+    }
+
+    private func showDurationWaiting(videoDuration: Double, audioDuration: Double) {
+        let text = "再生中の長さを確認しています（動画 \(musicTime(videoDuration))・解析 \(musicTime(audioDuration))）。一致したら振動を自動で再開します。"
+        // Do not overwrite playback/network errors with a duration diagnostic.
+        if message == nil || message == durationMessage { message = text }
+        durationMessage = text
+    }
+
+    private func clearDurationWaiting() {
+        if let durationMessage, message == durationMessage { message = nil }
+        durationMessage = nil
     }
 
     private func evaluate(_ command: String) {

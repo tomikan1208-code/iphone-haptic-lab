@@ -367,6 +367,31 @@ func lowerBound<T>(_ values: [T], time: Double, key: (T) -> Double) -> Int {
     return low
 }
 
+// A transient iframe duration must silence haptics immediately, without declaring
+// that the saved audio is wrong. Confirm a diagnostic only during stable playback.
+struct MusicDurationGate {
+    enum Result: Equatable { case waiting, matching, different }
+    private var candidate: Double?
+    private var since = 0.0
+
+    mutating func check(duration: Double, expected: Double, playing: Bool, hostTime: Double) -> Result {
+        guard duration.isFinite, duration > 0, expected.isFinite, expected > 0,
+              hostTime.isFinite else { reset(); return .waiting }
+        if abs(duration - expected) <= max(1, expected * 0.015) {
+            reset()
+            return .matching
+        }
+        guard playing else { reset(); return .waiting }
+        if candidate == nil || abs(duration - (candidate ?? 0)) > 0.1 || hostTime < since {
+            candidate = duration
+            since = hostTime
+        }
+        return hostTime - since >= 1 ? .different : .waiting
+    }
+
+    mutating func reset() { candidate = nil; since = 0 }
+}
+
 // Require the media clock to advance, even when a player reports "playing" during a stall.
 struct MusicPlaybackGate {
     private var previousPosition: Double?
