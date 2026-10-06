@@ -3,6 +3,53 @@ import CoreHaptics
 @testable import HapticLab
 
 final class MusicPlayerTests: XCTestCase {
+    func testGainCanAmplifyQuietSavedTrackToFullOutputWithoutChangingAudioBands() throws {
+        let track = MusicHapticTrack(version: 2, audioSHA256: String(repeating: "a", count: 64), duration: 2,
+            envelope: [0.0, 2.0].map { .init(time: $0, bass: 0.72, energy: 0.5, sharpness: 0.4, mid: 0.4, high: 0.2) }, taps: [],
+            spectrum: [0.0, 2.0].map { .init(time: $0, levels: Array(repeating: 0.4, count: 24)) })
+        var settings = MusicSettings()
+        let quiet = track.output(at: 0.2, settings: settings).level
+        XCTAssertGreaterThan(quiet, 0.29)
+        XCTAssertLessThan(quiet, 0.31)
+        settings.gain = 2
+        XCTAssertEqual(track.output(at: 0.2, settings: settings).level, quiet / 0.7 * 2, accuracy: 0.000001)
+        settings.gain = 4
+        let full = try XCTUnwrap(HapticVisualSignal.spectrum(track: track, time: 0.2, settings: settings, active: true))
+        XCTAssertEqual(full.output.level, 1)
+        XCTAssertEqual(full.haptics.max(), 1)
+        XCTAssertEqual(full.audio, Array(repeating: 0.4, count: 24))
+        let pattern = try XCTUnwrap(track.segment(at: 0.2, length: 0.3, settings: settings).first)
+        XCTAssertEqual(pattern.curves.first?.points.first?.value, full.output.continuous)
+        XCTAssertNoThrow(try pattern.validated())
+        XCTAssertEqual(settings.intensity(for: .init(time: 0, bass: 0, energy: 0, sharpness: 0, mid: 0, high: 0)), 0)
+        settings.gain = 0
+        XCTAssertEqual(track.output(at: 0.2, settings: settings).level, 0)
+    }
+
+    @MainActor
+    func testAmplifiedTapsClampBeforeDecaySoRendererAndBothDisplaysMatch() throws {
+        var track = fixture()
+        track.spectrum = [0.0, 8.0].map { .init(time: $0, levels: Array(repeating: 0.4, count: 24)) }
+        let settings = MusicSettings(mode: .beats, gain: 4)
+        let pattern = try XCTUnwrap(track.segment(at: 0.5, length: 0.1, settings: settings).first)
+        XCTAssertEqual(pattern.events.first?.intensity, 1)
+        XCTAssertNoThrow(try MusicHapticRenderer.makePattern(pattern))
+        XCTAssertEqual(track.output(at: 0.5, settings: settings).transient, 1)
+        XCTAssertEqual(track.output(at: 0.53, settings: settings).transient, 0.5, accuracy: 0.000001)
+        XCTAssertEqual(HapticVisualSignal.spectrum(track: track, time: 0.53, settings: settings, active: true)?.haptics.max() ?? -1, 0.5, accuracy: 0.000001)
+        XCTAssertEqual(HapticVisualSignal.level(track: track, time: 0.53, settings: settings), 0.5, accuracy: 0.000001)
+    }
+
+    func testOlderGainValuesDecodeUnchangedAndInvalidBoostCannotExceedHardwareBounds() throws {
+        let legacy = try JSONDecoder().decode(MusicSettings.self, from: Data(#"{"mode":"mix","gain":0.25,"bass":0.65,"density":0.7,"offset":0}"#.utf8))
+        XCTAssertEqual(legacy.normalized.gain, 0.25)
+        XCTAssertEqual(MusicSettings(gain: 5).normalized.gain, 4)
+        XCTAssertEqual(MusicSettings(gain: -1).normalized.gain, 0)
+        XCTAssertEqual(MusicSettings(gain: .nan).normalized.gain, 0.7)
+        XCTAssertEqual(MusicSettings(gain: .infinity).normalized.gain, 0.7)
+        XCTAssertEqual(MusicSettings(gain: 4).amplified(.nan), 0)
+    }
+
     func testSavedSpectrumMeasuresAudioFrequencyInsteadOfStrengthModulation() throws {
         for frequency in [80.0, 300.0, 3_000.0] {
             let extractor = try MusicSignalExtractor(channels: 1)

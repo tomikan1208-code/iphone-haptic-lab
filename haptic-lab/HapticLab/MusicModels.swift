@@ -95,6 +95,7 @@ struct MusicSettings: Codable, Equatable {
         }
     }
     var mode: Mode = .mix
+    static let gainRange = 0.0...4.0
     var gain: Double = 0.7
     var bass: Double = 0.65
     var density: Double = 0.7
@@ -102,7 +103,7 @@ struct MusicSettings: Codable, Equatable {
     var offset: Double = 0
 
     var normalized: MusicSettings {
-        MusicSettings(mode: mode, gain: bounded(gain, to: 0...1, fallback: 0.7),
+        MusicSettings(mode: mode, gain: bounded(gain, to: Self.gainRange, fallback: 0.7),
                       bass: bounded(bass, to: 0...1, fallback: 0.65),
                       density: bounded(density, to: 0...1, fallback: 0.7),
                       offset: bounded(offset, to: -1...1, fallback: 0))
@@ -119,7 +120,12 @@ struct MusicSettings: Codable, Equatable {
                 level = point.bass * bass * 0.65 + mid * 0.20 + point.energy * 0.08
             } else { level = point.bass * bass * 0.5 + point.energy * 0.10 }
         }
-        return min(1, max(0, level * gain))
+        return amplified(level)
+    }
+
+    // Amplify saved dynamics while keeping every hardware event and visual inside 0...1.
+    func amplified(_ intensity: Double) -> Double {
+        bounded(intensity * bounded(gain, to: Self.gainRange, fallback: 0.7), to: 0...1, fallback: 0)
     }
 
     func includes(_ tap: MusicTap) -> Bool {
@@ -280,7 +286,7 @@ struct MusicHapticTrack: Codable, Equatable {
         for tap in taps[first..<last] where settings.includes(tap) {
             let elapsed: Double = max(0, time - tap.time)
             let decay: Double = max(0, 1 - elapsed / 0.06)
-            let intensity: Double = tap.intensity * settings.gain * decay
+            let intensity: Double = settings.amplified(tap.intensity) * decay
             transient = max(transient, intensity)
         }
         return .init(continuous: settings.intensity(for: point), sharpness: settings.sharpness(for: point), transient: transient)
@@ -329,7 +335,7 @@ struct MusicHapticTrack: Codable, Equatable {
             let last = lowerBound(taps, time: end, key: { $0.time })
             let events = taps[first..<last].filter { settings.includes($0) }.map {
                 HapticEventSpec(kind: .tap, time: ($0.time - start) / rate, duration: 0,
-                                intensity: $0.intensity * settings.gain, sharpness: $0.sharpness)
+                                intensity: settings.amplified($0.intensity), sharpness: $0.sharpness)
             }
             if !events.isEmpty {
                 result.append(HapticPatternSpec(id: "music-taps", name: "音楽 · ビート", subtitle: "", symbol: "waveform",

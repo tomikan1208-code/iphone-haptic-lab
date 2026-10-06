@@ -10,47 +10,50 @@ struct MusicPlayerScreen: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                mediaPlayer
-                    .frame(height: playback.containsVideo ? 211 : 170).background(.black)
-                    .accessibilityIdentifier("music.mediaPlayer")
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        songHeader
-                        if let message = playback.message { MusicMessage(text: message) { playback.message = nil } }
-                        if !playback.hasHaptics {
-                            Text("映像・音声のみで再生します。振動を付けるには、ライブラリからこの曲を選び、初回の作成を行ってください。")
-                                .font(.system(size: 13)).foregroundStyle(LabTheme.muted)
-                        }
-                    }.padding(16)
-                }
-                .scrollIndicators(.hidden)
-                VStack(spacing: 8) {
-                    if playback.hasHaptics {
-                        HStack {
-                            Text(showSpectrum ? "音の周波数 · 灰：音 / 緑：振動" : "現在の前後2秒 · 白：打音")
-                                .font(.system(size: 10)).foregroundStyle(LabTheme.muted)
-                            Spacer()
-                            Button(showSpectrum ? "波形" : "周波数") { showSpectrum.toggle() }
-                                .font(.system(size: 11)).foregroundStyle(LabTheme.mint)
-                                .accessibilityIdentifier("haptics.toggle")
-                        }
-                        TimelineView(.animation(minimumInterval: 0.02, paused: !playback.isPlaying)) { _ in
-                            Group {
-                                if showSpectrum {
-                                    HapticSpectrumView(track: playback.visualizationTrack, position: playback.visualizationPosition,
-                                                       settings: playback.settings, active: playback.hapticsActive)
-                                } else {
-                                    HapticTimelineView(track: playback.visualizationTrack, position: playback.visualizationPosition,
-                                                       settings: playback.settings, playing: playback.isPlaying)
-                                }
+            GeometryReader { geometry in
+                VStack(spacing: 0) {
+                    mediaPlayer
+                        .frame(height: min(playback.containsVideo ? 211 : 170, max(100, geometry.size.height * 0.27))).background(.black)
+                        .accessibilityIdentifier("music.mediaPlayer")
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 12) {
+                            songHeader
+                            if let message = playback.message { MusicMessage(text: message) { playback.message = nil } }
+                            if !playback.hasHaptics {
+                                Text("映像・音声のみで再生します。振動を付けるには、ライブラリからこの曲を選び、初回の作成を行ってください。")
+                                    .font(.system(size: 13)).foregroundStyle(LabTheme.muted)
                             }
-                        }.frame(height: showSpectrum ? 66 : 48)
+                        }.padding(16)
                     }
-                    controls
-                }.padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 12).background(LabTheme.panel)
+                    .scrollIndicators(.hidden)
+                    VStack(spacing: 8) {
+                        if playback.hasHaptics {
+                            HStack {
+                                Text(showSpectrum ? "音の周波数 · 灰：音 / 緑：振動" : "現在の前後2秒 · 白：打音")
+                                    .font(.system(size: 10)).foregroundStyle(LabTheme.muted)
+                                Spacer()
+                                Button(showSpectrum ? "波形" : "周波数") { showSpectrum.toggle() }
+                                    .font(.system(size: 11)).foregroundStyle(LabTheme.mint)
+                                    .accessibilityIdentifier("haptics.toggle")
+                            }
+                            TimelineView(.animation(minimumInterval: 0.02, paused: !playback.isPlaying)) { _ in
+                                Group {
+                                    if showSpectrum {
+                                        HapticSpectrumView(track: playback.visualizationTrack, position: playback.visualizationPosition,
+                                                           settings: playback.settings, active: playback.hapticsActive)
+                                    } else {
+                                        HapticTimelineView(track: playback.visualizationTrack, position: playback.visualizationPosition,
+                                                           settings: playback.settings, playing: playback.isPlaying)
+                                    }
+                                }
+                            }.frame(height: showSpectrum ? 66 : 48)
+                        }
+                        controls
+                        if playback.hasHaptics { strengthControl }
+                    }.padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 12).background(LabTheme.panel)
+                }
+                .background(LabTheme.background).foregroundStyle(.white)
             }
-            .background(LabTheme.background).foregroundStyle(.white)
             .navigationTitle("再生中").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("閉じる") { playback.pause(); dismiss() } }
@@ -135,14 +138,35 @@ struct MusicPlayerScreen: View {
         }
     }
 
+    private var strengthControl: some View {
+        VStack(spacing: 2) {
+            HStack {
+                Text("振動の強さ").font(.system(size: 12, weight: .semibold))
+                Spacer()
+                Text(String(format: "%.2f倍", playback.settings.gain))
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced)).foregroundStyle(LabTheme.mint)
+                    .accessibilityIdentifier("music.gainValue")
+            }
+            HStack(spacing: 8) {
+                Text("オフ")
+                Slider(value: $playback.settings.gain, in: MusicSettings.gainRange, step: 0.05)
+                    .tint(LabTheme.mint).accessibilityLabel("振動の強さ")
+                    .accessibilityValue(String(format: "%.2f倍", playback.settings.gain)).accessibilityIdentifier("music.gain")
+                Text("4倍")
+            }.font(.system(size: 9)).foregroundStyle(LabTheme.muted)
+        }
+    }
+
     private var settingsPanel: some View {
         VStack(alignment: .leading, spacing: 23) {
             Text("触感を調整").font(.system(size: 17, weight: .semibold))
             Picker("振動モード", selection: $playback.settings.mode) {
                 ForEach(MusicSettings.Mode.allCases, id: \.self) { Text($0.title).tag($0) }
             }.pickerStyle(.segmented).accessibilityIdentifier("music.mode")
-            ParameterSlider(title: "全体の強さ", valueLabel: "\(Int(playback.settings.gain * 100))%", leading: "やさしく", trailing: "強く",
-                            identifier: "music.gain", value: $playback.settings.gain, range: 0...1)
+            ParameterSlider(title: "振動の強さ", valueLabel: String(format: "%.2f倍", playback.settings.gain), leading: "オフ", trailing: "最大4倍",
+                            identifier: "music.gain.settings", value: $playback.settings.gain, range: MusicSettings.gainRange, step: 0.05)
+            Text("1倍より上で振動を増幅します。実際の振動出力は100%までです。再解析は不要で、再生中にも変えられます。")
+                .font(.system(size: 12)).foregroundStyle(LabTheme.muted).fixedSize(horizontal: false, vertical: true)
             ParameterSlider(title: "低音の量", valueLabel: "\(Int(playback.settings.bass * 100))%", leading: "控えめ", trailing: "たっぷり",
                             identifier: "music.bass", value: $playback.settings.bass, range: 0...1)
             ParameterSlider(title: "ビートの密度", valueLabel: "\(Int(playback.settings.density * 100))%", leading: "大きな打音だけ", trailing: "細かな打音も",

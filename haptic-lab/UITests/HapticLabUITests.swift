@@ -82,6 +82,18 @@ final class HapticLabUITests: XCTestCase {
         waitForExpectations(timeout: 5)
         XCTAssertFalse(app.staticTexts["music.firstPreparation"].exists)
         screenshot("07-music-player", app: app)
+        let gain = app.sliders["music.gain"]
+        XCTAssertTrue(gain.isHittable)
+        gain.adjust(toNormalizedSliderPosition: 1)
+        XCTAssertEqual(app.staticTexts["music.gainValue"].label, "4.00倍")
+        screenshot("18-direct-strength-control", app: app)
+        app.buttons["閉じる"].tap()
+        song.tap()
+        XCTAssertTrue(app.sliders["music.gain"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["music.gainValue"].label, "4.00倍")
+        gain.adjust(toNormalizedSliderPosition: 0)
+        XCTAssertEqual(app.staticTexts["music.gainValue"].label, "0.00倍")
+        gain.adjust(toNormalizedSliderPosition: 0.5)
         let play = app.buttons["music.play"]
         reveal(play, app: app)
         let ready = NSPredicate(format: "enabled == true")

@@ -64,7 +64,7 @@ struct HapticTimelineView: View {
             let last = lowerBound(track.taps, time: start + span - normalized.offset, key: { $0.time })
             for tap in track.taps[first..<last] where normalized.includes(tap) {
                 let x = (tap.time + normalized.offset - start) / span * size.width
-                let height = tap.intensity * normalized.gain * (size.height - 8)
+                let height = normalized.amplified(tap.intensity) * (size.height - 8)
                 var pulse = Path()
                 pulse.move(to: CGPoint(x: x, y: size.height - 4))
                 pulse.addLine(to: CGPoint(x: x, y: size.height - 4 - height))
