@@ -215,6 +215,7 @@ final class MusicSignalExtractor {
 
 enum MusicAnalyzer {
     static let maximumBytes: Int64 = 512 * 1_024 * 1_024
+    static let decoderVersion = 2
 
     static func analyze(_ url: URL, progress: @escaping @Sendable (Double, String) -> Void) async throws -> MusicHapticTrack {
         let asset = AVURLAsset(url: url)
@@ -229,42 +230,43 @@ enum MusicAnalyzer {
         let reader = try AVAssetReader(asset: asset)
         let output = AVAssetReaderTrackOutput(track: audio, outputSettings: [
             AVFormatIDKey: kAudioFormatLinearPCM,
-            AVSampleRateKey: MusicSignalExtractor.sampleRate,
             AVLinearPCMBitDepthKey: 32,
             AVLinearPCMIsFloatKey: true,
             AVLinearPCMIsBigEndianKey: false,
-            AVLinearPCMIsNonInterleaved: false
+            AVLinearPCMIsNonInterleaved: true
         ])
         output.alwaysCopiesSampleData = false
         guard reader.canAdd(output) else { throw MusicError.unsupportedMedia }
         reader.add(output)
         guard reader.startReading() else { throw reader.error ?? MusicError.unsupportedMedia }
         defer { reader.cancelReading() }
-        var extractor: MusicSignalExtractor?
+        var decoder: MusicPCMDecoder?
         var lastProgress = 0.0
         while let sample = output.copyNextSampleBuffer() {
             try Task.checkCancellation()
-            guard let description = CMSampleBufferGetFormatDescription(sample),
-                  let format = CMAudioFormatDescriptionGetStreamBasicDescription(description),
-                  let block = CMSampleBufferGetDataBuffer(sample) else { throw MusicError.unsupportedMedia }
-            guard abs(format.pointee.mSampleRate - MusicSignalExtractor.sampleRate) < 1 else { throw MusicError.unsupportedMedia }
-            if extractor == nil { extractor = try MusicSignalExtractor(channels: Int(format.pointee.mChannelsPerFrame)) }
-            let bytes = CMBlockBufferGetDataLength(block)
-            guard bytes % MemoryLayout<Float>.size == 0, bytes <= 8 * 1_024 * 1_024 else { throw MusicError.unsupportedMedia }
-            if bytes == 0 { continue }
-            var samples = [Float](repeating: 0, count: bytes / MemoryLayout<Float>.size)
-            let status = samples.withUnsafeMutableBytes { buffer in
-                CMBlockBufferCopyDataBytes(block, atOffset: 0, dataLength: bytes, destination: buffer.baseAddress!)
+            guard let description = CMSampleBufferGetFormatDescription(sample) else { throw MusicError.unsupportedMedia }
+            let format = AVAudioFormat(cmAudioFormatDescription: description)
+            let count = CMSampleBufferGetNumSamples(sample)
+            guard format.commonFormat == .pcmFormatFloat32, count >= 0,
+                  count <= 8 * 1_024 * 1_024 / max(1, Int(format.channelCount) * MemoryLayout<Float>.size) else {
+                throw MusicError.unsupportedMedia
             }
-            guard status == kCMBlockBufferNoErr else { throw MusicError.unsupportedMedia }
+            if count == 0 { continue }
+            guard let pcm = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(count)) else {
+                throw MusicError.unsupportedMedia
+            }
+            pcm.frameLength = AVAudioFrameCount(count)
+            let status = CMSampleBufferCopyPCMDataIntoAudioBufferList(sample, at: 0, frameCount: Int32(count), into: pcm.mutableAudioBufferList)
+            guard status == noErr else { throw MusicError.unsupportedMedia }
+            if decoder == nil { decoder = try MusicPCMDecoder(format: format, duration: duration) }
             let position = CMSampleBufferGetPresentationTimeStamp(sample).seconds
-            try extractor?.append(samples, at: position)
+            try decoder?.append(pcm, at: position)
             if position - lastProgress > 0.25 {
                 progress(0.1 + min(1, position / duration) * 0.78, "低音とビートを解析中 · \(musicTime(position)) / \(musicTime(duration))")
                 lastProgress = position
             }
         }
-        guard reader.status == .completed, let extractor else { throw reader.error ?? MusicError.unsupportedMedia }
+        guard reader.status == .completed, let decoder else { throw reader.error ?? MusicError.unsupportedMedia }
         progress(0.9, "振動のトラックを作成しています")
         let file = try FileHandle(forReadingFrom: url)
         defer { try? file.close() }
@@ -274,7 +276,7 @@ enum MusicAnalyzer {
             digest.update(data: bytes)
         }
         let hash = digest.finalize().map { String(format: "%02x", $0) }.joined()
-        return try extractor.finish(hash: hash, expectedDuration: duration)
+        return try decoder.finish(hash: hash)
     }
 }
 

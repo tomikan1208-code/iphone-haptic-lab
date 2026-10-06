@@ -34,6 +34,7 @@ struct MusicAnalysisInfo: Codable, Equatable {
     var style: MusicGenerationStyle? = nil
     var tempoBPM: Double? = nil
     var profile: MusicArrangement? = nil
+    var decoderVersion: Int? = nil
 }
 
 struct PCServerConnection: Equatable, Sendable {

@@ -166,6 +166,12 @@ final class MusicLibrary: ObservableObject {
                  method: MusicAnalysisMethod = .device, style: MusicGenerationStyle = .following,
                  profile: MusicArrangement = .standard,
                  connection: PCServerConnection? = nil) {
+        var correctedSelection = selection
+        // Cached duration was previously replaced with the faulty analysis length.
+        // It cannot validate a repair downloaded directly from the same video ID.
+        if selection.kind == .youtube, method == .device, audioFile == nil, audioDownloadURL == nil,
+           record(for: selection)?.requiresAudioReanalysis == true { correctedSelection.duration = nil }
+        let selection = correctedSelection
         guard preparation == nil, storageAvailable else {
             message = storageAvailable ? "解析中の曲が終わってから追加してください。" : "保存先を利用できません。"
             return
@@ -218,12 +224,13 @@ final class MusicLibrary: ObservableObject {
             }
             var track = try await MusicAnalyzer.analyze(localURL, progress: report)
             track.analysis = MusicAnalysisInfo(engine: "device", elapsedSeconds: 0, sampleRate: 22_050,
-                hopMilliseconds: 20, fftSize: 1_024, style: style)
+                hopMilliseconds: 20, fftSize: 1_024, style: style, decoderVersion: MusicAnalyzer.decoderVersion)
             // Preserve natural timing and crescendos for orchestral music instead of applying a fixed beat grid.
             if profile == .orchestral { track = try MusicComposer.orchestral(track) }
             else if style == .musical { track = try MusicComposer.compose(track) }
             track.analysis = MusicAnalysisInfo(engine: "device", elapsedSeconds: Date().timeIntervalSince(started),
-                sampleRate: 22_050, hopMilliseconds: 20, fftSize: 1_024, style: style, tempoBPM: track.analysis?.tempoBPM, profile: profile)
+                sampleRate: 22_050, hopMilliseconds: 20, fftSize: 1_024, style: style, tempoBPM: track.analysis?.tempoBPM, profile: profile,
+                decoderVersion: MusicAnalyzer.decoderVersion)
             return track
         }
         self.worker = worker

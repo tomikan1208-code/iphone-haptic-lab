@@ -313,14 +313,17 @@ struct MusicView: View {
     }
 
     private func select(_ selection: MusicSelection) {
-        if library.record(for: selection)?.isPrepared == true {
+        let record = library.record(for: selection)
+        if record?.isPrepared == true, record?.requiresAudioReanalysis != true {
             playAfterPreparation = nil
             open(selection, withHaptics: true)
         } else if selection.kind == .youtube {
             guard library.preparation == nil else { library.message = "解析中の曲が終わってから選んでください。"; return }
             playback.pause()
             haptics.stop()
-            library.prepare(selection, method: .device, style: preferences.style, profile: preferences.profile)
+            library.prepare(selection, method: .device,
+                style: record?.analysis?.style ?? preferences.style,
+                profile: record?.analysis?.profile ?? preferences.profile)
             if library.preparation?.selection.id == selection.id {
                 playAfterPreparation = selection
                 preparationSelection = selection

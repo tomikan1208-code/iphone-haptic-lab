@@ -149,6 +149,10 @@ struct MusicRecord: Codable, Identifiable, Equatable {
     var analysis: MusicAnalysisInfo?
     var id: String { selection.id }
     var isPrepared: Bool { trackFilename != nil }
+    var requiresAudioReanalysis: Bool {
+        isPrepared && selection.kind == .youtube && (analysis == nil || analysis?.engine == "device")
+            && (analysis?.decoderVersion ?? 0) < MusicAnalyzer.decoderVersion
+    }
 }
 
 struct MusicEnvelopePoint: Codable, Equatable {
