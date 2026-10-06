@@ -26,17 +26,17 @@ struct MusicView: View {
     @State private var showAccount = false
     @State private var deleting: MusicRecord?
     @State private var openPlayerAfterDismiss = false
+    @State private var showPreparation = false
+    @State private var preparationSelection: MusicSelection?
+    @State private var playerAfterPreparation: MusicSelection?
     @FocusState private var urlFocused: Bool
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    inputPanel
-                    if let progress = library.preparation { preparationPanel(progress) }
-                    if let message = library.message { MusicMessage(text: message) { library.message = nil } }
-                    if playback.selection != nil { currentSongPanel }
                     libraryPanel
+                    if playback.selection != nil { currentSongPanel }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 6)
@@ -48,14 +48,40 @@ struct MusicView: View {
                 if focused { withAnimation { proxy.scrollTo("music.searchInput", anchor: .top) } }
             }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let progress = library.preparation {
+                MusicPreparationBanner(progress: progress) {
+                    urlFocused = false
+                    preparationSelection = progress.selection
+                    showPreparation = true
+                }
+            }
+        }
         .sheet(item: $pending, onDismiss: {
             if openPlayerAfterDismiss { openPlayerAfterDismiss = false; showPlayer = true }
+            else if let progress = library.preparation {
+                preparationSelection = progress.selection
+                showPreparation = true
+            }
         }) { request in
             MusicPreparationView(selection: request.selection, initialAudio: request.audioURL) {
                 open(request.selection, withHaptics: false)
             }
             .environmentObject(library)
             .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showPreparation, onDismiss: {
+            if let selection = playerAfterPreparation {
+                playerAfterPreparation = nil
+                open(selection, withHaptics: true)
+            }
+        }) {
+            MusicPreparationStatusView(selection: preparationSelection) {
+                playAfterPreparation = nil
+                library.cancelPreparation()
+                showPreparation = false
+            }
+            .environmentObject(library)
         }
         .sheet(isPresented: $showPlayer, onDismiss: { playback.pause() }) {
             MusicPlayerScreen().environmentObject(playback).environmentObject(library)
@@ -85,9 +111,12 @@ struct MusicView: View {
             if let id {
                 pending = nil
                 section = .prepared
+                let wasShowingPreparation = showPreparation
+                showPreparation = false
                 if let selection = playAfterPreparation, selection.id == id {
                     playAfterPreparation = nil
-                    open(selection, withHaptics: true)
+                    if wasShowingPreparation { playerAfterPreparation = selection }
+                    else { open(selection, withHaptics: true) }
                 }
             }
         }
@@ -101,18 +130,9 @@ struct MusicView: View {
     }
 
     private var inputPanel: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            HStack {
-                Text("あなたの音楽").font(.system(size: 16, weight: .semibold))
-                Spacer()
-                Button { urlFocused = false; showAccount = true } label: {
-                    Label(youtube.connected ? "接続済み" : "ログイン", systemImage: "person.crop.circle")
-                        .font(.system(size: 12, weight: .medium)).foregroundStyle(LabTheme.mint)
-                }
-                .accessibilityIdentifier("music.account")
-            }
+        HStack(spacing: 18) {
             Button { urlFocused = false; importing = true } label: {
-                Label("音楽・動画ファイルから選ぶ", systemImage: "folder")
+                Label("ファイルを読み込む", systemImage: "folder")
                     .font(.system(size: 13, weight: .medium)).foregroundStyle(LabTheme.muted)
                     .padding(.vertical, 4)
             }
@@ -128,33 +148,7 @@ struct MusicView: View {
             }
             .accessibilityIdentifier("music.demo")
         }
-        .padding(14).background(LabTheme.panel, in: RoundedRectangle(cornerRadius: 12))
-    }
-
-    private func preparationPanel(_ progress: MusicPreparationProgress) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "waveform.badge.plus").foregroundStyle(LabTheme.mint)
-                Text("振動を作成中").font(.system(size: 15, weight: .semibold))
-                Spacer()
-                Text("\(Int(progress.fraction * 100))%").font(.system(size: 12, design: .monospaced)).foregroundStyle(LabTheme.mint)
-            }
-            TimelineView(.periodic(from: .now, by: 1)) { context in
-                Text("経過 \(Int(context.date.timeIntervalSince(progress.startedAt)))秒" + progress.remainingText)
-                    .font(.system(size: 11)).foregroundStyle(LabTheme.muted)
-            }
-            Text(progress.selection.title).font(.system(size: 13)).lineLimit(2)
-            ProgressView(value: progress.fraction).tint(LabTheme.mint)
-            HStack {
-                Text(progress.message).font(.system(size: 11)).foregroundStyle(LabTheme.muted)
-                Spacer()
-                Button("キャンセル") { playAfterPreparation = nil; library.cancelPreparation() }.font(.system(size: 12)).foregroundStyle(LabTheme.coral)
-                    .accessibilityIdentifier("music.cancelAnalysis")
-            }
-            Text("解析中はこのアプリを開いたままにしてください。")
-                .font(.system(size: 11)).foregroundStyle(LabTheme.muted)
-        }
-        .labPanel().accessibilityIdentifier("music.analysisProgress")
+        .padding(.vertical, 4)
     }
 
     private var currentSongPanel: some View {
@@ -179,8 +173,13 @@ struct MusicView: View {
             HStack {
                 Text("ライブラリ").font(.system(size: 19, weight: .bold))
                 Spacer()
-                Text("\(library.prepared.count)曲の振動").font(.system(size: 12)).foregroundStyle(LabTheme.muted)
+                Button { urlFocused = false; showAccount = true } label: {
+                    Label(youtube.connected ? "接続済み" : "ログイン", systemImage: "person.crop.circle")
+                        .font(.system(size: 12)).foregroundStyle(LabTheme.mint)
+                }.accessibilityIdentifier("music.account")
             }
+            inputPanel
+            if let message = library.message { MusicMessage(text: message) { library.message = nil } }
             Picker("音楽リスト", selection: $section) {
                 ForEach(MusicListSection.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
@@ -198,7 +197,7 @@ struct MusicView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass").foregroundStyle(LabTheme.muted)
-                TextField("YouTubeで曲・アーティストを検索", text: $search.query)
+                TextField("YouTubeを検索", text: $search.query)
                     .font(.system(size: 14)).textInputAutocapitalization(.never).autocorrectionDisabled()
                     .submitLabel(.search).onSubmit { submitSearch() }.focused($urlFocused)
                     .accessibilityIdentifier("music.searchQuery")
@@ -210,19 +209,39 @@ struct MusicView: View {
                 .accessibilityLabel("YouTubeを検索").accessibilityIdentifier("music.search")
             }.padding(14).background(LabTheme.elevated, in: RoundedRectangle(cornerRadius: 24))
                 .id("music.searchInput")
-            if let message = search.message { MusicMessage(text: message) { search.message = nil } }
-            if search.searching {
-                Text("YouTubeを検索中…").font(.system(size: 12)).foregroundStyle(LabTheme.muted)
-            } else if search.results.isEmpty {
-                MusicEmptyState(title: search.searchedQuery == nil ? "好きな音楽を探そう" : "動画が見つかりませんでした",
-                                detail: search.searchedQuery == nil ? "曲名やアーティスト名で検索して、動画を選びます。" : "別のキーワードで検索してみてください。",
-                                symbol: "magnifyingglass")
-            } else {
-                Text("「\(search.searchedQuery ?? "")」の検索結果").font(.system(size: 12)).foregroundStyle(LabTheme.muted)
-                ForEach(search.results) { selection in
-                    MusicSongRow(selection: selection, prepared: library.record(for: selection)?.isPrepared == true,
-                                 action: { select(selection) })
+            if search.canGoBack {
+                Button { urlFocused = false; search.back() } label: {
+                    Label("前の一覧に戻る", systemImage: "chevron.left").font(.system(size: 13)).foregroundStyle(LabTheme.mint)
+                }.accessibilityIdentifier("youtube.browserBack")
+            }
+            if let target = search.target {
+                Text(target.title).font(.system(size: 16, weight: .semibold))
+                if case .channel(_, let tab) = target {
+                    Picker("チャンネルの一覧", selection: Binding(get: { tab }, set: { search.channelTab($0, account: youtube) })) {
+                        ForEach(YouTubeChannelTab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }.pickerStyle(.segmented).accessibilityIdentifier("youtube.channelTabs")
                 }
+            }
+            if let message = search.message { MusicMessage(text: message) { search.message = nil } }
+            if search.results.isEmpty && !search.searching {
+                MusicEmptyState(title: search.searchedQuery == nil ? "好きな音楽を探そう" : "選択できる項目がありません",
+                                detail: search.searchedQuery == nil ? "曲名やチャンネル名で検索して、動画・チャンネル・再生リストを選びます。" : "別のキーワードや一覧を試してください。",
+                                symbol: "magnifyingglass")
+            }
+            LazyVStack(spacing: 0) {
+                ForEach(search.results) { item in
+                    if let selection = item.selection {
+                        MusicSongRow(selection: selection, prepared: library.record(for: selection)?.isPrepared == true,
+                                     action: { select(selection) })
+                    } else {
+                        YouTubeBrowseRow(item: item) { urlFocused = false; search.open(item, account: youtube) }
+                    }
+                }
+            }
+            if search.searching { ProgressView("YouTubeを読み込み中…").font(.system(size: 12)).tint(LabTheme.mint) }
+            else if search.nextCursor != nil {
+                Button("もっと読み込む") { search.more(account: youtube) }.foregroundStyle(LabTheme.mint)
+                    .accessibilityIdentifier("youtube.browserMore")
             }
         }
     }
@@ -302,7 +321,12 @@ struct MusicView: View {
             playback.pause()
             haptics.stop()
             library.prepare(selection, method: .device, style: preferences.style, profile: preferences.profile)
-            if library.preparation?.selection.id == selection.id { playAfterPreparation = selection }
+            if library.preparation?.selection.id == selection.id {
+                playAfterPreparation = selection
+                preparationSelection = selection
+                urlFocused = false
+                showPreparation = true
+            }
         } else { pending = MusicPreparationRequest(selection: selection) }
     }
 

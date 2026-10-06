@@ -12,12 +12,15 @@ iPhone SE（第3世代）で音楽・映像と保存した振動を再生する�
 - お気に入りと調整値の保存
 - 常時表示の停止ボタン、タブ切り替え・画面ロック・バックグラウンド移行時の停止
 
-## 音楽機能（2.2）
+## 音楽機能（2.3）
 
 - 初回の確認・音源解析と、振動・曲ごとの調整値の保存
 - 音楽・動画ファイルの読み込み、直接HTTPS URLの解析とストリーミング再生
 - 黒と緑のUI、「検索・作成済み・履歴・再生リスト」の選択
-- 曲名・アーティスト名によるYouTube動画検索（ログインなしでも利用可能）
+- YouTubeの動画・チャンネル・公開再生リスト検索（ログインなしでも利用可能）
+- チャンネルの動画・再生リスト、再生リスト内の動画と続きを選択
+- ライブラリを先頭に表示。動画選択時に「振動を作成中」の専用画面を開き、最小化後も下部に進捗を表示
+- YouTube音声を1 MBずつ取得し、容量・速度・残り時間を表示
 - 動画を選択 → iPhoneで音声を一時取得 → 解析 → 振動保存 → 音声削除
 - YouTube公式プレーヤーと保存した振動・帯域データの同期
 - Googleログインによる再生リスト選択（OAuth設定が必要）
@@ -77,7 +80,8 @@ WindowsでもNode.jsを使ってプロジェクトとリソースの整合性を
 - `MusicModels.swift` / `MusicLibrary.swift`：全曲の振動データ、分割、保存と個別削除
 - `MusicPlayback.swift`：AVPlayer・YouTubeの再生時刻とCore Hapticsの区間予約
 - `HapticVisualization.swift`：保存した音の周波数、振動の強さ、前後2秒の波形
-- `YouTubeMedia.swift`：動画検索と端末内での音声ストリーム取得
+- `YouTubeMedia.swift` / `YouTubeBrowse.swift`：端末内の音声ストリーム取得と動画・チャンネル・再生リストの検索・閲覧
+- `YouTubeAudioDownload.swift` / `MusicPreparationStatus.swift`：音声の分割取得と作成状況の表示
 - `MusicComposer.swift`：リズムの構成とオーケストラ向けの持続・自然な打音
 - `PCAnalysis.swift` / `pc-server/`：接続キーによるLAN通信、詳細な音源解析、保存と個別削除
 - `GoogleOAuth.swift` / `YouTubeAccount.swift`：PKCE、Keychain、再生リスト取得・自動同期
@@ -88,4 +92,4 @@ WindowsでもNode.jsを使ってプロジェクトとリソースの整合性を
 
 画面・ビルド・データの検証と、実際の触感の検証は別です。触感の質と実機での中断動作はiPhoneで確認してください。
 
-今回の確認範囲は[2.2の検証記録](docs/PLAYER-2.2-VERIFICATION.md)を参照してください。[2.1の検証結果](docs/PLAYER-VERIFICATION.md)、[音楽版2.0の検証結果](docs/MUSIC-VERIFICATION.md)、[初版の検証記録](docs/VERIFICATION.md)は以前の版の記録です。
+今回の確認範囲は[2.3の検証記録](docs/PLAYER-2.3-VERIFICATION.md)を参照してください。[2.2の検証記録](docs/PLAYER-2.2-VERIFICATION.md)、[2.1の検証結果](docs/PLAYER-VERIFICATION.md)、[音楽版2.0の検証結果](docs/MUSIC-VERIFICATION.md)、[初版の検証記録](docs/VERIFICATION.md)は以前の版の記録です。

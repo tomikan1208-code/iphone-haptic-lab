@@ -32,7 +32,7 @@ struct YouTubePlaylistItem: Decodable {
 private struct YouTubeChannel: Decodable {
     struct Snippet: Decodable { let title: String }
     struct Details: Decodable {
-        struct Related: Decodable { let likes: String? }
+        struct Related: Decodable { let likes: String?; let uploads: String? }
         let relatedPlaylists: Related
     }
     let id: String
@@ -40,14 +40,31 @@ private struct YouTubeChannel: Decodable {
     let contentDetails: Details?
 }
 
-private struct YouTubeSearchItem: Decodable {
-    struct VideoID: Decodable { let videoId: String? }
-    struct Snippet: Decodable { let title: String; let channelTitle: String }
+struct YouTubeSearchItem: Decodable {
+    struct VideoID: Decodable { let videoId: String?; let channelId: String?; let playlistId: String? }
+    struct Snippet: Decodable {
+        struct Image: Decodable { let url: String }
+        let title: String
+        let channelTitle: String?
+        let thumbnails: [String: Image]?
+    }
     let id: VideoID
     let snippet: Snippet
     var selection: MusicSelection? {
         guard let id = id.videoId else { return nil }
-        return try? MusicSelection.youtube(id: id, title: snippet.title, artist: snippet.channelTitle)
+        return try? MusicSelection.youtube(id: id, title: snippet.title, artist: snippet.channelTitle ?? "")
+    }
+    var browseItem: YouTubeBrowseItem? {
+        let kind: YouTubeBrowseItem.Kind
+        let resourceID: String
+        if let value = id.videoId { kind = .video; resourceID = value }
+        else if let value = id.channelId { kind = .channel; resourceID = value }
+        else if let value = id.playlistId { kind = .playlist; resourceID = value }
+        else { return nil }
+        guard YouTubeBrowseItem.validID(resourceID, kind: kind) else { return nil }
+        let thumbnail = snippet.thumbnails?["medium"] ?? snippet.thumbnails?["default"]
+        return .init(kind: kind, resourceID: resourceID, title: snippet.title, subtitle: snippet.channelTitle ?? "",
+                     thumbnail: YouTubeBrowseService.thumbnail(thumbnail.map { ["url": $0.url] }))
     }
 }
 
@@ -193,6 +210,48 @@ final class YouTubeAccount: ObservableObject {
             "part": "snippet", "q": query, "type": "video", "maxResults": "25", "videoEmbeddable": "true"
         ])
         return (page.items ?? []).compactMap(\.selection)
+    }
+
+    func browse(_ target: YouTubeBrowseTarget, cursor: YouTubeBrowseCursor? = nil) async throws -> YouTubeBrowsePage {
+        if !connected || cursor?.clientVersion != nil {
+            return try await YouTubeBrowseService.load(target, cursor: cursor?.clientVersion == nil ? nil : cursor)
+        }
+        do {
+            var query = ["part": "snippet", "maxResults": "50"]
+            query["pageToken"] = cursor?.token
+            switch target {
+            case .search(let queryText):
+                query["q"] = queryText
+                query["type"] = "video,channel,playlist"
+                let page: YouTubePage<YouTubeSearchItem> = try await request("search", query: query)
+                return .init(items: (page.items ?? []).compactMap(\.browseItem), cursor: page.nextPageToken.map { .init(token: $0) })
+            case .channel(let channel, .playlists):
+                query["channelId"] = channel.resourceID
+                let page: YouTubePage<YouTubePlaylist> = try await request("playlists", query: query)
+                return .init(items: (page.items ?? []).map { .init(kind: .playlist, resourceID: $0.id, title: $0.snippet.title, subtitle: channel.title) },
+                             cursor: page.nextPageToken.map { .init(token: $0) })
+            case .channel(let channel, .videos):
+                let playlistID: String
+                if let id = cursor?.playlistID { playlistID = id }
+                else {
+                    let page: YouTubePage<YouTubeChannel> = try await request("channels", query: ["part": "contentDetails,snippet", "id": channel.resourceID])
+                    guard let uploads = page.items?.first?.contentDetails?.relatedPlaylists.uploads else { return .init() }
+                    playlistID = uploads
+                }
+                query["playlistId"] = playlistID
+                let page: YouTubePage<YouTubePlaylistItem> = try await request("playlistItems", query: query)
+                return .init(items: (page.items ?? []).compactMap(\.selection).map(YouTubeBrowseItem.video),
+                             cursor: page.nextPageToken.map { .init(token: $0, playlistID: playlistID) })
+            case .playlist(let playlist):
+                query["playlistId"] = playlist.resourceID
+                let page: YouTubePage<YouTubePlaylistItem> = try await request("playlistItems", query: query)
+                return .init(items: (page.items ?? []).compactMap(\.selection).map(YouTubeBrowseItem.video),
+                             cursor: page.nextPageToken.map { .init(token: $0) })
+            }
+        } catch let error as YouTubeHTTPError where error.status == 403 {
+            // Public browsing remains usable when the signed-in API quota is exhausted.
+            return try await YouTubeBrowseService.load(target)
+        }
     }
 
     func synchronize(records: [MusicRecord], force: Bool = false) {

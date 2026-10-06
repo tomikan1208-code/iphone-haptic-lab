@@ -14,7 +14,14 @@ struct HapticLabApp: App {
         if ProcessInfo.processInfo.arguments.contains("--music-test-library") {
             let root = FileManager.default.temporaryDirectory.appendingPathComponent("MusicUITestLibrary", isDirectory: true)
             if ProcessInfo.processInfo.arguments.contains("--reset-music-test-library") { try? FileManager.default.removeItem(at: root) }
-            _library = StateObject(wrappedValue: MusicLibrary(root: root))
+            var services = MusicPreparationServices()
+            if ProcessInfo.processInfo.arguments.contains("--music-test-progress") {
+                services.youtubeAudioURL = { _ in
+                    try await Task.sleep(nanoseconds: 120_000_000_000)
+                    throw MusicError.network("テスト用の取得処理です。")
+                }
+            }
+            _library = StateObject(wrappedValue: MusicLibrary(root: root, services: services))
         } else { _library = StateObject(wrappedValue: MusicLibrary()) }
         #else
         _library = StateObject(wrappedValue: MusicLibrary())

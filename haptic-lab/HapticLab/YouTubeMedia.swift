@@ -110,34 +110,93 @@ enum YouTubeSearchService {
 @MainActor
 final class YouTubeSearch: ObservableObject {
     @Published var query = ""
-    @Published private(set) var results: [MusicSelection] = []
+    @Published private(set) var results: [YouTubeBrowseItem] = []
     @Published private(set) var searching = false
     @Published private(set) var searchedQuery: String?
     @Published var message: String?
+    @Published private(set) var target: YouTubeBrowseTarget?
+    @Published private(set) var nextCursor: YouTubeBrowseCursor?
+    private var history: [(YouTubeBrowseTarget, YouTubeBrowsePage)] = []
     private var task: Task<Void, Never>?
     private var revision = 0
+    typealias Loader = @MainActor (YouTubeBrowseTarget, YouTubeBrowseCursor?) async throws -> YouTubeBrowsePage
+    private var loader: Loader?
+
+    init(loader: Loader? = nil) {
+        self.loader = loader
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--youtube-browser-fixture") {
+            self.loader = { target, _ in
+                let channel = YouTubeBrowseItem(kind: .channel, resourceID: "UC8T8_deSUS97DWZeKO_TL9Q", title: "テストチャンネル")
+                let playlist = YouTubeBrowseItem(kind: .playlist, resourceID: "PL-TestPlaylist", title: "テスト再生リスト")
+                let video = YouTubeBrowseItem(kind: .video, resourceID: "lkiV3U0GfGg", title: "テスト動画", duration: 547)
+                switch target {
+                case .search: return .init(items: [channel, playlist, video])
+                case .channel(_, .videos), .playlist: return .init(items: [video])
+                case .channel(_, .playlists): return .init(items: [playlist])
+                }
+            }
+        }
+        #endif
+    }
+
+    var canGoBack: Bool { !history.isEmpty }
 
     func submit(account: YouTubeAccount) {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
-        task?.cancel()
-        revision += 1
-        let revision = revision
-        searching = true
-        results = []
-        message = nil
+        history = []
         searchedQuery = query
+        load(.search(query), account: account)
+    }
+
+    func open(_ item: YouTubeBrowseItem, account: YouTubeAccount) {
+        guard item.kind != .video else { return }
+        if let target { history.append((target, .init(items: results, cursor: nextCursor))) }
+        let next: YouTubeBrowseTarget = item.kind == .channel ? .channel(item, .videos) : .playlist(item)
+        load(next, account: account)
+    }
+
+    func channelTab(_ tab: YouTubeChannelTab, account: YouTubeAccount) {
+        guard case .channel(let channel, _) = target else { return }
+        load(.channel(channel, tab), account: account)
+    }
+
+    func back() {
+        guard let previous = history.popLast() else { return }
+        task?.cancel(); revision += 1
+        target = previous.0
+        results = previous.1.items
+        nextCursor = previous.1.cursor
+        searching = false; message = nil
+    }
+
+    func more(account: YouTubeAccount) {
+        guard let target, let cursor = nextCursor, !searching else { return }
+        load(target, account: account, cursor: cursor)
+    }
+
+    private func load(_ target: YouTubeBrowseTarget, account: YouTubeAccount, cursor: YouTubeBrowseCursor? = nil) {
+        task?.cancel(); revision += 1
+        let revision = revision, loader = self.loader
+        self.target = target
+        searching = true; message = nil
+        if cursor == nil { results = []; nextCursor = nil }
         task = Task { [weak self] in
             do {
-                let results: [MusicSelection]
-                if query.lowercased().hasPrefix("https://") {
-                    results = [try await YouTubeAccount.metadata(for: MusicSelection.parse(query))]
+                let page: YouTubeBrowsePage
+                if let loader { page = try await loader(target, cursor) }
+                else if case .search(let query) = target, query.lowercased().hasPrefix("https://") {
+                    let selection = try await YouTubeAccount.metadata(for: MusicSelection.parse(query))
+                    page = .init(items: [.video(selection)])
                 } else {
-                    results = try await account.searchVideos(query)
+                    page = try await account.browse(target, cursor: cursor)
                 }
                 try Task.checkCancellation()
                 guard let self, self.revision == revision else { return }
-                self.results = results
+                var seen = Set(self.results.map(\.id))
+                self.results.append(contentsOf: page.items.filter { seen.insert($0.id).inserted })
+                self.nextCursor = page.cursor
             } catch {
                 guard let self, self.revision == revision, !Task.isCancelled else { return }
                 self.message = error.localizedDescription

@@ -113,6 +113,12 @@
 			path = MusicPlayerView.swift;
 			sourceTree = "<group>";
 		};
+		9761892BB32AB1456085BD29 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicPreparationStatus.swift;
+			sourceTree = "<group>";
+		};
 		D5349AC6E579C0C482051EA9 = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.swift;
@@ -141,6 +147,18 @@
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.swift;
 			path = YouTubeAccount.swift;
+			sourceTree = "<group>";
+		};
+		653F15CFA0A740A99A2E5E38 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = YouTubeAudioDownload.swift;
+			sourceTree = "<group>";
+		};
+		AFF682399AD876549F78E7FA = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = YouTubeBrowse.swift;
 			sourceTree = "<group>";
 		};
 		18A7636D519CD01E9ECE219A = {
@@ -209,6 +227,10 @@
 			isa = PBXBuildFile;
 			fileRef = 8B56465797BF799A3046333D;
 		};
+		3EA336E7733550609D152031 = {
+			isa = PBXBuildFile;
+			fileRef = 9761892BB32AB1456085BD29;
+		};
 		1042B2C0FFCDDB54EA26A4E4 = {
 			isa = PBXBuildFile;
 			fileRef = D5349AC6E579C0C482051EA9;
@@ -228,6 +250,14 @@
 		B9D218942E380DA4805CB68D = {
 			isa = PBXBuildFile;
 			fileRef = 6C0BB2BCC5D78407083F5D51;
+		};
+		12848A3A14EA8CEEC2921DF7 = {
+			isa = PBXBuildFile;
+			fileRef = 653F15CFA0A740A99A2E5E38;
+		};
+		06D8A4CA9BD2DBD113DB87BB = {
+			isa = PBXBuildFile;
+			fileRef = AFF682399AD876549F78E7FA;
 		};
 		F24BF41B3E7B5CAB5E458A75 = {
 			isa = PBXBuildFile;
@@ -308,11 +338,14 @@
 				B12AF2972DBF2E43EC621262,
 				9A56DCC9BD25A795EE91FAE9,
 				8B56465797BF799A3046333D,
+				9761892BB32AB1456085BD29,
 				D5349AC6E579C0C482051EA9,
 				D8EC3098F0102F9EAB90D487,
 				17BA6C4D66802E901A561C49,
 				F38FAE94E7994A0260EDF288,
 				6C0BB2BCC5D78407083F5D51,
+				653F15CFA0A740A99A2E5E38,
+				AFF682399AD876549F78E7FA,
 				18A7636D519CD01E9ECE219A,
 				63C38E40907F2CB5ACA79DFA,
 				CBFD5F5CEFAE1FCCE60AE281,
@@ -346,11 +379,14 @@
 				78FE50C53B5D714A7C40BE36,
 				574484E5D5BA0344D754328C,
 				B49B0DF3236225FD9F26E6CD,
+				3EA336E7733550609D152031,
 				1042B2C0FFCDDB54EA26A4E4,
 				5176F910AC1B29560B6D3DB3,
 				983ECF2B09D43633F1914DC3,
 				E503E78CC2BB93B96FE55502,
 				B9D218942E380DA4805CB68D,
+				12848A3A14EA8CEEC2921DF7,
+				06D8A4CA9BD2DBD113DB87BB,
 				F24BF41B3E7B5CAB5E458A75,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -469,6 +505,18 @@
 			path = MusicPlayerTests.swift;
 			sourceTree = "<group>";
 		};
+		B64EE605A09BBFDDE76C0C8E = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = YouTubeBrowseTests.swift;
+			sourceTree = "<group>";
+		};
+		F35741BBDBA37BB480778D5B = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = YouTubeDownloadTests.swift;
+			sourceTree = "<group>";
+		};
 		19D08358BC042FC915B97E0A = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.swift;
@@ -487,6 +535,14 @@
 			isa = PBXBuildFile;
 			fileRef = F9ED0ECA5AEC380659EE1414;
 		};
+		B3F5CFFF3A000138157F470D = {
+			isa = PBXBuildFile;
+			fileRef = B64EE605A09BBFDDE76C0C8E;
+		};
+		55E7B0EFB8D9C157DA932E03 = {
+			isa = PBXBuildFile;
+			fileRef = F35741BBDBA37BB480778D5B;
+		};
 		1BEC2AB58C4B1CD927FB27B1 = {
 			isa = PBXBuildFile;
 			fileRef = 19D08358BC042FC915B97E0A;
@@ -497,6 +553,8 @@
 				378A29A97E13BC600245D867,
 				E46E0A8528084A496B3F304F,
 				F9ED0ECA5AEC380659EE1414,
+				B64EE605A09BBFDDE76C0C8E,
+				F35741BBDBA37BB480778D5B,
 				19D08358BC042FC915B97E0A,
 			);
 			path = Tests;
@@ -516,6 +574,8 @@
 				1612BE72FFDE1E21105E6006,
 				D833091D58E57F003C6AF0CD,
 				EC6446C664114E31D6769033,
+				B3F5CFFF3A000138157F470D,
+				55E7B0EFB8D9C157DA932E03,
 				1BEC2AB58C4B1CD927FB27B1,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

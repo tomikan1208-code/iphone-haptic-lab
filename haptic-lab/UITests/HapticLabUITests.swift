@@ -7,6 +7,8 @@ final class HapticLabUITests: XCTestCase {
         app.launchArguments = ["--music-test-library", "--reset-music-test-library"]
         app.launch()
         XCTAssertTrue(app.staticTexts["音楽プレイヤー"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["ライブラリ"].exists)
+        XCTAssertFalse(app.staticTexts["あなたの音楽"].exists)
         XCTAssertFalse(app.buttons["tab.experiment"].exists)
         XCTAssertFalse(app.buttons["tab.pad"].exists)
         XCTAssertFalse(app.buttons["tab.guide"].exists)
@@ -144,6 +146,51 @@ final class HapticLabUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["再生リストから選ぶ"].exists)
         sections.buttons["検索"].tap()
         XCTAssertTrue(app.textFields["music.searchQuery"].exists)
+    }
+
+    func testChannelPlaylistNavigationAndVisiblePreparationCanBeMinimizedAndCancelled() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--music-test-library", "--reset-music-test-library", "--youtube-browser-fixture", "--music-test-progress"]
+        app.launch()
+        let input = app.textFields["music.searchQuery"]
+        XCTAssertTrue(input.waitForExistence(timeout: 10))
+        input.tap()
+        input.typeText("NHK\n")
+        let channel = app.buttons["youtube.channel-UC8T8_deSUS97DWZeKO_TL9Q"]
+        XCTAssertTrue(channel.waitForExistence(timeout: 10))
+        reveal(channel, app: app)
+        channel.tap()
+        let tabs = app.segmentedControls["youtube.channelTabs"]
+        XCTAssertTrue(tabs.waitForExistence(timeout: 5))
+        screenshot("14-youtube-channel", app: app)
+        tabs.buttons["再生リスト"].tap()
+        let playlist = app.buttons["youtube.playlist-PL-TestPlaylist"]
+        XCTAssertTrue(playlist.waitForExistence(timeout: 5))
+        reveal(playlist, app: app)
+        playlist.tap()
+        let video = app.buttons["music.song.youtube-lkiV3U0GfGg"]
+        XCTAssertTrue(video.waitForExistence(timeout: 5))
+        reveal(video, app: app)
+        screenshot("15-youtube-playlist", app: app)
+        video.tap()
+        XCTAssertTrue(app.staticTexts["music.preparingTitle"].waitForExistence(timeout: 5))
+        screenshot("16-visible-preparation", app: app)
+        app.buttons["music.minimizePreparation"].tap()
+        let banner = app.buttons["music.analysisBanner"]
+        XCTAssertTrue(banner.waitForExistence(timeout: 5))
+        XCTAssertTrue(banner.isHittable)
+        screenshot("17-preparation-banner", app: app)
+        banner.tap()
+        XCTAssertTrue(app.buttons["music.cancelAnalysis"].waitForExistence(timeout: 5))
+        app.buttons["music.cancelAnalysis"].tap()
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        XCTAssertFalse(banner.exists)
+        let back = app.buttons["youtube.browserBack"]
+        for _ in 0..<3 { if !back.isHittable { app.swipeDown() } }
+        back.tap()
+        for _ in 0..<3 { if !back.isHittable { app.swipeDown() } }
+        back.tap()
+        XCTAssertTrue(channel.exists)
     }
 
     private func reveal(_ element: XCUIElement, app: XCUIApplication) {

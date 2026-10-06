@@ -92,7 +92,10 @@ struct MusicPreparationServices: Sendable {
     typealias Progress = @Sendable (Double, String) -> Void
     var youtubeAudioURL: @Sendable (MusicSelection) async throws -> URL = { try await YouTubeMedia.audioURL(for: $0) }
     var download: @Sendable (URL, URL, @escaping Progress) async throws -> URL = { source, destination, progress in
-        try await MusicMediaDownload(destination: destination, progress: progress).download(source)
+        if YouTubeAudioDownload.isYouTubeAudio(source) {
+            return try await YouTubeAudioDownload.download(source, to: destination, progress: progress)
+        }
+        return try await MusicMediaDownload(destination: destination, progress: progress).download(source)
     }
 }
 
