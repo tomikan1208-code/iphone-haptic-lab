@@ -24,8 +24,33 @@ enum HapticVisualSignal {
         let sourceTime = time - settings.offset
         let output = active ? track.output(at: sourceTime, settings: settings) : MusicHapticOutput(continuous: 0, sharpness: 0, transient: 0)
         let source = track.spectrum(at: sourceTime) ?? audio
+        let precision = track.value(at: sourceTime).texture != nil
+        let firstTap = lowerBound(track.taps, time: max(0, sourceTime - 0.06), key: { $0.time })
+        let lastTap = lowerBound(track.taps, time: max(0, sourceTime + 0.000_000_1), key: { $0.time })
+        let tap = track.taps[firstTap..<lastTap].filter { settings.includes($0) }.max { left, right in
+            func level(_ value: MusicTap) -> Double {
+                settings.amplified(value.intensity) * max(0, 1 - (sourceTime - value.time) / 0.06)
+            }
+            return level(left) < level(right)
+        }
         let weighted = source.enumerated().map { index, level -> Double in
             let frequency = MusicFrequencyBands.centers[index]
+            if precision {
+                let bassWeight = (30..<70).contains(frequency) ? 0.70
+                    : (70..<140).contains(frequency) ? 0.55 : (140..<300).contains(frequency) ? 0.25 : 0
+                let tapWeight: Double
+                if let tap {
+                    tapWeight = tap.sharpness < 0.35 ? ((30..<300).contains(frequency) ? 1 : 0)
+                        : tap.sharpness < 0.75 ? ((300..<2_000).contains(frequency) ? 1 : 0)
+                        : ((2_000...8_000).contains(frequency) ? 1 : 0)
+                } else { tapWeight = 0 }
+                switch settings.mode {
+                case .bass: return level * bassWeight * settings.bass
+                case .mix: return level * (bassWeight * settings.bass * 0.65 + 0.08 + tapWeight * output.transient)
+                case .beats: return level * tapWeight
+                case .energy: return level
+                }
+            }
             switch settings.mode {
             case .bass: return frequency < 120 ? level * settings.bass : 0
             case .mix:

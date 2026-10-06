@@ -8,7 +8,7 @@ enum MusicComposer {
             energy += (point.energy - energy) * (point.energy > energy ? 0.15 : 0.06)
             if point.energy == 0 { bass = 0; energy = 0 }
             return .init(time: point.time, bass: bass * 0.75, energy: energy * 0.6, sharpness: point.sharpness * 0.4,
-                         mid: point.mid.map { $0 * 0.6 }, high: point.high.map { $0 * 0.4 })
+                         mid: point.mid.map { $0 * 0.6 }, high: point.high.map { $0 * 0.4 }, texture: point.texture)
         }
         var taps: [MusicTap] = []
         for tap in source.taps where tap.intensity > 0.65 {
@@ -52,7 +52,7 @@ enum MusicComposer {
         let envelope = source.envelope.map { point in
             MusicEnvelopePoint(time: point.time, bass: point.bass * 0.45,
                                energy: point.energy * 0.35, sharpness: point.sharpness * 0.6,
-                               mid: point.mid.map { $0 * 0.35 }, high: point.high.map { $0 * 0.6 })
+                               mid: point.mid.map { $0 * 0.35 }, high: point.high.map { $0 * 0.6 }, texture: point.texture)
         }
         var taps: [MusicTap] = []
         var time = anchor, beat = 0

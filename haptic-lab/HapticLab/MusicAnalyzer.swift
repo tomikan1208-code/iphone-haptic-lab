@@ -12,6 +12,7 @@ struct MusicAudioFeature {
     let mid: Double
     let high: Double
     let bands: [Double]
+    var detail: MusicPrecisionFeature? = nil
 }
 
 // Bounded PCM buffer; channel energies are measured independently, including opposite-phase stereo.
@@ -19,6 +20,10 @@ final class MusicSignalExtractor {
     static let sampleRate = 22_050.0
     static let windowSize = 1_024
     static let hopSize = 441
+    private let quality: MusicAnalysisQuality
+    private var fftSize: Int { quality.fftSize }
+    private var rate: Double { quality.sampleRate }
+    private let precision: MusicPrecisionProcessor?
     private let channels: Int
     private let setup: OpaquePointer
     private var window = [Float](repeating: 0, count: windowSize)
@@ -28,18 +33,20 @@ final class MusicSignalExtractor {
     private var previous: [[Float]]
     private var features: [MusicAudioFeature] = []
 
-    init(channels: Int) throws {
+    init(channels: Int, quality: MusicAnalysisQuality = .standard) throws {
         guard (1...8).contains(channels),
               let setup = vDSP_DFT_zop_CreateSetup(nil, vDSP_Length(Self.windowSize), .FORWARD) else {
             throw MusicError.unsupportedMedia
         }
         self.channels = channels
+        self.quality = quality
+        precision = quality == .precision ? try MusicPrecisionProcessor(channels: channels) : nil
         self.setup = setup
         previous = Array(repeating: Array(repeating: 0, count: Self.windowSize / 2), count: channels)
         vDSP_hann_window(&window, vDSP_Length(Self.windowSize), Int32(vDSP_HANN_NORM))
         // Center the first FFT on media time zero, matching the PC analyzer.
-        pending = Array(repeating: 0, count: Self.windowSize / 2 * channels)
-        consumedFrames = -Self.windowSize / 2
+        pending = Array(repeating: 0, count: fftSize / 2 * channels)
+        consumedFrames = -fftSize / 2
     }
 
     deinit { vDSP_DFT_DestroySetup(setup) }
@@ -48,12 +55,12 @@ final class MusicSignalExtractor {
         guard interleavedSamples.count % channels == 0,
               interleavedSamples.allSatisfy({ $0.isFinite && abs($0) <= 16 }) else { throw MusicError.unsupportedMedia }
         totalFrames += interleavedSamples.count / channels
-        guard Double(totalFrames) / Self.sampleRate <= MusicHapticTrack.maximumDuration + 0.1 else {
+        guard Double(totalFrames) / rate <= MusicHapticTrack.maximumDuration + 0.1 else {
             throw MusicError.tooLong
         }
         pending.append(contentsOf: interleavedSamples)
         var readOffset = 0
-        while pending.count - readOffset >= Self.windowSize * channels {
+        while pending.count - readOffset >= fftSize * channels {
             try Task.checkCancellation()
             features.append(measure(offset: readOffset))
             readOffset += Self.hopSize * channels
@@ -66,7 +73,7 @@ final class MusicSignalExtractor {
         guard presentationTime.isFinite, abs(presentationTime) <= MusicHapticTrack.maximumDuration + 1 else {
             throw MusicError.unsupportedMedia
         }
-        let framePosition = Int((presentationTime * Self.sampleRate).rounded())
+        let framePosition = Int((presentationTime * rate).rounded())
         let gap = framePosition - totalFrames
         if gap > 0 { try appendSilence(frames: gap) }
         let skipped = max(0, -gap) * channels
@@ -74,7 +81,7 @@ final class MusicSignalExtractor {
     }
 
     private func appendSilence(frames: Int) throws {
-        guard frames <= Int(MusicHapticTrack.maximumDuration * Self.sampleRate) else { throw MusicError.tooLong }
+        guard frames <= Int(MusicHapticTrack.maximumDuration * rate) else { throw MusicError.tooLong }
         var remaining = frames
         while remaining > 0 {
             let count = min(4_096, remaining)
@@ -88,21 +95,26 @@ final class MusicSignalExtractor {
             guard expectedDuration.isFinite, expectedDuration > 0, expectedDuration <= MusicHapticTrack.maximumDuration else {
                 throw MusicError.tooLong
             }
-            let missing = Int((expectedDuration * Self.sampleRate).rounded()) - totalFrames
+            let missing = Int((expectedDuration * rate).rounded()) - totalFrames
             if missing > 0 { try appendSilence(frames: missing) }
         }
-        let duration = Double(totalFrames) / Self.sampleRate
+        let duration = Double(totalFrames) / rate
         guard duration > 0 else { throw MusicError.unsupportedMedia }
-        pending.append(contentsOf: repeatElement(0, count: Self.windowSize * channels))
-        while Double(consumedFrames + Self.windowSize / 2) / Self.sampleRate < duration {
+        pending.append(contentsOf: repeatElement(0, count: fftSize * channels))
+        while Double(consumedFrames + fftSize / 2) / rate < duration {
+            try Task.checkCancellation()
             features.append(measure(offset: 0))
             pending.removeFirst(Self.hopSize * channels)
             consumedFrames += Self.hopSize
         }
+        if quality == .precision { return try MusicPrecisionProcessor.makeTrack(features: features, duration: duration, hash: hash) }
         return try Self.makeTrack(features: features, duration: duration, hash: hash)
     }
 
     private func measure(offset: Int) -> MusicAudioFeature {
+        if let precision {
+            return precision.measure(pending, offset: offset, time: Double(consumedFrames + fftSize / 2) / rate)
+        }
         let n = Self.windowSize
         var rms = 0.0, bass = 0.0, mid = 0.0, high = 0.0, flux = 0.0, centroid = 0.0
         var bands = Array(repeating: 0.0, count: MusicFrequencyBands.count)
@@ -217,12 +229,13 @@ enum MusicAnalyzer {
     static let maximumBytes: Int64 = 512 * 1_024 * 1_024
     static let decoderVersion = 2
 
-    static func analyze(_ url: URL, progress: @escaping @Sendable (Double, String) -> Void) async throws -> MusicHapticTrack {
+    static func analyze(_ url: URL, quality: MusicAnalysisQuality = .standard,
+                        progress: @escaping @Sendable (Double, String) -> Void) async throws -> MusicHapticTrack {
         // Audio-only files have their own decoded frame clock. Do not extend them
         // to an inaccurate movie/track duration reported by AVAsset.
         if ["wav", "m4a", "mp3", "aac", "aif", "aiff", "caf"].contains(url.pathExtension.lowercased()),
            let audio = try? AVAudioFile(forReading: url, commonFormat: .pcmFormatFloat32, interleaved: false) {
-            return try analyzeAudioFile(audio, url: url, progress: progress)
+            return try analyzeAudioFile(audio, url: url, quality: quality, progress: progress)
         }
         let asset = AVURLAsset(url: url)
         let duration = try await asset.load(.duration).seconds
@@ -264,7 +277,7 @@ enum MusicAnalyzer {
             pcm.frameLength = AVAudioFrameCount(count)
             let status = CMSampleBufferCopyPCMDataIntoAudioBufferList(sample, at: 0, frameCount: Int32(count), into: pcm.mutableAudioBufferList)
             guard status == noErr else { throw MusicError.unsupportedMedia }
-            if decoder == nil { decoder = try MusicPCMDecoder(format: format, duration: duration) }
+            if decoder == nil { decoder = try MusicPCMDecoder(format: format, duration: duration, quality: quality) }
             let position = CMSampleBufferGetPresentationTimeStamp(sample).seconds
             try decoder?.append(pcm, at: position)
             if position - lastProgress > 0.25 {
@@ -277,21 +290,24 @@ enum MusicAnalyzer {
         return try decoder.finish(hash: audioHash(url))
     }
 
-    private static func analyzeAudioFile(_ audio: AVAudioFile, url: URL,
+    private static func analyzeAudioFile(_ audio: AVAudioFile, url: URL, quality: MusicAnalysisQuality,
                                         progress: @escaping @Sendable (Double, String) -> Void) throws -> MusicHapticTrack {
         let format = audio.processingFormat
         let estimated = Double(audio.length) / format.sampleRate
         guard estimated.isFinite, estimated > 0 else { throw MusicError.unsupportedMedia }
         // Bound decoding by the app limit, not by a possibly inaccurate estimate.
-        let decoder = try MusicPCMDecoder(format: format, duration: MusicHapticTrack.maximumDuration)
+        let decoder = try MusicPCMDecoder(format: format, duration: MusicHapticTrack.maximumDuration, quality: quality)
         guard let pcm = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 4_096) else {
             throw MusicError.unsupportedMedia
         }
         var frames = 0
         var lastProgress = -1.0
-        while true {
+        while audio.framePosition < audio.length {
             try Task.checkCancellation()
-            try audio.read(into: pcm)
+            // AVAudioFile can throw a nil NSError for an extra read at EOF.
+            // Limit each read to the remaining file frames, including the final partial buffer.
+            let remaining = audio.length - audio.framePosition
+            try audio.read(into: pcm, frameCount: AVAudioFrameCount(min(remaining, 4_096)))
             if pcm.frameLength == 0 { break }
             guard Double(frames + Int(pcm.frameLength)) / format.sampleRate <= MusicHapticTrack.maximumDuration else {
                 throw MusicError.tooLong

@@ -12,20 +12,20 @@ final class MusicPCMDecoder {
     private var sourceFrames = 0
     private var outputFrames = 0
 
-    init(format: AVAudioFormat, duration: Double) throws {
+    init(format: AVAudioFormat, duration: Double, quality: MusicAnalysisQuality = .standard) throws {
         guard format.commonFormat == .pcmFormatFloat32,
               format.sampleRate.isFinite, (8_000...192_000).contains(format.sampleRate),
               (1...8).contains(format.channelCount), duration.isFinite, duration > 0,
               duration <= MusicHapticTrack.maximumDuration,
               let output = AVAudioFormat(commonFormat: .pcmFormatFloat32,
-                  sampleRate: MusicSignalExtractor.sampleRate, channels: format.channelCount, interleaved: false),
+                  sampleRate: quality.sampleRate, channels: format.channelCount, interleaved: false),
               let converter = AVAudioConverter(from: format, to: output) else { throw MusicError.unsupportedMedia }
         inputFormat = format
         outputFormat = output
         self.converter = converter
         self.duration = duration
-        maximumOutputFrames = Int((duration * MusicSignalExtractor.sampleRate).rounded())
-        extractor = try MusicSignalExtractor(channels: Int(format.channelCount))
+        maximumOutputFrames = Int((duration * quality.sampleRate).rounded())
+        extractor = try MusicSignalExtractor(channels: Int(format.channelCount), quality: quality)
     }
 
     func append(_ buffer: AVAudioPCMBuffer, at time: Double) throws {
@@ -100,7 +100,7 @@ final class MusicPCMDecoder {
             }
             if status == .error { throw (error as Error?) ?? MusicError.unsupportedMedia }
             let count = Int(output.frameLength)
-            guard outputFrames + count <= maximumOutputFrames + Int(MusicSignalExtractor.sampleRate * 0.1) else {
+            guard outputFrames + count <= maximumOutputFrames + Int(outputFormat.sampleRate * 0.1) else {
                 throw MusicError.storage("変換後の音声が本来の長さを超えました。誤った振動を保存せず停止しました。")
             }
             let valid = min(count, max(0, maximumOutputFrames - outputFrames))

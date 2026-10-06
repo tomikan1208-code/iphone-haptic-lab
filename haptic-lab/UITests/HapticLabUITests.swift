@@ -52,9 +52,15 @@ final class HapticLabUITests: XCTestCase {
         reveal(demo, app: app)
         demo.tap()
         XCTAssertTrue(app.staticTexts["music.firstPreparation"].waitForExistence(timeout: 5))
+        let quality = app.segmentedControls["analysis.quality"]
+        XCTAssertTrue(quality.buttons["精密（帯域別）"].isSelected)
+        quality.buttons["高速"].tap()
+        quality.buttons["精密（帯域別）"].tap()
         screenshot("05-first-preparation", app: app)
         XCTAssertFalse(app.buttons["音楽AI"].exists)
-        app.segmentedControls["analysis.profile"].buttons["オーケストラ向け"].tap()
+        let profile = app.segmentedControls["analysis.profile"]
+        reveal(profile, app: app)
+        profile.buttons["オーケストラ向け"].tap()
         XCTAssertTrue(app.staticTexts["拍ごとのタップを控え、低音・クレッシェンド・余韻をなめらかな持続振動にします。"].exists)
         screenshot("12-orchestral-preparation", app: app)
         app.segmentedControls["analysis.profile"].buttons["標準"].tap()
@@ -76,6 +82,7 @@ final class HapticLabUITests: XCTestCase {
         song.tap()
         XCTAssertTrue(app.buttons["music.play"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["保存した振動を使用"].exists)
+        XCTAssertTrue(app.staticTexts["music.analysisSummary"].label.contains("精密（帯域別）"))
         XCTAssertTrue(app.otherElements["haptics.spectrum"].exists)
         expectation(for: NSPredicate(format: "value MATCHES %@", "24帯域、振動[0-9]+パーセント"),
                     evaluatedWith: app.otherElements["haptics.spectrum"])

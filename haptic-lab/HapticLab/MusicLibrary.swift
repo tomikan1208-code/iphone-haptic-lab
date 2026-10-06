@@ -165,6 +165,7 @@ final class MusicLibrary: ObservableObject {
     func prepare(_ selection: MusicSelection, audioFile: URL? = nil, audioDownloadURL: URL? = nil,
                  method: MusicAnalysisMethod = .device, style: MusicGenerationStyle = .following,
                  profile: MusicArrangement = .standard,
+                 quality: MusicAnalysisQuality = .standard,
                  connection: PCServerConnection? = nil) {
         var correctedSelection = selection
         // Cached duration was previously replaced with the faulty analysis length.
@@ -222,15 +223,20 @@ final class MusicLibrary: ObservableObject {
                 guard let connection else { throw MusicError.network("PCサーバーを設定してください。") }
                 return try await PCAnalysisClient(connection: connection).analyze(selection: selection, file: localURL, style: style, profile: profile, progress: report)
             }
-            var track = try await MusicAnalyzer.analyze(localURL, progress: report)
-            track.analysis = MusicAnalysisInfo(engine: "device", elapsedSeconds: 0, sampleRate: 22_050,
-                hopMilliseconds: 20, fftSize: 1_024, style: style, decoderVersion: MusicAnalyzer.decoderVersion)
+            report(0.1, quality == .precision ? "帯域別の精密解析を開始しています" : "高速解析を開始しています")
+            let analysisStarted = Date()
+            var track = try await MusicAnalyzer.analyze(localURL, quality: quality, progress: report)
+            track.analysis = MusicAnalysisInfo(engine: "device", elapsedSeconds: 0, sampleRate: Int(quality.sampleRate),
+                hopMilliseconds: quality.hopMilliseconds, fftSize: quality.fftSize, style: style,
+                decoderVersion: MusicAnalyzer.decoderVersion, quality: quality)
             // Preserve natural timing and crescendos for orchestral music instead of applying a fixed beat grid.
             if profile == .orchestral { track = try MusicComposer.orchestral(track) }
             else if style == .musical { track = try MusicComposer.compose(track) }
             track.analysis = MusicAnalysisInfo(engine: "device", elapsedSeconds: Date().timeIntervalSince(started),
-                sampleRate: 22_050, hopMilliseconds: 20, fftSize: 1_024, style: style, tempoBPM: track.analysis?.tempoBPM, profile: profile,
-                decoderVersion: MusicAnalyzer.decoderVersion)
+                sampleRate: Int(quality.sampleRate), hopMilliseconds: quality.hopMilliseconds, fftSize: quality.fftSize,
+                style: style, tempoBPM: track.analysis?.tempoBPM, profile: profile,
+                decoderVersion: MusicAnalyzer.decoderVersion, quality: quality)
+            track.analysis?.processingSeconds = Date().timeIntervalSince(analysisStarted)
             return track
         }
         self.worker = worker

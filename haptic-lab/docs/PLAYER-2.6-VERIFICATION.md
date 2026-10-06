@@ -1,4 +1,4 @@
-# ステレオ音声の解析時間と旧データの修復
+# iPhoneの帯域別精密解析と音声の解析時間の修復
 
 2026年10月6日（日本時間）。2.6.0／build 8。
 
@@ -12,7 +12,7 @@
 
 以前はAVAssetReaderで22.05 kHzへ直接変換し、返されたPCMのストレージ全体のバイト数とタイムスタンプから解析時間を求めていました。元のサンプルレートから変わる44.1／48 kHzのステレオAACを実際に通すテストが欠けていました。
 
-新方式では元のサンプルレートでPCMを読み、[CMSampleBufferGetNumSamples](https://developer.apple.com/documentation/coremedia/cmsamplebuffergetnumsamples(_:))とPCMコピーAPIで有効なフレームだけを取得します。元の再生時刻で先頭の無音・重複を処理し、[AVAudioConverter](https://developer.apple.com/documentation/technotes/tn3136-avaudioconverter-performing-sample-rate-conversions)で明示的に22.05 kHzへ変換します。変換後も容量ではなくframeLengthを使い、左右を個別にFFTへ渡します。
+新方式では元のサンプルレートでPCMを読み、[CMSampleBufferGetNumSamples](https://developer.apple.com/documentation/coremedia/cmsamplebuffergetnumsamples(_:))とPCMコピーAPIで有効なフレームだけを取得します。元の再生時刻で先頭の無音・重複を処理し、[AVAudioConverter](https://developer.apple.com/documentation/technotes/tn3136-avaudioconverter-performing-sample-rate-conversions)で明示的に44.1 kHz（精密）／22.05 kHz（高速）へ変換します。変換後も容量ではなくframeLengthを使い、左右を個別にFFTへ渡します。
 
 YouTubeから取得するM4Aなどの音声ファイルではAVAudioFileの実フレームを最後まで読み、実フレーム数÷処理サンプルレートで解析時間を決めます。AVAssetが申告するコンテナの時間へ無音を追加して長くする処理は通しません。動画ファイルでは元の映像の先頭・末尾の無音を維持するため、元サンプルレートのAVAssetReaderを使います。
 
@@ -21,6 +21,12 @@ YouTubeから取得するM4Aなどの音声ファイルではAVAudioFileの実�
 ## 旧データ
 
 旧方式でiPhone解析したYouTubeの振動には新デコーダーの印がないため、曲を選択したときに一度だけ新方式で作り直します。作り直し完了まで旧データを保持し、倍率・履歴・解析スタイルを引き継ぎます。古い解析時間で上書きされた長さを修復の照合に使わず、同じ動画IDから再取得します。PCで作成した振動には適用しません。
+
+## iPhoneの精密解析
+
+新規のiPhone解析は「精密（帯域別）」が標準です。44.1 kHz・10 ms間隔、低音4096 FFT／打音1024 FFT。30〜70／70〜140／140〜300 Hzのエネルギーと低・中・高域Fluxを分け、持続の重さと打音の強度・鋭さを変えます。設定と初回準備から「高速」へ戻せます。作成済みには作り直しで適用します。PCと解像度は同じですが、新しい帯域別マッピングのため出力は完全一致しません。BPM推定は従来方式です。
+
+50／100／220 Hzの帯域分離、逆位相ステレオ、80／900／5000 Hzの打音の強度・鋭さ、持続低音が繰り返し打音にならないこと、高音が強い持続振動にならないこと、無音、10 msのCore Haptics曲線、保存・補間・旧データ互換を追加検証します。解析単体と準備全体の時間を分けて記録します。
 
 ## 検証
 

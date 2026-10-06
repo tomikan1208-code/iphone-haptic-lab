@@ -323,7 +323,7 @@ struct MusicView: View {
             haptics.stop()
             library.prepare(selection, method: .device,
                 style: record?.analysis?.style ?? preferences.style,
-                profile: record?.analysis?.profile ?? preferences.profile)
+                profile: record?.analysis?.profile ?? preferences.profile, quality: preferences.quality)
             if library.preparation?.selection.id == selection.id {
                 playAfterPreparation = selection
                 preparationSelection = selection
@@ -360,6 +360,7 @@ struct MusicPreparationView: View {
     @State private var method: MusicAnalysisMethod = .device
     @State private var style: MusicGenerationStyle = .following
     @State private var profile: MusicArrangement = .standard
+    @State private var quality: MusicAnalysisQuality = .precision
     @State private var audioURLText = ""
     @State private var showPCSettings = false
     @State private var errorText: String?
@@ -375,6 +376,12 @@ struct MusicPreparationView: View {
                     Picker("解析する場所", selection: $method) {
                         ForEach(MusicAnalysisMethod.allCases, id: \.self) { Text($0.title).tag($0) }
                     }.pickerStyle(.segmented).accessibilityIdentifier("analysis.method")
+                    if method == .device {
+                        Picker("iPhoneの解析精度", selection: $quality) {
+                            ForEach(MusicAnalysisQuality.allCases, id: \.self) { Text($0.title).tag($0) }
+                        }.pickerStyle(.segmented).accessibilityIdentifier("analysis.quality")
+                        Text(quality.detail).font(.system(size: 12)).foregroundStyle(LabTheme.muted)
+                    }
                     Picker("振動の作り方", selection: $style) {
                         ForEach(MusicGenerationStyle.allCases, id: \.self) { Text($0.title).tag($0) }
                     }.pickerStyle(.segmented).accessibilityIdentifier("analysis.style")
@@ -421,7 +428,7 @@ struct MusicPreparationView: View {
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("閉じる") { dismiss() } } }
         }
         .preferredColorScheme(.dark)
-        .onAppear { method = selection.kind == .youtube ? .device : preferences.method; style = preferences.style; profile = preferences.profile }
+        .onAppear { method = selection.kind == .youtube ? .device : preferences.method; style = preferences.style; profile = preferences.profile; quality = preferences.quality }
         .sheet(isPresented: $showPCSettings) {
             NavigationStack {
                 AnalysisSettingsView().toolbar {
@@ -432,7 +439,9 @@ struct MusicPreparationView: View {
         .fileImporter(isPresented: $importing, allowedContentTypes: [.audio, .movie], allowsMultipleSelection: false) { result in
             do {
                 guard let url = try result.get().first else { return }
-                library.prepare(selection, audioFile: url, method: method, style: style, profile: profile, connection: preferences.connection)
+                preferences.quality = quality
+                library.prepare(selection, audioFile: url, method: method, style: style, profile: profile,
+                                quality: quality, connection: preferences.connection)
                 dismiss()
             } catch { library.message = error.localizedDescription }
         }
@@ -442,6 +451,7 @@ struct MusicPreparationView: View {
         preferences.method = method
         preferences.style = style
         preferences.profile = profile
+        preferences.quality = quality
         if method == .pc, preferences.connection == nil { showPCSettings = true; return }
         do {
             let audioURL = audioURLText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : try MusicSelection.audioDownloadURL(audioURLText)
@@ -450,7 +460,7 @@ struct MusicPreparationView: View {
                 return
             }
             library.prepare(selection, audioFile: initialAudio, audioDownloadURL: audioURL,
-                            method: method, style: style, profile: profile, connection: preferences.connection)
+                            method: method, style: style, profile: profile, quality: quality, connection: preferences.connection)
             dismiss()
         } catch { errorText = error.localizedDescription }
     }

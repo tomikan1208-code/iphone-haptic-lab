@@ -104,6 +104,13 @@ struct MusicPlayerScreen: View {
             }
             Text(playback.selection?.title ?? "曲を選んでください").font(.system(size: 21, weight: .bold)).fixedSize(horizontal: false, vertical: true)
             Text(playback.selection?.artist ?? "").font(.system(size: 13)).foregroundStyle(LabTheme.muted)
+            if let analysis = playback.visualizationTrack?.analysis {
+                Text(analysis.engine == "device"
+                     ? "iPhone · \(analysis.quality?.title ?? "高速") · \(String(format: "%.1f", analysis.processingSeconds ?? analysis.elapsedSeconds))秒で解析"
+                     : "PCで精密解析")
+                    .font(.system(size: 11)).foregroundStyle(LabTheme.muted)
+                    .accessibilityIdentifier("music.analysisSummary")
+            }
         }
     }
 

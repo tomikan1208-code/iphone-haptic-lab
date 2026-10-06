@@ -6,6 +6,20 @@ enum MusicAnalysisMethod: String, Codable, CaseIterable {
     var title: String { self == .device ? "このiPhone" : "PCで精密解析" }
 }
 
+enum MusicAnalysisQuality: String, Codable, CaseIterable, Sendable {
+    case standard, precision
+    var title: String { self == .precision ? "精密（帯域別）" : "高速" }
+    var sampleRate: Double { self == .precision ? 44_100 : 22_050 }
+    var fftSize: Int { self == .precision ? 4_096 : 1_024 }
+    var hopSize: Int { 441 }
+    var hopMilliseconds: Double { Double(hopSize) / sampleRate * 1_000 }
+    var detail: String {
+        self == .precision
+            ? "PCと同じ44.1 kHz・10 ms間隔。低音を3帯域に分け、重い打音と軽い鋭い打音を作り分けます。PCへの接続は不要です。"
+            : "22.05 kHz・20 ms間隔で解析します。処理時間と消費電力を抑えたいときに使えます。"
+    }
+}
+
 enum MusicGenerationStyle: String, Codable, CaseIterable {
     case following, musical
     var title: String {
@@ -35,6 +49,8 @@ struct MusicAnalysisInfo: Codable, Equatable {
     var tempoBPM: Double? = nil
     var profile: MusicArrangement? = nil
     var decoderVersion: Int? = nil
+    var quality: MusicAnalysisQuality? = nil
+    var processingSeconds: Double? = nil
 }
 
 struct PCServerConnection: Equatable, Sendable {
@@ -78,18 +94,20 @@ final class AnalysisPreferences: ObservableObject {
     @Published var token: String { didSet { defaults.set(token, forKey: "analysis.token") } }
     @Published var style: MusicGenerationStyle { didSet { defaults.set(style.rawValue, forKey: "analysis.style") } }
     @Published var profile: MusicArrangement { didSet { defaults.set(profile.rawValue, forKey: "analysis.profile") } }
+    @Published var quality: MusicAnalysisQuality { didSet { defaults.set(quality.rawValue, forKey: "analysis.quality") } }
     var connection: PCServerConnection? { try? PCServerConnection(address: address, token: token) }
     init() {
         defaults = ProcessInfo.processInfo.arguments.contains("--music-test-library")
             ? UserDefaults(suiteName: "MusicPlayerUITestPreferences")! : .standard
         if ProcessInfo.processInfo.arguments.contains("--reset-music-test-library") {
-            for key in ["analysis.method", "analysis.address", "analysis.token", "analysis.style", "analysis.profile"] { defaults.removeObject(forKey: key) }
+            for key in ["analysis.method", "analysis.address", "analysis.token", "analysis.style", "analysis.profile", "analysis.quality"] { defaults.removeObject(forKey: key) }
         }
         method = MusicAnalysisMethod(rawValue: defaults.string(forKey: "analysis.method") ?? "") ?? .device
         address = defaults.string(forKey: "analysis.address") ?? ""
         token = defaults.string(forKey: "analysis.token") ?? ""
         style = MusicGenerationStyle(rawValue: defaults.string(forKey: "analysis.style") ?? "") ?? .following
         profile = MusicArrangement(rawValue: defaults.string(forKey: "analysis.profile") ?? "") ?? .standard
+        quality = MusicAnalysisQuality(rawValue: defaults.string(forKey: "analysis.quality") ?? "") ?? .precision
     }
 }
 
@@ -205,6 +223,12 @@ struct AnalysisSettingsView: View {
                 Picker("解析する場所", selection: $preferences.method) {
                     ForEach(MusicAnalysisMethod.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
+                if preferences.method == .device {
+                    Picker("iPhoneの解析精度", selection: $preferences.quality) {
+                        ForEach(MusicAnalysisQuality.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }.accessibilityIdentifier("analysis.quality")
+                    Text(preferences.quality.detail).font(.system(size: 12)).foregroundStyle(LabTheme.muted)
+                }
                 Picker("振動の作り方", selection: $preferences.style) {
                     ForEach(MusicGenerationStyle.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
@@ -212,7 +236,7 @@ struct AnalysisSettingsView: View {
                 Picker("仕上げ", selection: $preferences.profile) {
                     ForEach(MusicArrangement.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
-                Text("iPhoneはオフラインでも音源ファイルを解析できます。PCは低音の分解能と打音の時間間隔を細かくし、YouTube URLからの音源取得にも対応します。")
+                Text("iPhoneだけで精密解析できます。PC解析も引き続き選べます。作成済みの曲に新しい解析を適用するには、曲のメニューから「振動を作り直す」を選んでください。")
                     .font(.system(size: 12)).foregroundStyle(LabTheme.muted)
             }
             Section("PCとの接続") {

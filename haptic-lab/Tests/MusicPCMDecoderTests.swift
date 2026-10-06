@@ -38,6 +38,14 @@ final class MusicPCMDecoderTests: XCTestCase {
             XCTAssertEqual(track.duration, frameDuration, accuracy: 0.06)
             XCTAssertEqual(track.duration, 3, accuracy: 0.06)
             try assertTimingAndPitch(track, duration: track.duration)
+            let precision = try await MusicAnalyzer.analyze(audio, quality: .precision) { _, _ in }
+            XCTAssertEqual(precision.duration, 3, accuracy: 0.06)
+            XCTAssertEqual(precision.envelope[1].time, 0.01, accuracy: 0.000_001)
+            XCTAssertNotNil(precision.value(at: 0.53).texture)
+            for onset in [0.5, 1.5] {
+                XCTAssertTrue(precision.taps.contains { abs($0.time - onset) <= 0.04 })
+            }
+            XCTAssertEqual(precision.value(at: 2).energy, 0)
             let legacyDuration = try await legacyReaderDuration(audio, duration: duration)
             print("PCM duration verification: sourceRate=\(rate), media=\(duration), previousReader=\(legacyDuration), corrected=\(track.duration)")
         }
