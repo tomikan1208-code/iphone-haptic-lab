@@ -218,6 +218,12 @@ enum MusicAnalyzer {
     static let decoderVersion = 2
 
     static func analyze(_ url: URL, progress: @escaping @Sendable (Double, String) -> Void) async throws -> MusicHapticTrack {
+        // Audio-only files have their own decoded frame clock. Do not extend them
+        // to an inaccurate movie/track duration reported by AVAsset.
+        if ["wav", "m4a", "mp3", "aac", "aif", "aiff", "caf"].contains(url.pathExtension.lowercased()),
+           let audio = try? AVAudioFile(forReading: url, commonFormat: .pcmFormatFloat32, interleaved: false) {
+            return try analyzeAudioFile(audio, url: url, progress: progress)
+        }
         let asset = AVURLAsset(url: url)
         let duration = try await asset.load(.duration).seconds
         guard duration.isFinite, duration > 0 else { throw MusicError.unsupportedMedia }
@@ -268,6 +274,45 @@ enum MusicAnalyzer {
         }
         guard reader.status == .completed, let decoder else { throw reader.error ?? MusicError.unsupportedMedia }
         progress(0.9, "振動のトラックを作成しています")
+        return try decoder.finish(hash: audioHash(url))
+    }
+
+    private static func analyzeAudioFile(_ audio: AVAudioFile, url: URL,
+                                        progress: @escaping @Sendable (Double, String) -> Void) throws -> MusicHapticTrack {
+        let format = audio.processingFormat
+        let estimated = Double(audio.length) / format.sampleRate
+        guard estimated.isFinite, estimated > 0 else { throw MusicError.unsupportedMedia }
+        // Bound decoding by the app limit, not by a possibly inaccurate estimate.
+        let decoder = try MusicPCMDecoder(format: format, duration: MusicHapticTrack.maximumDuration)
+        guard let pcm = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 4_096) else {
+            throw MusicError.unsupportedMedia
+        }
+        var frames = 0
+        var lastProgress = -1.0
+        while true {
+            try Task.checkCancellation()
+            try audio.read(into: pcm)
+            if pcm.frameLength == 0 { break }
+            guard Double(frames + Int(pcm.frameLength)) / format.sampleRate <= MusicHapticTrack.maximumDuration else {
+                throw MusicError.tooLong
+            }
+            let time = Double(frames) / format.sampleRate
+            try decoder.append(pcm, at: time)
+            frames += Int(pcm.frameLength)
+            if time - lastProgress >= 0.25 {
+                progress(0.1 + min(1, time / estimated) * 0.78,
+                    "低音とビートを解析中 · \(musicTime(time))")
+                lastProgress = time
+            }
+        }
+        guard frames > 0, Double(frames) / format.sampleRate <= MusicHapticTrack.maximumDuration else {
+            throw MusicError.tooLong
+        }
+        progress(0.9, "振動のトラックを作成しています")
+        return try decoder.finish(hash: audioHash(url), useDecodedDuration: true)
+    }
+
+    private static func audioHash(_ url: URL) throws -> String {
         let file = try FileHandle(forReadingFrom: url)
         defer { try? file.close() }
         var digest = SHA256()
@@ -275,8 +320,7 @@ enum MusicAnalyzer {
             try Task.checkCancellation()
             digest.update(data: bytes)
         }
-        let hash = digest.finalize().map { String(format: "%02x", $0) }.joined()
-        return try decoder.finish(hash: hash)
+        return digest.finalize().map { String(format: "%02x", $0) }.joined()
     }
 }
 

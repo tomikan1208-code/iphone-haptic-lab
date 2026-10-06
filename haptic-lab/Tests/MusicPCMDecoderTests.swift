@@ -33,8 +33,11 @@ final class MusicPCMDecoderTests: XCTestCase {
             let duration = try await AVURLAsset(url: audio).load(.duration).seconds
             XCTAssertEqual(duration, 3, accuracy: 0.06)
             let track = try await MusicAnalyzer.analyze(audio) { _, _ in }
-            XCTAssertEqual(track.duration, duration, accuracy: 1 / 22_050)
-            try assertTimingAndPitch(track, duration: duration)
+            let file = try AVAudioFile(forReading: audio)
+            let frameDuration = Double(file.length) / file.processingFormat.sampleRate
+            XCTAssertEqual(track.duration, frameDuration, accuracy: 0.06)
+            XCTAssertEqual(track.duration, 3, accuracy: 0.06)
+            try assertTimingAndPitch(track, duration: track.duration)
             let legacyDuration = try await legacyReaderDuration(audio, duration: duration)
             print("PCM duration verification: sourceRate=\(rate), media=\(duration), previousReader=\(legacyDuration), corrected=\(track.duration)")
         }
@@ -56,6 +59,14 @@ final class MusicPCMDecoderTests: XCTestCase {
         let buffer = try Self.pcm(format: format, start: 0, count: 44_100)
         let decoder = try MusicPCMDecoder(format: format, duration: 1)
         XCTAssertThrowsError(try decoder.append(buffer, at: 1))
+    }
+
+    func testAudioEndOfStreamCannotBePaddedToADoubledDurationEstimate() throws {
+        let format = try XCTUnwrap(AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 2))
+        let decoder = try MusicPCMDecoder(format: format, duration: 6)
+        try decoder.append(Self.pcm(format: format, start: 0, count: 44_100 * 3), at: 0)
+        let track = try decoder.finish(hash: String(repeating: "a", count: 64), useDecodedDuration: true)
+        try assertTimingAndPitch(track, duration: 3)
     }
 
     @MainActor

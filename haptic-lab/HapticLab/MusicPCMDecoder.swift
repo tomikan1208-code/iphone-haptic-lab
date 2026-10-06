@@ -68,9 +68,10 @@ final class MusicPCMDecoder {
         sourceFrames += count
     }
 
-    func finish(hash: String) throws -> MusicHapticTrack {
+    func finish(hash: String, useDecodedDuration: Bool = false) throws -> MusicHapticTrack {
         try convert(nil)
-        return try extractor.finish(hash: hash, expectedDuration: duration)
+        let end = useDecodedDuration ? Double(sourceFrames) / inputFormat.sampleRate : duration
+        return try extractor.finish(hash: hash, expectedDuration: end)
     }
 
     private func checkSourceEnd(_ frames: Int) throws {
