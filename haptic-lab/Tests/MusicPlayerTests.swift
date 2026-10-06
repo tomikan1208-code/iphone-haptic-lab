@@ -62,6 +62,9 @@ final class MusicPlayerTests: XCTestCase {
         XCTAssertTrue(playback.message?.contains("動画 0:30・解析 0:08") == true)
         XCTAssertEqual(playback.position, 0)
         XCTAssertEqual(playback.duration, 8)
+        playback.message = nil
+        playback.receiveYouTube(iframeSnapshot(duration: 30, time: 1.2), videoID: "lkiV3U0GfGg")
+        XCTAssertNil(playback.message, "A dismissed duration diagnostic must not reappear every frame")
         playback.receiveYouTube(iframeSnapshot(duration: 8, time: 0.1), videoID: "lkiV3U0GfGg")
         XCTAssertNil(playback.message)
         XCTAssertEqual(playback.position, 0.1)

@@ -256,6 +256,7 @@ final class MusicPlayback: ObservableObject {
         isBuffering = false
         mediaClock.reset(to: position)
         renderer.stop()
+        durationGate.reset()
         seekGeneration += 1
         seekTarget = nil
     }
@@ -325,15 +326,15 @@ final class MusicPlayback: ObservableObject {
               let sent = snapshot["sent"] as? Double, time.isFinite, span.isFinite, sent.isFinite else { return }
         let latency = Date().timeIntervalSince1970 - sent / 1_000
         guard (-0.1...0.35).contains(latency), rate.isFinite, (0.25...2).contains(rate) else {
-            renderer.stop(); mediaClock.reset(to: position); return
+            durationGate.reset(); renderer.stop(); mediaClock.reset(to: position); return
         }
         let currentID = snapshot["videoID"] as? String
         // Ignore the clock/duration of an unloaded iframe or another video. These
         // snapshots previously replaced the selected song's duration and raised a
         // mismatch even when the selected song was not playing.
         guard currentID == videoID, span > 0, [0, 1, 2].contains(state) else {
-            isPlaying = false
-            isBuffering = state == 3
+            if isPlaying { isPlaying = false }
+            if isBuffering != (state == 3) { isBuffering = state == 3 }
             durationGate.reset()
             renderer.stop()
             mediaClock.reset(to: position)
@@ -341,7 +342,7 @@ final class MusicPlayback: ObservableObject {
         }
         let playing = state == 1
         if isPlaying != playing { isPlaying = playing }
-        isBuffering = false
+        if isBuffering { isBuffering = false }
         if let track {
             let result = durationGate.check(duration: span, expected: track.duration,
                                             playing: playing, hostTime: CACurrentMediaTime())
@@ -398,6 +399,7 @@ final class MusicPlayback: ObservableObject {
 
     private func showDurationWaiting(videoDuration: Double, audioDuration: Double) {
         let text = "再生中の長さを確認しています（動画 \(musicTime(videoDuration))・解析 \(musicTime(audioDuration))）。一致したら振動を自動で再開します。"
+        guard durationMessage != text else { return }
         // Do not overwrite playback/network errors with a duration diagnostic.
         if message == nil || message == durationMessage { message = text }
         durationMessage = text
