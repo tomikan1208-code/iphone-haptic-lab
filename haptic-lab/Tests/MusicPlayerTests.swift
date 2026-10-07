@@ -1,8 +1,56 @@
 import XCTest
 import CoreHaptics
+import JavaScriptCore
 @testable import HapticLab
 
 final class MusicPlayerTests: XCTestCase {
+    @MainActor
+    func testLateCaptionModulesAreDisabledAgainWithoutInterruptingTheMediaClock() throws {
+        let context = try embeddedPlayerContext()
+        context.evaluateScript("onYouTubeIframeAPIReady(); playerOptions.events.onReady();")
+        XCTAssertEqual(context.objectForKeyedSubscript("unloads")?.toInt32(), 0)
+        context.evaluateScript("modules=['captions']; playerOptions.events.onApiChange(); playerOptions.events.onStateChange();")
+        XCTAssertEqual(context.objectForKeyedSubscript("unloads")?.toInt32(), 1)
+        context.evaluateScript("modules=['captions']; playerOptions.events.onStateChange(); timerCallback();")
+        XCTAssertEqual(context.objectForKeyedSubscript("unloads")?.toInt32(), 2)
+        XCTAssertEqual(context.evaluateScript("messages[0].ready")?.toBool(), true)
+        XCTAssertEqual(context.evaluateScript("messages[messages.length-1].time")?.toDouble(), 2)
+        XCTAssertEqual(context.evaluateScript("messages[messages.length-1].duration")?.toDouble(), 8)
+        XCTAssertEqual(context.evaluateScript("messages[messages.length-1].videoID")?.toString(), "lkiV3U0GfGg")
+        XCTAssertNil(context.exception)
+    }
+
+    @MainActor
+    func testUnavailableOrFailingCaptionModulesCannotBreakPlaybackMessages() throws {
+        for failure in ["delete fake.unloadModule", "fake.getOptions=function(){throw new Error('unavailable')}"] {
+            let context = try embeddedPlayerContext()
+            context.evaluateScript(failure + "; onYouTubeIframeAPIReady(); playerOptions.events.onReady(); modules=['captions']; playerOptions.events.onApiChange(); playerOptions.events.onStateChange(); timerCallback();")
+            XCTAssertNil(context.exception)
+            XCTAssertEqual(context.evaluateScript("messages[0].ready")?.toBool(), true)
+            XCTAssertEqual(context.evaluateScript("messages.length")?.toInt32(), 3)
+            XCTAssertEqual(context.evaluateScript("messages[2].state")?.toInt32(), 1)
+            XCTAssertEqual(context.evaluateScript("messages[2].time")?.toDouble(), 2)
+        }
+    }
+
+    @MainActor private func embeddedPlayerContext() throws -> JSContext {
+        let context = try XCTUnwrap(JSContext())
+        context.evaluateScript("""
+        var modules=[],unloads=0,messages=[],playerOptions,timerCallback;
+        var window={webkit:{messageHandlers:{musicPlayer:{postMessage:function(data){messages.push(data)}}}}};
+        function setInterval(callback){timerCallback=callback;return 1}
+        var fake={getOptions:function(){return modules},unloadModule:function(){unloads++;modules=[];playerOptions.events.onApiChange()},
+          getPlayerState:function(){return 1},getCurrentTime:function(){return 2},getDuration:function(){return 8},
+          getPlaybackRate:function(){return 1},getVideoData:function(){return {video_id:'lkiV3U0GfGg'}}};
+        var YT={Player:function(id,options){playerOptions=options;return fake}};
+        """)
+        let html = YouTubeMusicPlayer.html(videoID: "lkiV3U0GfGg", origin: "https://com.tomikan1208.hapticlab")
+        let script = try XCTUnwrap(html.components(separatedBy: "<script>").last?.components(separatedBy: "</script>").first)
+        context.evaluateScript(script)
+        XCTAssertNil(context.exception)
+        return context
+    }
+
     func testYouTubeDurationGateAcceptsRealAudioPaddingAndRejectsUnknownDuration() {
         var gate = MusicDurationGate()
         XCTAssertEqual(gate.check(duration: 547, expected: 546.97, playing: true, hostTime: 1), .matching)

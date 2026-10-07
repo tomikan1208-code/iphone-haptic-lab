@@ -455,12 +455,24 @@ struct YouTubeMusicPlayer: UIViewRepresentable {
         playback.beginYouTubeLoading(videoID: videoID)
         let origin = "https://\(Bundle.main.bundleIdentifier ?? "com.tomikan1208.hapticlab")"
         // The bundle-ID HTTPS base supplies the app identity required by YouTube (error 153).
-        let html = """
+        webView.loadHTMLString(Self.html(videoID: videoID, origin: origin), baseURL: URL(string: origin))
+        return webView
+    }
+
+    static func html(videoID: String, origin: String) -> String {
+        """
         <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
         <meta name="referrer" content="strict-origin-when-cross-origin">
         <style>html,body{margin:0;background:#000;height:100%;overflow:hidden}#player{width:100%;height:100%}</style></head>
         <body><div id="player"></div><script>
         var player, timer;
+        function disableCaptions() {
+          // Module unloading is not a documented guarantee. Keep playback working when it is unavailable.
+          try {
+            if (player && typeof player.unloadModule === 'function' && typeof player.getOptions === 'function' &&
+                player.getOptions().indexOf('captions') !== -1) player.unloadModule('captions');
+          } catch(e) {}
+        }
         function send(extra) {
           try {
             var data = {state:player.getPlayerState(),time:player.getCurrentTime(),duration:player.getDuration(),
@@ -470,15 +482,14 @@ struct YouTubeMusicPlayer: UIViewRepresentable {
         }
         function onYouTubeIframeAPIReady() {
           player = new YT.Player('player',{videoId:'\(videoID)',width:'100%',height:'100%',
-            playerVars:{playsinline:1,autoplay:0,controls:1,origin:'\(origin)'},
-            events:{onReady:function(){send({ready:true});timer=setInterval(function(){send()},20)},
-              onStateChange:function(){send()},onPlaybackRateChange:function(){send()},
+            playerVars:{playsinline:1,autoplay:0,controls:0,fs:0,disablekb:1,rel:0,iv_load_policy:3,cc_load_policy:0,origin:'\(origin)'},
+            events:{onReady:function(){disableCaptions();send({ready:true});timer=setInterval(function(){send()},20)},
+              onApiChange:function(){disableCaptions()},
+              onStateChange:function(){disableCaptions();send()},onPlaybackRateChange:function(){send()},
               onError:function(e){window.webkit.messageHandlers.musicPlayer.postMessage({error:e.data})}}});
         }
         </script><script src="https://www.youtube.com/iframe_api"></script></body></html>
         """
-        webView.loadHTMLString(html, baseURL: URL(string: origin))
-        return webView
     }
 
     func updateUIView(_ uiView: WKWebView, context: Context) {}
