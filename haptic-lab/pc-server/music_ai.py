@@ -14,7 +14,7 @@ import time
 import numpy as np
 from music_rhythm import estimate_tempo
 
-PIPELINE_VERSION = 'arrangement-3.3'
+PIPELINE_VERSION = 'arrangement-3.3.1'
 ALLINONE_COMMIT = '8414233b743d6ccec46e36ab4cfeddb4605ff3bf'
 CLAP_REVISION = '8fa0f1c6d0433df6e97c127f64b2a1d6c0dcda8a'
 BEAT_SHA256 = '8c328b45f59d8dd3dff219253ff6a8d6482be57d0133a29140e2febbf8eb8331'

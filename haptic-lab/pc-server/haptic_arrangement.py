@@ -78,10 +78,12 @@ def arrange(graph, spectrum=None, profile='standard'):
     recurring = {}
     for section in sections:
         mask = (times >= section['start']) & (times < section['end'])
-        if not mask.any(): continue
-        energy = float(features['mix'][mask].mean())
-        drums = float(features['drums'][mask].mean())
-        vocal = float(np.mean(features['vocals'][mask] > .3))
+        has_samples = bool(mask.any())
+        # Neural boundaries can leave sections shorter than the 20 ms feature grid.
+        # Keep their boundaries and initialize metadata even when no frame falls inside.
+        energy = float(features['mix'][mask].mean()) if has_samples else 0.
+        drums = float(features['drums'][mask].mean()) if has_samples else 0.
+        vocal = float(np.mean(features['vocals'][mask] > .3)) if has_samples else 0.
         mood = section.get('mood', 'gentle')
         # Reserve the denser vocabulary for percussive choruses or very active verses.
         percussive_chorus = section['label'] == 'chorus' and drums > .28
@@ -89,8 +91,9 @@ def arrange(graph, spectrum=None, profile='standard'):
         if mood in ('gentle', 'floating', 'solemn') or profile == 'orchestral': family = 'sway'
         if section['confidence'] < .5: family = 'pulse'
         key = 'chorus' if section['label'] == 'chorus' else section['label'] + ':' + mood
-        family = recurring.setdefault(key, family)
-        section.update(family=family, energy=energy, vocalOccupancy=vocal)
+        # An empty interval cannot decide the motif family of later audible choruses.
+        family = recurring.setdefault(key, family) if has_samples else recurring.get(key, family)
+        section.update(mood=mood, family=family, energy=energy, vocalOccupancy=vocal)
         section['groove'] = estimate_groove(times, raw['drumsOnset'], observed_beats,
                                            section['start'], section['end'])
     section_starts = [s['start'] for s in sections]

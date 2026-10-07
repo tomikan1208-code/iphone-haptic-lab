@@ -6,6 +6,7 @@ import re
 import shutil
 import sys
 import time
+import traceback
 
 from signal_analysis import analyze, compose, decode, estimate_beats, RATE
 
@@ -145,6 +146,7 @@ def run(folder):
         message = str(error) if isinstance(error, ValueError) else '音源の取得・解析に失敗しました。PCのログを確認し、ファイル解析でも試してください。'
         atomic_json(folder / 'status.json', dict(state='failed', progress=0, message=message[:500]))
         print(type(error).__name__ + ': ' + str(error), file=sys.stderr)
+        traceback.print_exc()
     finally:
         if pcm is not None:
             pcm._mmap.close()

@@ -33,6 +33,32 @@ def fixture():
 
 
 class ArrangementTests(unittest.TestCase):
+    def test_sub_frame_ending_section_keeps_metadata_and_serializes_for_phone(self):
+        graph = fixture()
+        graph['structure']['segments'][-1]['end'] = 15.99
+        graph['structure']['segments'].append(dict(id='short-end', start=15.99, end=16.,
+            label='outro', confidence=.9, mood='gentle'))
+        original = copy.deepcopy(graph)
+        for profile in ('standard', 'orchestral'):
+            track, report = arrange(graph, profile=profile)
+            section = track['arrangement']['sections'][-1]
+            self.assertEqual((section['start'], section['end']), (15.99, 16.))
+            self.assertIn(section['family'], ('pulse', 'sway', 'drive'))
+            self.assertEqual(section['groove']['kind'], 'unknown')
+            json.dumps(track, allow_nan=False)
+            json.dumps(report, allow_nan=False)
+        self.assertEqual(graph, original)
+
+    def test_empty_feature_section_does_not_choose_the_family_of_later_choruses(self):
+        graph = fixture()
+        graph['structure']['segments'][0]['start'] = .019
+        graph['structure']['segments'].insert(0, dict(id='short-start', start=.001, end=.019,
+            label='chorus', confidence=.9, mood='driving'))
+        track, _ = arrange(graph)
+        choruses = [s for s in track['arrangement']['sections'] if s['label'] == 'chorus']
+        self.assertEqual(choruses[1]['family'], 'drive')
+        self.assertEqual(choruses[2]['family'], 'drive')
+
     def test_drifting_tempo_and_meter_follow_observed_bars_and_silence_stays_silent(self):
         graph = fixture()
         track, report = arrange(graph)

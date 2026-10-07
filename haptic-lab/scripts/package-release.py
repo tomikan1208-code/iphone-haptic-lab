@@ -12,7 +12,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ['INSTALL.md', 'INSTALL-WINDOWS.md', 'BUILD.md', 'AI-INSTALL.md', 'AHAP.md',
         'API.md', 'PC-SERVER.md', 'GOOGLE-LOGIN.md', 'MUSIC.md', 'HAPTIC-ARRANGEMENT-DESIGN.md',
-        'verification/SERENADE.md', 'verification/serenade-metrics.json',
+        'verification/SERENADE.md', 'verification/SUB-FRAME-SECTIONS.md', 'verification/serenade-metrics.json',
         'verification/serenade-arrangement.png', 'verification/serenade-56s-bed.ahap',
         'verification/serenade-56s-accents.ahap',
         'verification/SERENADE-REFERENCE.md', 'verification/serenade-reference.json',
