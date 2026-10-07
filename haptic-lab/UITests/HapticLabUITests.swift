@@ -128,6 +128,7 @@ final class HapticLabUITests: XCTestCase {
         app.buttons["music.settings"].tap()
         let crispPreset = app.buttons["music.crispPreset"]
         XCTAssertTrue(crispPreset.waitForExistence(timeout: 5))
+        reveal(crispPreset, app: app)
         crispPreset.tap()
         XCTAssertEqual(app.sliders["music.gain.settings"].value as? String, "80%")
         XCTAssertEqual(app.sliders["music.continuous"].value as? String, "25%")
@@ -314,6 +315,63 @@ final class HapticLabUITests: XCTestCase {
         app.buttons["menu.analysis"].tap()
         XCTAssertTrue(address.waitForExistence(timeout: 5))
         XCTAssertEqual(address.value as? String, "http://192.168.1.12:8765")
+    }
+
+    func testGlobalVibrationSettingsAndOneButtonResetContinueFollowingAfterRelaunch() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--music-test-library", "--reset-music-test-library", "--music-test-prepared"]
+        app.launch()
+        let song = app.buttons["music.song.music-ui-fixture"]
+        XCTAssertTrue(song.waitForExistence(timeout: 40))
+        app.buttons["player.menu"].tap()
+        app.buttons["menu.globalSettings"].tap()
+        let globalPreset = app.buttons["global.crispPreset"]
+        XCTAssertTrue(globalPreset.waitForExistence(timeout: 5))
+        reveal(globalPreset, app: app)
+        globalPreset.tap()
+        app.navigationBars.buttons["メニュー"].tap()
+        app.buttons["閉じる"].tap()
+        reveal(song, app: app)
+        song.tap()
+        XCTAssertTrue(app.sliders["music.gain"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["music.gainValue"].label, "80%")
+        app.sliders["music.gain"].adjust(toNormalizedSliderPosition: 1)
+        app.buttons["music.settings"].tap()
+        let scope = app.staticTexts["music.settingsScope"]
+        XCTAssertTrue(scope.waitForExistence(timeout: 5))
+        XCTAssertEqual(scope.label, "この曲の個別設定")
+        app.buttons["music.resetToGlobal"].tap()
+        XCTAssertEqual(scope.label, "グローバル設定を使用中")
+        screenshot("20-global-settings-reset", app: app)
+        app.buttons["完了"].tap()
+        XCTAssertEqual(app.staticTexts["music.gainValue"].label, "80%")
+        app.buttons["閉じる"].tap()
+        app.buttons["player.menu"].tap()
+        app.buttons["menu.globalSettings"].tap()
+        let globalGain = app.sliders["global.gain.settings"]
+        XCTAssertTrue(globalGain.waitForExistence(timeout: 5))
+        reveal(globalGain, app: app)
+        globalGain.adjust(toNormalizedSliderPosition: 0)
+        app.navigationBars.buttons["メニュー"].tap()
+        app.buttons["閉じる"].tap()
+        reveal(song, app: app)
+        song.tap()
+        XCTAssertTrue(app.sliders["music.gain"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["music.gainValue"].label, "0%")
+        app.terminate()
+        app.launchArguments = ["--music-test-library"]
+        app.launch()
+        app.buttons["tab.playlists"].tap()
+        app.buttons["music.preparedPlaylist"].tap()
+        XCTAssertTrue(song.waitForExistence(timeout: 10))
+        reveal(song, app: app)
+        song.tap()
+        XCTAssertTrue(app.sliders["music.gain"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["music.gainValue"].label, "0%")
+        app.buttons["music.settings"].tap()
+        XCTAssertTrue(scope.waitForExistence(timeout: 5))
+        XCTAssertEqual(scope.label, "グローバル設定を使用中")
+        XCTAssertFalse(app.buttons["music.resetToGlobal"].isEnabled)
     }
 
     private func reveal(_ element: XCUIElement, app: XCUIApplication) {

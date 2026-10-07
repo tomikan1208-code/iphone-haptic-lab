@@ -2,6 +2,98 @@ import XCTest
 @testable import HapticLab
 
 final class MusicHapticTests: XCTestCase {
+    @MainActor
+    func testGlobalSettingsInheritanceIndividualOverrideAndResetSurviveReload() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let library = MusicLibrary(root: root)
+        let first = MusicSelection.file(URL(fileURLWithPath: "/first.wav"))
+        let second = MusicSelection.file(URL(fileURLWithPath: "/second.wav"))
+        library.saveHistory(first)
+        library.saveHistory(second)
+        library.saveGlobalSettings(MusicSettings(gain: 0.4, continuousGain: 0.3))
+        XCTAssertEqual(library.settings(for: first.id), library.globalSettings)
+        library.saveSettings(MusicSettings(gain: 0.2, offset: 0.06), id: first.id)
+        library.saveGlobalSettings(MusicSettings(gain: 0.9))
+        XCTAssertEqual(library.settings(for: first.id).gain, 0.2)
+        XCTAssertEqual(library.settings(for: first.id).offset, 0.06)
+        XCTAssertEqual(library.settings(for: second.id).gain, 0.9)
+        XCTAssertEqual(library.record(for: first)?.hasIndividualSettings, true)
+        library.resetSettingsToGlobal(id: first.id)
+        XCTAssertEqual(library.record(for: first)?.hasIndividualSettings, false)
+        library.saveGlobalSettings(MusicSettings(gain: 1.2, transientSharpness: 0.8))
+        library.saveHistory(second)
+        let restored = MusicLibrary(root: root)
+        XCTAssertEqual(restored.globalSettings.gain, 1.2)
+        XCTAssertEqual(restored.settings(for: first.id), restored.globalSettings)
+        XCTAssertEqual(restored.settings(for: second.id), restored.globalSettings)
+        XCTAssertEqual(restored.record(for: first)?.hasIndividualSettings, false)
+        // An explicit individual setting stays individual even when equal to the global value.
+        restored.saveSettings(restored.globalSettings, id: first.id)
+        restored.saveGlobalSettings(MusicSettings(gain: 0.6))
+        XCTAssertEqual(restored.settings(for: first.id).gain, 1.2)
+        XCTAssertEqual(restored.settings(for: second.id).gain, 0.6)
+    }
+
+    @MainActor
+    func testLegacyLibraryPreservesAdjustedSongsAndInheritsForUntouchedSongs() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var adjusted = MusicRecord(selection: MusicSelection.file(URL(fileURLWithPath: "/adjusted.wav")))
+        adjusted.settings = MusicSettings(gain: 0.25)
+        let untouched = MusicRecord(selection: MusicSelection.file(URL(fileURLWithPath: "/untouched.wav")))
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(MusicLibrarySnapshot(records: [adjusted, untouched]))) as? [String: Any])
+        json.removeValue(forKey: "globalSettings")
+        let disk = MusicLibraryDisk(root: root)
+        try disk.initialize()
+        try JSONSerialization.data(withJSONObject: json).write(to: disk.index)
+        let library = MusicLibrary(root: root)
+        XCTAssertEqual(library.globalSettings, MusicSettings())
+        library.saveGlobalSettings(MusicSettings(gain: 0.8))
+        XCTAssertEqual(library.settings(for: adjusted.id).gain, 0.25)
+        XCTAssertEqual(library.settings(for: untouched.id).gain, 0.8)
+        XCTAssertEqual(library.record(for: adjusted.selection)?.hasIndividualSettings, true)
+        XCTAssertEqual(library.record(for: untouched.selection)?.hasIndividualSettings, false)
+        XCTAssertEqual(MusicLibrary(root: root).settings(for: adjusted.id).gain, 0.25)
+    }
+
+    @MainActor
+    func testPromotingIndividualSettingsAdoptsGlobalWithoutOverwritingOtherOverrides() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let library = MusicLibrary(root: root)
+        let first = MusicSelection.file(URL(fileURLWithPath: "/first.wav"))
+        let second = MusicSelection.file(URL(fileURLWithPath: "/second.wav"))
+        library.saveHistory(first)
+        library.saveHistory(second)
+        library.saveSettings(MusicSettings(gain: 0.3), id: first.id)
+        library.saveSettings(MusicSettings(gain: 0.2), id: second.id)
+        library.saveGlobalSettings(library.settings(for: first.id), adoptingFor: first.id)
+        XCTAssertEqual(library.globalSettings.gain, 0.3)
+        XCTAssertEqual(library.record(for: first)?.hasIndividualSettings, false)
+        XCTAssertEqual(library.settings(for: second.id).gain, 0.2)
+        library.saveGlobalSettings(MusicSettings(gain: 0.9))
+        XCTAssertEqual(library.settings(for: first.id).gain, 0.9)
+        XCTAssertEqual(library.settings(for: second.id).gain, 0.2)
+    }
+
+    @MainActor
+    func testFailedGlobalSettingsSaveLeavesLiveSettingsAndOverrideUnchanged() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let library = MusicLibrary(root: root)
+        let selection = MusicSelection.file(URL(fileURLWithPath: "/song.wav"))
+        library.saveHistory(selection)
+        library.saveSettings(MusicSettings(gain: 0.2), id: selection.id)
+        try FileManager.default.removeItem(at: library.disk.index)
+        try FileManager.default.createDirectory(at: library.disk.index, withIntermediateDirectories: false)
+        library.saveGlobalSettings(MusicSettings(gain: 0.9), adoptingFor: selection.id)
+        XCTAssertEqual(library.globalSettings, MusicSettings())
+        XCTAssertEqual(library.settings(for: selection.id).gain, 0.2)
+        XCTAssertEqual(library.record(for: selection)?.hasIndividualSettings, true)
+        XCTAssertNotNil(library.message)
+    }
+
     private let videoID = "dQw4w9WgXcQ"
 
     func testYouTubeURLsHaveOneCanonicalCacheIdentity() throws {

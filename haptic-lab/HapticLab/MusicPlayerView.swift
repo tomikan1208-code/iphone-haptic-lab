@@ -74,7 +74,6 @@ struct MusicPlayerScreen: View {
         .onAppear {
             if playback.visualizationTrack?.version == 3 {
                 showSpectrum = false
-                if playback.settings.mode == .energy { playback.settings.mode = .bass }
             }
         }
         .sheet(isPresented: $showSettings) {
@@ -85,9 +84,6 @@ struct MusicPlayerScreen: View {
             }.preferredColorScheme(.dark)
         }
         .onDisappear { playback.pause() }
-        .onChange(of: playback.settings) { settings in
-            if let id = playback.selection?.id { library.saveSettings(settings, id: id) }
-        }
     }
 
     @ViewBuilder private var mediaPlayer: some View {
@@ -204,7 +200,7 @@ struct MusicPlayerScreen: View {
             }
             HStack(spacing: 8) {
                 Text("オフ")
-                Slider(value: $playback.settings.gain, in: MusicSettings.gainRange, step: 0.05)
+                Slider(value: settingsBinding.gain, in: MusicSettings.gainRange, step: 0.05)
                     .tint(LabTheme.mint).accessibilityLabel("全体の強さ")
                     .accessibilityValue("\(Int((playback.settings.gain * 100).rounded()))%")
                     .accessibilityIdentifier("music.gain")
@@ -213,61 +209,41 @@ struct MusicPlayerScreen: View {
         }
     }
 
+    private var settingsBinding: Binding<MusicSettings> {
+        Binding(get: { playback.settings }, set: { settings in
+            guard let id = playback.selection?.id else { return }
+            library.saveSettings(settings, id: id)
+            playback.settings = library.settings(for: id)
+        })
+    }
+
+    private var hasIndividualSettings: Bool {
+        playback.selection.flatMap { library.record(for: $0) }?.hasIndividualSettings == true
+    }
+
     private var settingsPanel: some View {
-        VStack(alignment: .leading, spacing: 23) {
-            Text("触感を調整").font(.system(size: 17, weight: .semibold))
-            Button { playback.settings.emphasizeTaps() } label: {
-                Label("打音をくっきり", systemImage: "sparkles")
-                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(LabTheme.mint)
-            }.accessibilityIdentifier("music.crispPreset")
-            ParameterSlider(title: "全体の強さ", valueLabel: "\(Int((playback.settings.gain * 100).rounded()))%", leading: "オフ", trailing: "最大400%",
-                            identifier: "music.gain.settings", value: $playback.settings.gain, range: MusicSettings.gainRange, step: 0.05)
-            ParameterSlider(title: "持続振動", valueLabel: "\(Int((playback.settings.continuousGain * 100).rounded()))%", leading: "オフ", trailing: "100%",
-                            identifier: "music.continuous", value: $playback.settings.continuousGain, range: 0...1)
-            ParameterSlider(title: "瞬間振動", valueLabel: "\(Int((playback.settings.transientGain * 100).rounded()))%", leading: "オフ", trailing: "100%",
-                            identifier: "music.transient", value: $playback.settings.transientGain, range: 0...1)
-            ParameterSlider(title: "瞬間の鋭さ", valueLabel: "\(Int((playback.settings.transientSharpness * 100).rounded()))%", leading: "柔らかく", trailing: "鋭く",
-                            identifier: "music.transientSharpness", value: $playback.settings.transientSharpness, range: 0...1)
-            ParameterSlider(title: "ビートの密度", valueLabel: "\(Int(playback.settings.density * 100))%",
-                            leading: playback.visualizationTrack?.version == 3 ? "主要なアクセント" : "大きな打音だけ", trailing: "細かな打音も",
-                            identifier: "music.density", value: $playback.settings.density, range: 0...1)
-            Text("持続と瞬間は別々に調整できます。瞬間の鋭さは50%で元の触感を保ち、上げるほど硬く、下げるほど柔らかくなります。再解析は不要です。")
-                .font(.system(size: 12)).foregroundStyle(LabTheme.muted).fixedSize(horizontal: false, vertical: true)
-            DisclosureGroup(playback.visualizationTrack?.version == 3 ? "演奏する役割・同期" : "低音・同期の詳細") {
-                VStack(alignment: .leading, spacing: 23) {
-                    Picker("振動モード", selection: $playback.settings.mode) {
-                        ForEach(availableModes, id: \.self) { mode in
-                            Text(modeTitle(mode)).tag(mode)
-                        }
-                    }.pickerStyle(.segmented).accessibilityIdentifier("music.mode")
-                    if playback.visualizationTrack?.version != 3 {
-                        ParameterSlider(title: "低音の量", valueLabel: "\(Int(playback.settings.bass * 100))%", leading: "控えめ", trailing: "たっぷり",
-                                        identifier: "music.bass", value: $playback.settings.bass, range: 0...1)
-                    }
-                    ParameterSlider(title: "同期の補正", valueLabel: String(format: "%+.0f ms", playback.settings.offset * 1_000), leading: "振動を早く", trailing: "振動を遅く",
-                                    identifier: "music.offset", value: $playback.settings.offset, range: -1...1, step: 0.01)
-                    Text("Bluetoothで音が遅れる場合は、振動を遅くする方向へ調整してください。")
-                        .font(.system(size: 12)).foregroundStyle(LabTheme.muted).fixedSize(horizontal: false, vertical: true)
-                }.padding(.top, 16)
-            }.tint(LabTheme.mint).accessibilityIdentifier("music.advancedSettings")
-            Text("調整はこの曲に保存されます。全体の強さを100%より上げると増幅し、実際の振動出力は端末の最大値までです。")
-                .font(.system(size: 12)).foregroundStyle(LabTheme.muted).fixedSize(horizontal: false, vertical: true)
-        }
-        .labPanel()
+        VStack(alignment: .leading, spacing: 16) {
+            Text(hasIndividualSettings ? "この曲の個別設定" : "グローバル設定を使用中")
+                .font(.system(size: 14, weight: .semibold)).foregroundStyle(LabTheme.mint)
+                .accessibilityIdentifier("music.settingsScope")
+            Button("グローバルに戻す") {
+                guard let id = playback.selection?.id else { return }
+                library.resetSettingsToGlobal(id: id)
+                playback.settings = library.settings(for: id)
+            }.disabled(!hasIndividualSettings).accessibilityIdentifier("music.resetToGlobal")
+            Button("この調整をグローバルにする") {
+                guard let id = playback.selection?.id else { return }
+                library.saveGlobalSettings(playback.settings, adoptingFor: id)
+                playback.settings = library.settings(for: id)
+            }.disabled(!hasIndividualSettings).accessibilityIdentifier("music.promoteToGlobal")
+            NavigationLink("グローバル設定を編集") { GlobalMusicSettingsView() }
+                .accessibilityIdentifier("music.globalSettings")
+            Text("ここで調整すると、この曲だけの設定として保存します。グローバルに戻すと、以降の共通設定の変更にも追従します。")
+                .font(.system(size: 12)).foregroundStyle(LabTheme.muted)
+            MusicVibrationSettingsEditor(settings: settingsBinding, arranged: playback.visualizationTrack?.version == 3)
+        }.tint(LabTheme.mint).labPanel()
     }
 
-    private var availableModes: [MusicSettings.Mode] {
-        playback.visualizationTrack?.version == 3 ? [.mix, .beats, .bass] : MusicSettings.Mode.allCases
-    }
-
-    private func modeTitle(_ mode: MusicSettings.Mode) -> String {
-        guard playback.visualizationTrack?.version == 3 else { return mode.title }
-        switch mode {
-        case .mix: return "編曲"
-        case .beats: return "アクセント"
-        case .bass, .energy: return "持続"
-        }
-    }
 }
 
 struct YouTubeAccountView: View {

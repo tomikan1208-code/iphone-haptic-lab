@@ -114,6 +114,8 @@ struct PlayerToolsView: View {
         NavigationStack {
             List {
                 Section {
+                    NavigationLink { GlobalMusicSettingsView() } label: { Label("グローバル振動設定", systemImage: "slider.horizontal.3") }
+                        .accessibilityIdentifier("menu.globalSettings")
                     NavigationLink { AnalysisSettingsView() } label: { Label("解析方法・PCサーバー", systemImage: "desktopcomputer") }
                         .accessibilityIdentifier("menu.analysis")
                 }

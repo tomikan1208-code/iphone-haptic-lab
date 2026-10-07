@@ -197,6 +197,11 @@ struct MusicRecord: Codable, Identifiable, Equatable {
     var mediaFilename: String?
     var trackBytes: Int = 0
     var settings = MusicSettings()
+    // Missing in older libraries: preserve adjusted songs and inherit for untouched songs.
+    var usesGlobalSettings: Bool? = nil
+    var hasIndividualSettings: Bool {
+        usesGlobalSettings.map { !$0 } ?? (settings.normalized != MusicSettings())
+    }
     var analysis: MusicAnalysisInfo?
     var id: String { selection.id }
     var isPrepared: Bool { trackFilename != nil }

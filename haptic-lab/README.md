@@ -4,7 +4,7 @@ Resonは、YouTube動画の音に合わせてiPhoneを振動させるプレー�
 
 初回と作り直しでは、解析方法を確認してから開始します。iPhoneの帯域別精密解析、またはPCで楽器・拍・サビ・曲の雰囲気をAI解析して振動を編曲する方法を選べます。iPhoneへ保存後は、PCなしでYouTubeの時刻に同期して再生します。LLMやクラウド推論は使いません。Googleログインは自分の再生リストを使う場合の追加設定です。
 
-このソースは2.8.1です。指定曲の全曲解析・API・キャッシュ・AHAPはPCで検証済み。Xcodeビルドとテスト結果は配布物のBUILD-INFO.jsonとTEST-SUMMARY.jsonで確認できます。iPhone実機の触感は未検証です。[調査・設計](docs/HAPTIC-ARRANGEMENT-DESIGN.md)、[指定曲の検証結果](docs/verification/SERENADE.md)。
+このソースは2.8.2です。指定曲の全曲解析・API・キャッシュ・AHAPはPCで検証済み。Xcodeビルドとテスト結果は配布物のBUILD-INFO.jsonとTEST-SUMMARY.jsonで確認できます。iPhone実機の触感は未検証です。[調査・設計](docs/HAPTIC-ARRANGEMENT-DESIGN.md)、[指定曲の検証結果](docs/verification/SERENADE.md)。
 
 > **初めて使う方:** [Releasesからダウンロード](https://github.com/tomikan1208-code/iphone-haptic-lab/releases/latest) → [インストール手順](docs/INSTALL.md)。AIに導入を手伝ってもらう場合は [AI向け導入ガイド](docs/AI-INSTALL.md) の依頼文を使えます。
 
@@ -16,6 +16,7 @@ Resonは、YouTube動画の音に合わせてiPhoneを振動させるプレー�
 - 振動・区間・周波数表示を保存し、取得音源と分離音声は削除する。
 - 動画の再生・一時停止・シークに振動を同期する。
 - 全体の強さ、持続振動、瞬間振動、瞬間の鋭さ、ビート密度を曲ごとに調整する。
+- 全曲のグローバル振動設定を保存し、曲の個別調整からワンボタンでグローバルへ戻す。
 - 履歴と「再生リスト → 作成済み」から保存した曲を開く。
 - サビ候補や間奏の区間を表示し、その区間へ移動する。
 - 標準／オーケストラ向けの仕上げを選ぶ。

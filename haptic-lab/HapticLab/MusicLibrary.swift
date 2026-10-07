@@ -4,6 +4,20 @@ import SwiftUI
 struct MusicLibrarySnapshot: Codable {
     var version = 1
     var records: [MusicRecord] = []
+    var globalSettings = MusicSettings()
+
+    private enum CodingKeys: String, CodingKey { case version, records, globalSettings }
+    init(version: Int = 1, records: [MusicRecord] = [], globalSettings: MusicSettings = .init()) {
+        self.version = version
+        self.records = records
+        self.globalSettings = globalSettings.normalized
+    }
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        version = try values.decode(Int.self, forKey: .version)
+        records = try values.decode([MusicRecord].self, forKey: .records)
+        globalSettings = try values.decodeIfPresent(MusicSettings.self, forKey: .globalSettings)?.normalized ?? MusicSettings()
+    }
 
     func validated() throws -> MusicLibrarySnapshot {
         guard version == 1, records.count <= 5_000,
@@ -47,8 +61,8 @@ struct MusicLibraryDisk {
         return try JSONDecoder().decode(MusicLibrarySnapshot.self, from: Data(contentsOf: index)).validated()
     }
 
-    func write(_ records: [MusicRecord]) throws {
-        let snapshot = try MusicLibrarySnapshot(records: records).validated()
+    func write(_ records: [MusicRecord], globalSettings: MusicSettings = .init()) throws {
+        let snapshot = try MusicLibrarySnapshot(records: records, globalSettings: globalSettings).validated()
         try JSONEncoder().encode(snapshot).write(to: index, options: .atomic)
     }
 
@@ -106,6 +120,7 @@ struct MusicPreparationServices: Sendable {
 
 @MainActor
 final class MusicLibrary: ObservableObject {
+    @Published private(set) var globalSettings = MusicSettings()
     @Published private(set) var records: [MusicRecord] = []
     @Published private(set) var preparation: MusicPreparationProgress?
     @Published var message: String?
@@ -126,7 +141,9 @@ final class MusicLibrary: ObservableObject {
         disk = MusicLibraryDisk(root: directory)
         do {
             try disk.initialize()
-            records = try disk.load().records
+            let snapshot = try disk.load()
+            records = snapshot.records
+            globalSettings = snapshot.globalSettings
             try disk.removeOrphans(records: records)
             for url in try FileManager.default.contentsOfDirectory(at: disk.working, includingPropertiesForKeys: nil) {
                 try FileManager.default.removeItem(at: url)
@@ -139,6 +156,34 @@ final class MusicLibrary: ObservableObject {
     }
 
     func record(for selection: MusicSelection) -> MusicRecord? { records.first { $0.id == selection.id } }
+
+    func settings(for id: String) -> MusicSettings {
+        guard let record = records.first(where: { $0.id == id }), record.hasIndividualSettings else { return globalSettings }
+        return record.settings.normalized
+    }
+
+    func saveGlobalSettings(_ settings: MusicSettings, adoptingFor id: String? = nil) {
+        do {
+            guard storageAvailable else { throw MusicError.storage("保存先を利用できません。") }
+            let settings = settings.normalized
+            var next = records
+            if let id, let index = next.firstIndex(where: { $0.id == id }) {
+                next[index].settings = settings
+                next[index].usesGlobalSettings = true
+            }
+            try disk.write(next, globalSettings: settings)
+            globalSettings = settings
+            records = next
+        } catch { message = error.localizedDescription }
+    }
+
+    func resetSettingsToGlobal(id: String) {
+        guard let index = records.firstIndex(where: { $0.id == id }) else { return }
+        var next = records
+        next[index].settings = globalSettings
+        next[index].usesGlobalSettings = true
+        do { try persist(next) } catch { message = error.localizedDescription }
+    }
 
     func saveHistory(_ selection: MusicSelection) {
         do {
@@ -158,6 +203,7 @@ final class MusicLibrary: ObservableObject {
         guard let index = records.firstIndex(where: { $0.id == id }) else { return }
         var next = records
         next[index].settings = settings.normalized
+        next[index].usesGlobalSettings = false
         do { try persist(next) } catch { message = error.localizedDescription }
     }
 
@@ -292,7 +338,7 @@ final class MusicLibrary: ObservableObject {
 
     private func persist(_ next: [MusicRecord]) throws {
         guard storageAvailable else { throw MusicError.storage("保存先を利用できません。元の保存データは保持されています。") }
-        try disk.write(next)
+        try disk.write(next, globalSettings: globalSettings)
         records = next
     }
 

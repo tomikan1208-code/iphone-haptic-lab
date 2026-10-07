@@ -115,7 +115,11 @@ struct MusicView: View {
                 }
             }
         }
-        .onChange(of: library.records) { records in youtube.synchronize(records: records) }
+        .onChange(of: library.records) { records in
+            youtube.synchronize(records: records)
+            refreshPlaybackSettings()
+        }
+        .onChange(of: library.globalSettings) { _ in refreshPlaybackSettings() }
         .onChange(of: tab) { _ in urlFocused = false }
         .onChange(of: showAccount) { showing in if showing { urlFocused = false } }
         .task {
@@ -315,13 +319,18 @@ struct MusicView: View {
             let track = withHaptics ? try record.map { try library.disk.track($0) } : nil
             haptics.stop()
             playback.load(record?.selection ?? selection, track: track,
-                          mediaURL: record.flatMap { library.disk.mediaURL($0) }, settings: record?.settings ?? MusicSettings())
+                          mediaURL: record.flatMap { library.disk.mediaURL($0) }, settings: library.settings(for: selection.id))
             if pending != nil { openPlayerAfterDismiss = true; pending = nil }
             else { showPlayer = true }
         } catch {
             library.message = error.localizedDescription
             pending = MusicPreparationRequest(selection: selection, audioURL: record.flatMap { library.disk.mediaURL($0) })
         }
+    }
+    private func refreshPlaybackSettings() {
+        guard let id = playback.selection?.id else { return }
+        let settings = library.settings(for: id)
+        if playback.settings != settings { playback.settings = settings }
     }
 }
 
