@@ -21,14 +21,15 @@ enum MusicAnalysisQuality: String, Codable, CaseIterable, Sendable {
 }
 
 enum MusicGenerationStyle: String, Codable, CaseIterable {
-    case following, musical
+    case following, musical, arranged
     var title: String {
-        switch self { case .following: return "音に追従"; case .musical: return "リズム中心" }
+        switch self { case .following: return "音に追従"; case .musical: return "リズム中心"; case .arranged: return "AIで編曲" }
     }
     var detail: String {
         switch self {
         case .following: return "低音・音量・打音に合わせて振動します。"
         case .musical: return "テンポに合わせてアクセントと休符を作り、振動が続きすぎないように演出します。"
+        case .arranged: return "楽器・サビ・拍・曲の雰囲気をAIで解析し、振動をもう一つの楽器として編曲します。"
         }
     }
 }
@@ -51,6 +52,8 @@ struct MusicAnalysisInfo: Codable, Equatable {
     var decoderVersion: Int? = nil
     var quality: MusicAnalysisQuality? = nil
     var processingSeconds: Double? = nil
+    var pipeline: String? = nil
+    var models: [String: String]? = nil
 }
 
 struct PCServerConnection: Equatable, Sendable {
@@ -102,16 +105,27 @@ final class AnalysisPreferences: ObservableObject {
         if ProcessInfo.processInfo.arguments.contains("--reset-music-test-library") {
             for key in ["analysis.method", "analysis.address", "analysis.token", "analysis.style", "analysis.profile", "analysis.quality"] { defaults.removeObject(forKey: key) }
         }
-        method = MusicAnalysisMethod(rawValue: defaults.string(forKey: "analysis.method") ?? "") ?? .device
+        method = .pc
         address = defaults.string(forKey: "analysis.address") ?? ""
         token = defaults.string(forKey: "analysis.token") ?? ""
-        style = MusicGenerationStyle(rawValue: defaults.string(forKey: "analysis.style") ?? "") ?? .following
+        style = .arranged
         profile = MusicArrangement(rawValue: defaults.string(forKey: "analysis.profile") ?? "") ?? .standard
         quality = MusicAnalysisQuality(rawValue: defaults.string(forKey: "analysis.quality") ?? "") ?? .precision
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--music-test-library") {
+            address = "http://127.0.0.1:8765"
+            token = "UIFixtureConnectionKeyWithoutNetwork"
+        }
+        #endif
     }
 }
 
-struct PCServerHealth: Decodable { let protocolVersion: Int; let youtubeAvailable: Bool; let profile: String }
+struct PCServerHealth: Decodable {
+    let protocolVersion: Int
+    let youtubeAvailable: Bool
+    let profile: String
+    let arrangementAvailable: Bool?
+}
 struct PCStoredTrack: Decodable, Identifiable {
     let id: String
     let title: String
@@ -167,6 +181,9 @@ struct PCAnalysisClient: Sendable {
         let session = URLSession(configuration: configuration, delegate: Self.redirectDelegate, delegateQueue: nil)
         defer { session.invalidateAndCancel() }
         let health = try await health()
+        if style == .arranged, health.arrangementAvailable != true {
+            throw MusicError.network("PCにAI解析環境を設定してください。PCでsetup-ml.ps1を実行すると使えます。")
+        }
         if file == nil, !health.youtubeAvailable { throw MusicError.network("PCにYouTube取得ツールを設定してください。") }
         let accepted: Data
         if let file {
@@ -219,24 +236,13 @@ struct AnalysisSettingsView: View {
     @State private var deleting: PCStoredTrack?
     var body: some View {
         Form {
-            Section("標準の解析方法") {
-                Picker("解析する場所", selection: $preferences.method) {
-                    ForEach(MusicAnalysisMethod.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                if preferences.method == .device {
-                    Picker("iPhoneの解析精度", selection: $preferences.quality) {
-                        ForEach(MusicAnalysisQuality.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }.accessibilityIdentifier("analysis.quality")
-                    Text(preferences.quality.detail).font(.system(size: 12)).foregroundStyle(LabTheme.muted)
-                }
-                Picker("振動の作り方", selection: $preferences.style) {
-                    ForEach(MusicGenerationStyle.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
+            Section("音楽から振動を編曲") {
+                Text("PCでAI解析・編曲").font(.headline)
                 Text(preferences.style.detail).font(.system(size: 12)).foregroundStyle(LabTheme.muted)
                 Picker("仕上げ", selection: $preferences.profile) {
                     ForEach(MusicArrangement.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
-                Text("iPhoneだけで精密解析できます。PC解析も引き続き選べます。作成済みの曲に新しい解析を適用するには、曲のメニューから「振動を作り直す」を選んでください。")
+                Text("作成時はPCへ接続します。保存後はiPhoneだけで再生できます。作成済みの曲は「振動を作り直す」で新しい編曲に更新できます。")
                     .font(.system(size: 12)).foregroundStyle(LabTheme.muted)
             }
             Section("PCとの接続") {
@@ -248,7 +254,7 @@ struct AnalysisSettingsView: View {
                 Button(checking ? "接続中…" : "接続を確認") { connect() }.disabled(checking)
                     .accessibilityIdentifier("analysis.connect")
                 if let message { Text(message).font(.system(size: 12)) }
-                Text("同じWi-Fiへ接続してPCサーバーを起動してください。PCが閉じているときは曲の初回画面で「このiPhone」を選べます。作成後の再生にはPCは不要です。")
+                Text("同じWi-Fiへ接続してPCサーバーを起動してください。新しく編曲するときにPCへ接続し、作成後の再生には保存した振動を使います。")
                     .font(.system(size: 12)).foregroundStyle(LabTheme.muted)
             }
             if !tracks.isEmpty {
@@ -287,7 +293,13 @@ struct AnalysisSettingsView: View {
                 let client = PCAnalysisClient(connection: connection)
                 let health = try await client.health()
                 tracks = try await client.tracks()
-                message = (health.youtubeAvailable ? "YouTube URLと音源ファイルを解析できます。" : "YouTube取得の依存ツールをPCで確認してください。") + "\n" + health.profile
+                if health.arrangementAvailable != true {
+                    message = "PCへ接続しました。AI解析環境を準備してから曲を作成してください。"
+                } else {
+                    message = health.youtubeAvailable
+                        ? "PCでAI解析・編曲できます。"
+                        : "音源ファイルをAI解析できます。YouTube取得ツールをPCで確認してください。"
+                }
             } catch { message = error.localizedDescription }
         }
     }

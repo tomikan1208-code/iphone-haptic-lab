@@ -121,6 +121,9 @@ struct MusicSettings: Codable, Equatable {
     }
 
     func intensity(for point: MusicEnvelopePoint) -> Double {
+        if let composed = point.intensity {
+            return mode == .beats ? 0 : amplified(composed * bounded(continuousGain, to: 0...1, fallback: 1))
+        }
         let level: Double
         switch mode {
         case .beats: level = 0
@@ -142,7 +145,8 @@ struct MusicSettings: Codable, Equatable {
     }
 
     func includes(_ tap: MusicTap) -> Bool {
-        (mode == .mix || mode == .beats) && transientGain > 0 && tap.intensity >= (1 - density) * 0.7
+        (mode == .mix || mode == .beats) && transientGain > 0
+            && (tap.priority ?? tap.intensity) >= (1 - density) * 0.7
     }
 
     func intensity(for tap: MusicTap) -> Double {
@@ -210,6 +214,8 @@ struct MusicEnvelopePoint: Codable, Equatable {
     var mid: Double? = nil
     var high: Double? = nil
     var texture: MusicLowTexture? = nil
+    // Version 3 stores the arranged voice directly; source energies are visualization data.
+    var intensity: Double? = nil
 }
 
 struct MusicLowTexture: Codable, Equatable {
@@ -247,10 +253,62 @@ struct MusicTap: Codable, Equatable {
     let time: Double
     let intensity: Double
     let sharpness: Double
+    var role: String? = nil
+    var priority: Double? = nil
+}
+
+struct MusicArrangementScore: Codable, Equatable {
+    struct Section: Codable, Equatable, Identifiable {
+        let id: String
+        let start: Double
+        let end: Double
+        let label: String
+        let confidence: Double
+        let mood: String
+        let family: String
+    }
+    struct Bar: Codable, Equatable {
+        let start: Double
+        let end: Double
+        let meter: Int
+        let sectionID: String
+        let motif: String
+        let reliable: Bool
+    }
+    let version: Int
+    let sections: [Section]
+    let bars: [Bar]
+    let rhythmAgreement: Double
+    let rhythmSource: String
+
+    func validated(duration: Double) throws {
+        guard version == 1, !sections.isEmpty, sections.count <= 512, bars.count <= 4_000,
+              rhythmAgreement.isFinite, (0...1).contains(rhythmAgreement),
+              ["all-in-one", "beat-this"].contains(rhythmSource),
+              Set(sections.map(\.id)).count == sections.count else { throw MusicError.corruptTrack }
+        var previous = 0.0
+        for section in sections {
+            guard section.start.isFinite, section.end.isFinite,
+                  section.start >= previous, section.end > section.start, section.end <= duration,
+                  section.confidence.isFinite, (0...1).contains(section.confidence),
+                  section.id.count <= 64, section.label.count <= 32,
+                  section.mood.count <= 32, section.family.count <= 32 else { throw MusicError.corruptTrack }
+            previous = section.end
+        }
+        previous = 0
+        for bar in bars {
+            guard bar.start.isFinite, bar.end.isFinite, bar.start >= previous,
+                  bar.end > bar.start, bar.end <= duration, (2...7).contains(bar.meter),
+                  sections.contains(where: { $0.id == bar.sectionID }),
+                  ["sparse", "pulse", "drive", "offbeat", "breath", "rest"].contains(bar.motif)
+            else { throw MusicError.corruptTrack }
+            previous = bar.end
+        }
+    }
 }
 
 struct MusicHapticTrack: Codable, Equatable {
-    static let currentVersion = 2
+    static let currentVersion = 3
     static let maximumDuration = 1_200.0
     let version: Int
     let audioSHA256: String
@@ -259,6 +317,7 @@ struct MusicHapticTrack: Codable, Equatable {
     let taps: [MusicTap]
     var analysis: MusicAnalysisInfo? = nil
     var spectrum: [MusicSpectrumFrame]? = nil
+    var arrangement: MusicArrangementScore? = nil
 
     func validated() throws -> MusicHapticTrack {
         guard (1...Self.currentVersion).contains(version), duration.isFinite, duration > 0,
@@ -277,10 +336,14 @@ struct MusicHapticTrack: Codable, Equatable {
                 throw MusicError.corruptTrack
             }
         }
+        if version == 3 {
+            guard arrangement != nil, envelope.allSatisfy({ $0.intensity != nil }) else { throw MusicError.corruptTrack }
+        }
+        if let arrangement { try arrangement.validated(duration: duration) }
         var previous = -Double.infinity
         for point in envelope {
             guard point.time.isFinite, point.time > previous, (0...duration).contains(point.time),
-                  ([point.bass, point.energy, point.sharpness] + [point.mid, point.high].compactMap { $0 }
+                  ([point.bass, point.energy, point.sharpness] + [point.mid, point.high, point.intensity].compactMap { $0 }
                    + (point.texture.map { [$0.sub, $0.kick, $0.body] } ?? []))
                     .allSatisfy({ $0.isFinite && (0...1).contains($0) }) else {
                 throw MusicError.corruptTrack
@@ -290,7 +353,9 @@ struct MusicHapticTrack: Codable, Equatable {
         previous = -Double.infinity
         for tap in taps {
             guard tap.time.isFinite, tap.time > previous, (0..<duration).contains(tap.time),
-                  [tap.intensity, tap.sharpness].allSatisfy({ $0.isFinite && (0...1).contains($0) }) else {
+                  ([tap.intensity, tap.sharpness] + [tap.priority].compactMap { $0 })
+                    .allSatisfy({ $0.isFinite && (0...1).contains($0) }),
+                  tap.role.map({ ["accent", "groove", "fill"].contains($0) }) ?? true else {
                 throw MusicError.corruptTrack
             }
             previous = tap.time
@@ -313,7 +378,7 @@ struct MusicHapticTrack: Codable, Equatable {
         if index == 0 || index == envelope.count {
             let point = index == 0 ? envelope[0] : envelope[envelope.count - 1]
             return MusicEnvelopePoint(time: time, bass: point.bass, energy: point.energy, sharpness: point.sharpness,
-                                      mid: point.mid, high: point.high, texture: point.texture)
+                                      mid: point.mid, high: point.high, texture: point.texture, intensity: point.intensity)
         }
         let left = envelope[index - 1], right = envelope[index]
         let fraction = bounded((time - left.time) / (right.time - left.time), to: 0...1, fallback: 0)
@@ -324,7 +389,7 @@ struct MusicHapticTrack: Codable, Equatable {
                                   high: left.high.flatMap { a in right.high.map { mix(a, $0) } },
                                   texture: left.texture.flatMap { a in right.texture.map {
                                       .init(sub: mix(a.sub, $0.sub), kick: mix(a.kick, $0.kick), body: mix(a.body, $0.body))
-                                  } })
+                                  } }, intensity: left.intensity.flatMap { a in right.intensity.map { mix(a, $0) } })
     }
 
     func spectrum(at time: Double) -> [Double]? {

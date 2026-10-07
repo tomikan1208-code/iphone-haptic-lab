@@ -111,6 +111,11 @@ final class MusicHapticRenderer {
 
     static func makePattern(_ specification: HapticPatternSpec) throws -> CHHapticPattern {
         let specification = try specification.validated()
+        if !specification.dynamicParameters.isEmpty {
+            // Core Haptics exposes separate event/parameter and event/curve initializers.
+            // The AHAP dictionary initializer preserves both in the same pattern.
+            return try HapticAHAP(data: HapticAHAP.encode(specification)).pattern()
+        }
         let events = specification.events.map {
             CHHapticEvent(eventType: $0.kind == .tap ? .hapticTransient : .hapticContinuous, parameters: [
                 .init(parameterID: .hapticIntensity, value: Float($0.intensity)),

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Reson PC analysis API",
-    "version": "1.0.0",
-    "description": "Optional local companion for Reson, an iPhone player for YouTube videos with synchronized haptics. All endpoints require the bearer token in .pc-server/connection.json. This is a LAN API, not a hosted service. Audio is temporary; generated haptic tracks are persisted."
+    "version": "1.1.0",
+    "description": "Local companion for Reson. Pretrained music AI and a motif composer run on PC; iPhone plays cached tactile arrangements. All endpoints require the bearer token in .pc-server/connection.json. Source and separated audio are temporary; haptic tracks, analysis graphs and AHAP exports persist. Protocol 1 remains compatible with legacy version 2 tracks."
   },
   "servers": [{"url": "http://127.0.0.1:8765", "description": "Same computer. On iPhone use the PC's private LAN address."}],
   "security": [{"connectionKey": []}],
@@ -116,6 +116,19 @@
         }
       }
     },
+    "/tracks/{trackID}/ahap": {
+      "parameters": [{"$ref": "#/components/parameters/TrackID"}],
+      "get": {
+        "operationId": "exportAHAPLayers",
+        "summary": "Export an AI arrangement as synchronized AHAP clips",
+        "description": "Returns a manifest and filename-to-AHAP dictionaries. Play each clip's bed and accents with separate players at the same engine time. Clips are 8 seconds or shorter, with at most 16 points per curve. External audio is played separately. Legacy tracks return 404.",
+        "responses": {
+          "200": {"description": "Layered AHAP bundle", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AHAPBundle"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
     "/shutdown": {
       "post": {
         "operationId": "stopServer",
@@ -142,12 +155,12 @@
     },
     "schemas": {
       "Error": {"type": "object", "required": ["error"], "properties": {"error": {"type": "string"}}},
-      "Style": {"type": "string", "enum": ["following", "musical"], "default": "following", "description": "following: audio-following haptics. musical: rhythm-oriented arrangement."},
+      "Style": {"type": "string", "enum": ["following", "musical", "arranged"], "default": "following", "description": "arranged: pretrained neural analysis and motif beam search; requires arrangementAvailable=true. following and musical are legacy DSP modes. Default following preserves compatibility; new iPhone requests explicitly send arranged."},
       "Profile": {"type": "string", "enum": ["standard", "orchestral"], "default": "standard", "description": "orchestral keeps natural onsets and smooth sustained dynamics, taking precedence over musical rhythm arrangement."},
       "Level": {"type": "number", "minimum": 0, "maximum": 1},
       "Health": {
         "type": "object", "required": ["protocolVersion", "profile", "youtubeAvailable", "apiVersion", "openapi"],
-        "properties": {"protocolVersion": {"const": 1}, "profile": {"type": "string"}, "youtubeAvailable": {"type": "boolean"}, "apiVersion": {"const": "1.0.0"}, "openapi": {"const": "/openapi.json"}}
+        "properties": {"protocolVersion": {"const": 1}, "profile": {"type": "string"}, "youtubeAvailable": {"type": "boolean"}, "arrangementAvailable": {"type": "boolean"}, "trackVersions": {"type": "array", "items": {"type": "integer"}}, "apiVersion": {"const": "1.1.0"}, "openapi": {"const": "/openapi.json"}}
       },
       "VideoRequest": {
         "type": "object", "required": ["videoID"],
@@ -164,11 +177,11 @@
       },
       "EnvelopePoint": {
         "type": "object", "required": ["time", "bass", "energy", "sharpness", "mid", "high"],
-        "properties": {"time": {"type": "number", "minimum": 0, "description": "Seconds from the beginning of the audio"}, "bass": {"$ref": "#/components/schemas/Level"}, "energy": {"$ref": "#/components/schemas/Level"}, "sharpness": {"$ref": "#/components/schemas/Level"}, "mid": {"$ref": "#/components/schemas/Level"}, "high": {"$ref": "#/components/schemas/Level"}}
+        "properties": {"time": {"type": "number", "minimum": 0, "description": "Seconds from the beginning of the audio"}, "bass": {"$ref": "#/components/schemas/Level"}, "energy": {"$ref": "#/components/schemas/Level"}, "sharpness": {"$ref": "#/components/schemas/Level"}, "mid": {"$ref": "#/components/schemas/Level"}, "high": {"$ref": "#/components/schemas/Level"}, "intensity": {"$ref": "#/components/schemas/Level", "description": "Version 3: composed sustained voice. Do not remap from bass/energy."}}
       },
       "Tap": {
         "type": "object", "required": ["time", "intensity", "sharpness"],
-        "properties": {"time": {"type": "number", "minimum": 0}, "intensity": {"$ref": "#/components/schemas/Level"}, "sharpness": {"$ref": "#/components/schemas/Level"}}
+        "properties": {"time": {"type": "number", "minimum": 0}, "intensity": {"$ref": "#/components/schemas/Level"}, "sharpness": {"$ref": "#/components/schemas/Level"}, "priority": {"$ref": "#/components/schemas/Level"}, "role": {"enum": ["accent", "groove", "fill"]}}
       },
       "SpectrumFrame": {
         "type": "object", "required": ["time", "levels"],
@@ -176,11 +189,34 @@
       },
       "Analysis": {
         "type": "object", "required": ["engine", "elapsedSeconds", "sampleRate", "hopMilliseconds", "fftSize", "serverTrackID", "style", "profile"],
-        "properties": {"engine": {"const": "pc"}, "elapsedSeconds": {"type": "number", "minimum": 0}, "sampleRate": {"const": 44100}, "hopMilliseconds": {"const": 10}, "fftSize": {"const": 4096}, "serverTrackID": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "style": {"$ref": "#/components/schemas/Style"}, "tempoBPM": {"type": ["number", "null"]}, "profile": {"$ref": "#/components/schemas/Profile"}}
+        "properties": {"engine": {"const": "pc"}, "elapsedSeconds": {"type": "number", "minimum": 0}, "sampleRate": {"const": 44100}, "hopMilliseconds": {"enum": [10, 20]}, "fftSize": {"const": 4096}, "serverTrackID": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "style": {"$ref": "#/components/schemas/Style"}, "tempoBPM": {"type": ["number", "null"]}, "profile": {"$ref": "#/components/schemas/Profile"}, "pipeline": {"type": "string"}, "models": {"type": "object", "additionalProperties": {"type": "string"}}}
       },
       "HapticTrack": {
         "type": "object", "required": ["version", "audioSHA256", "duration", "envelope", "taps", "spectrum", "analysis"],
-        "properties": {"version": {"const": 2}, "audioSHA256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "duration": {"type": "number", "exclusiveMinimum": 0, "maximum": 1200}, "envelope": {"type": "array", "minItems": 1, "maxItems": 125000, "items": {"$ref": "#/components/schemas/EnvelopePoint"}}, "taps": {"type": "array", "maxItems": 12001, "items": {"$ref": "#/components/schemas/Tap"}}, "spectrum": {"type": "array", "minItems": 1, "maxItems": 125000, "items": {"$ref": "#/components/schemas/SpectrumFrame"}}, "analysis": {"$ref": "#/components/schemas/Analysis"}}
+        "properties": {"version": {"enum": [2, 3]}, "audioSHA256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "duration": {"type": "number", "exclusiveMinimum": 0, "maximum": 1200}, "envelope": {"type": "array", "minItems": 1, "maxItems": 125000, "items": {"$ref": "#/components/schemas/EnvelopePoint"}}, "taps": {"type": "array", "maxItems": 12001, "items": {"$ref": "#/components/schemas/Tap"}}, "spectrum": {"type": "array", "minItems": 1, "maxItems": 125000, "items": {"$ref": "#/components/schemas/SpectrumFrame"}}, "analysis": {"$ref": "#/components/schemas/Analysis"}, "arrangement": {"$ref": "#/components/schemas/Arrangement"}},
+        "allOf": [{"if": {"properties": {"version": {"const": 3}}}, "then": {"required": ["arrangement"], "properties": {"envelope": {"items": {"required": ["intensity"]}}}}}]
+      },
+      "Arrangement": {
+        "type": "object", "required": ["version", "sections", "bars", "rhythmAgreement", "rhythmSource"],
+        "properties": {
+          "version": {"const": 1}, "rhythmAgreement": {"allOf": [{"$ref": "#/components/schemas/Level"}], "description": "Model consistency, not accuracy. arrangement-3.3 uses one-to-one beat F1 within 70 ms; older scores used directional nearest-neighbor agreement."}, "rhythmSource": {"enum": ["all-in-one", "beat-this"]},
+          "downbeatAgreement": {"$ref": "#/components/schemas/Level"},
+          "rhythmDiagnostics": {"type": "object", "properties": {"agreementMethod": {"type": "string"}, "removedBeats": {"type": "array", "items": {"type": "number", "minimum": 0}}, "beatMatch": {"$ref": "#/components/schemas/RhythmMatch"}, "downbeatMatch": {"$ref": "#/components/schemas/RhythmMatch"}}},
+          "sections": {"type": "array", "minItems": 1, "maxItems": 512, "items": {"type": "object", "required": ["id", "start", "end", "label", "confidence", "mood", "family"], "properties": {"id": {"type": "string"}, "start": {"type": "number", "minimum": 0}, "end": {"type": "number", "exclusiveMinimum": 0}, "label": {"type": "string"}, "confidence": {"$ref": "#/components/schemas/Level"}, "mood": {"type": "string"}, "family": {"enum": ["drive", "pulse", "sway"]}, "groove": {"$ref": "#/components/schemas/Groove"}}}},
+          "bars": {"type": "array", "maxItems": 4000, "items": {"type": "object", "required": ["start", "end", "meter", "sectionID", "motif", "reliable"], "properties": {"start": {"type": "number", "minimum": 0}, "end": {"type": "number", "exclusiveMinimum": 0}, "meter": {"type": "integer", "minimum": 2, "maximum": 7}, "sectionID": {"type": "string"}, "motif": {"enum": ["sparse", "pulse", "drive", "offbeat", "breath", "rest"]}, "reliable": {"type": "boolean"}}}}
+        }
+      },
+      "RhythmMatch": {
+        "type": "object", "required": ["matches", "precision", "recall", "f1"],
+        "properties": {"matches": {"type": "integer", "minimum": 0}, "precision": {"$ref": "#/components/schemas/Level"}, "recall": {"$ref": "#/components/schemas/Level"}, "f1": {"$ref": "#/components/schemas/Level"}}
+      },
+      "Groove": {
+        "type": "object", "required": ["kind", "split", "confidence", "observations"],
+        "properties": {"kind": {"enum": ["unknown", "straight", "sixteenth-swing"]}, "split": {"type": "number", "minimum": 0.5, "maximum": 0.8}, "confidence": {"$ref": "#/components/schemas/Level"}, "observations": {"type": "integer", "minimum": 0}}
+      },
+      "AHAPBundle": {
+        "type": "object", "required": ["manifest", "files"],
+        "properties": {"manifest": {"type": "object", "required": ["version", "duration", "playback", "clips"]}, "files": {"type": "object", "additionalProperties": {"type": "object", "required": ["Version", "Pattern"], "properties": {"Version": {"const": 1}, "Pattern": {"type": "array", "minItems": 1}}}}}
       }
     }
   }

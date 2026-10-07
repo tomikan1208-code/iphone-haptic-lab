@@ -19,7 +19,7 @@ struct ExperimentView: View {
             VStack(spacing: 19) {
                 HStack(spacing: 6) {
                     ForEach(HapticKind.allCases, id: \.rawValue) { item in
-                        Button { kindRaw = item.rawValue; haptics.stop() } label: {
+                        Button { kindRaw = item.rawValue } label: {
                             Text(item.title)
                                 .font(.system(size: 13, weight: .semibold))
                                 .frame(maxWidth: .infinity)
@@ -61,11 +61,19 @@ struct ExperimentView: View {
                     )))
                 }
                 .accessibilityIdentifier("experiment.play")
+                Button {
+                    haptics.addLayer(PatternFactory.experiment(ExperimentConfiguration(
+                        kind: kind, intensity: intensity, sharpness: sharpness,
+                        duration: duration, interval: interval)), loop: kind == .continuous)
+                } label: { Label("この触感を重ねる", systemImage: "square.stack.3d.up") }
+                    .tint(LabTheme.mint).accessibilityIdentifier("experiment.addLayer")
                 Text("設定は自動で保存されます。変更後は再生ボタンを押してください。")
                     .font(.system(size: 10)).foregroundStyle(LabTheme.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .labPanel()
+
+            HapticLayersView()
 
             VStack(alignment: .leading, spacing: 18) {
                 HStack {
@@ -100,4 +108,3 @@ struct ExperimentView: View {
 
     private var divider: some View { Rectangle().fill(.white.opacity(0.06)).frame(height: 1) }
 }
-

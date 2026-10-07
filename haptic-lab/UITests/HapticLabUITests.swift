@@ -68,10 +68,9 @@ final class HapticLabUITests: XCTestCase {
         menu.tap()
         app.buttons["振動を作り直す"].tap()
         XCTAssertTrue(app.staticTexts["music.firstPreparation"].waitForExistence(timeout: 5))
-        let quality = app.segmentedControls["analysis.quality"]
-        XCTAssertTrue(quality.buttons["精密（帯域別）"].isSelected)
-        quality.buttons["高速"].tap()
-        quality.buttons["精密（帯域別）"].tap()
+        XCTAssertFalse(app.segmentedControls["analysis.quality"].exists)
+        XCTAssertFalse(app.segmentedControls["analysis.method"].exists)
+        XCTAssertTrue(app.staticTexts["PCでAI解析・振動を編曲"].exists)
         screenshot("05-first-preparation", app: app)
         XCTAssertFalse(app.buttons["音楽AI"].exists)
         let profile = app.segmentedControls["analysis.profile"]
@@ -98,7 +97,10 @@ final class HapticLabUITests: XCTestCase {
         song.tap()
         XCTAssertTrue(app.buttons["music.play"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["保存した振動を使用"].exists)
-        XCTAssertTrue(app.staticTexts["music.analysisSummary"].label.contains("精密（帯域別）"))
+        XCTAssertTrue(app.staticTexts["music.analysisSummary"].label.contains("AI解析"))
+        XCTAssertTrue(app.otherElements["music.arrangement"].exists)
+        XCTAssertTrue(app.otherElements["haptics.waveform"].exists)
+        app.buttons["haptics.toggle"].tap()
         XCTAssertTrue(app.otherElements["haptics.spectrum"].exists)
         expectation(for: NSPredicate(format: "value MATCHES %@", "24帯域、振動[0-9]+パーセント"),
                     evaluatedWith: app.otherElements["haptics.spectrum"])

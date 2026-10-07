@@ -140,7 +140,7 @@ final class MusicHapticTests: XCTestCase {
         let library = MusicLibrary(root: root)
         let url = try XCTUnwrap(Bundle.main.url(forResource: "MusicDemo", withExtension: "wav"))
         let selection = MusicSelection.file(url)
-        library.prepare(selection, audioFile: url)
+        library.prepare(selection, audioFile: url, method: .device, style: .following)
         let deadline = Date().addingTimeInterval(30)
         while library.preparation != nil, Date() < deadline { try await Task.sleep(nanoseconds: 20_000_000) }
         XCTAssertNil(library.preparation)
@@ -176,7 +176,7 @@ final class MusicHapticTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: root) }
         let library = MusicLibrary(root: root)
         let url = try XCTUnwrap(Bundle.main.url(forResource: "MusicDemo", withExtension: "wav"))
-        library.prepare(MusicSelection.file(url), audioFile: url)
+        library.prepare(MusicSelection.file(url), audioFile: url, method: .device, style: .following)
         library.cancelPreparation()
         try await Task.sleep(nanoseconds: 250_000_000)
         XCTAssertTrue(library.records.isEmpty)

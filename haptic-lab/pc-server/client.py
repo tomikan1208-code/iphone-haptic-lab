@@ -92,6 +92,18 @@ class APIClient:
             self.request('/jobs/' + job_id, 'DELETE')
             raise
 
+    def export_ahap(self, track_id, destination):
+        if not re.fullmatch(r'[0-9a-f]{64}', track_id):
+            raise ValueError('保存IDが正しくありません。')
+        bundle = self.request('/tracks/' + track_id + '/ahap')
+        if any(not re.fullmatch(r'[0-9]{3}-(bed|accents)\.ahap', name) for name in bundle['files']):
+            raise ValueError('AHAPのファイル名が正しくありません。')
+        destination = Path(destination)
+        destination.mkdir(parents=True, exist_ok=True)
+        for name, value in dict(bundle['files'], **{'manifest.json': bundle['manifest']}).items():
+            (destination / name).write_text(json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False), encoding='utf-8')
+        return len(bundle['files'])
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
@@ -104,11 +116,14 @@ def main(argv=None):
     get = commands.add_parser('get-track')
     get.add_argument('track_id')
     get.add_argument('--output', type=Path, required=True)
+    export = commands.add_parser('export-ahap')
+    export.add_argument('track_id')
+    export.add_argument('--output', type=Path, required=True)
     analyze = commands.add_parser('analyze')
     source = analyze.add_mutually_exclusive_group(required=True)
     source.add_argument('--file', type=Path)
     source.add_argument('--video-id')
-    analyze.add_argument('--style', choices=['following', 'musical'], default='following')
+    analyze.add_argument('--style', choices=['following', 'musical', 'arranged'], default='arranged')
     analyze.add_argument('--profile', choices=['standard', 'orchestral'], default='standard')
     analyze.add_argument('--output', type=Path, required=True)
     args = parser.parse_args(argv)
@@ -120,6 +135,10 @@ def main(argv=None):
             port = urlsplit(connection['addresses'][0]).port or 8765
             url, token = f'http://127.0.0.1:{port}', connection['token']
         client = APIClient(url, token)
+        if args.command == 'export-ahap':
+            count = client.export_ahap(args.track_id, args.output)
+            print(json.dumps(dict(output=str(args.output), files=count), ensure_ascii=False))
+            return 0
         if args.command in ('health', 'tracks', 'openapi'):
             path = '/openapi.json' if args.command == 'openapi' else '/' + args.command
             print(json.dumps(client.request(path), ensure_ascii=False, indent=2))

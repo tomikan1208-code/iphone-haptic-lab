@@ -18,6 +18,7 @@ struct MusicPlayerScreen: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 12) {
                             songHeader
+                            if let score = playback.visualizationTrack?.arrangement { arrangementPanel(score) }
                             if let message = playback.message { MusicMessage(text: message) { playback.message = nil } }
                             if !playback.hasHaptics {
                                 Text("映像・音声のみで再生します。振動を付けるには、検索や履歴からこの曲を選び、初回の作成を行ってください。")
@@ -29,7 +30,9 @@ struct MusicPlayerScreen: View {
                     VStack(spacing: 8) {
                         if playback.hasHaptics {
                             HStack {
-                                Text(showSpectrum ? "音の周波数 · 灰：音 / 緑：振動" : "現在の前後2秒 · 白：打音")
+                                Text(showSpectrum ? playback.visualizationTrack?.version == 3
+                                     ? "音の周波数（参考）" : "音の周波数 · 灰：音 / 緑：振動"
+                                     : "現在の前後2秒 · 白：アクセント")
                                     .font(.system(size: 10)).foregroundStyle(LabTheme.muted)
                                 Spacer()
                                 Button(showSpectrum ? "波形" : "周波数") { showSpectrum.toggle() }
@@ -68,6 +71,12 @@ struct MusicPlayerScreen: View {
             }
         }
         .preferredColorScheme(.dark)
+        .onAppear {
+            if playback.visualizationTrack?.version == 3 {
+                showSpectrum = false
+                if playback.settings.mode == .energy { playback.settings.mode = .bass }
+            }
+        }
         .sheet(isPresented: $showSettings) {
             NavigationStack {
                 ScrollView { settingsPanel.padding(16) }.background(LabTheme.background)
@@ -107,10 +116,49 @@ struct MusicPlayerScreen: View {
             if let analysis = playback.visualizationTrack?.analysis {
                 Text(analysis.engine == "device"
                      ? "iPhone · \(analysis.quality?.title ?? "高速") · \(String(format: "%.1f", analysis.processingSeconds ?? analysis.elapsedSeconds))秒で解析"
-                     : "PCで精密解析")
+                     : analysis.style == .arranged ? "PCでAI解析・振動を編曲" : "PCで精密解析")
                     .font(.system(size: 11)).foregroundStyle(LabTheme.muted)
                     .accessibilityIdentifier("music.analysisSummary")
             }
+        }
+    }
+
+    private func arrangementPanel(_ score: MusicArrangementScore) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("曲の展開と振動のモチーフ").font(.system(size: 13, weight: .semibold))
+            if let current = score.sections.first(where: { $0.start <= playback.position && playback.position < $0.end }) {
+                Text("\(sectionTitle(current.label)) · \(current.family == "drive" ? "推進するリズム" : current.family == "sway" ? "うねる持続" : "脈打つリズム")")
+                    .font(.system(size: 12)).foregroundStyle(LabTheme.mint)
+            }
+            ScrollView(.horizontal) {
+                HStack(spacing: 8) {
+                    ForEach(score.sections) { section in
+                        Button { playback.seek(to: section.start) } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(sectionTitle(section.label))
+                                Text(musicTime(section.start)).font(.system(size: 10, design: .monospaced))
+                            }.font(.system(size: 11)).padding(10)
+                                .background(section.label == "chorus" ? LabTheme.mint.opacity(0.15) : LabTheme.elevated,
+                                            in: RoundedRectangle(cornerRadius: 9))
+                        }.buttonStyle(.plain).disabled(!playback.isReady)
+                    }
+                }
+            }.scrollIndicators(.hidden)
+            Text("曲の区間はAIの推定です。持続とアクセントを重ねて再生します。")
+                .font(.system(size: 10)).foregroundStyle(LabTheme.muted)
+        }.accessibilityIdentifier("music.arrangement")
+    }
+
+    private func sectionTitle(_ label: String) -> String {
+        switch label {
+        case "chorus": return "サビ"
+        case "verse": return "メロ"
+        case "bridge": return "展開"
+        case "intro": return "イントロ"
+        case "outro", "end": return "終わり"
+        case "inst", "solo": return "間奏"
+        case "break": return "ブレイク"
+        default: return "始まり"
         }
     }
 
@@ -180,17 +228,22 @@ struct MusicPlayerScreen: View {
                             identifier: "music.transient", value: $playback.settings.transientGain, range: 0...1)
             ParameterSlider(title: "瞬間の鋭さ", valueLabel: "\(Int((playback.settings.transientSharpness * 100).rounded()))%", leading: "柔らかく", trailing: "鋭く",
                             identifier: "music.transientSharpness", value: $playback.settings.transientSharpness, range: 0...1)
-            ParameterSlider(title: "ビートの密度", valueLabel: "\(Int(playback.settings.density * 100))%", leading: "大きな打音だけ", trailing: "細かな打音も",
+            ParameterSlider(title: "ビートの密度", valueLabel: "\(Int(playback.settings.density * 100))%",
+                            leading: playback.visualizationTrack?.version == 3 ? "主要なアクセント" : "大きな打音だけ", trailing: "細かな打音も",
                             identifier: "music.density", value: $playback.settings.density, range: 0...1)
             Text("持続と瞬間は別々に調整できます。瞬間の鋭さは50%で元の触感を保ち、上げるほど硬く、下げるほど柔らかくなります。再解析は不要です。")
                 .font(.system(size: 12)).foregroundStyle(LabTheme.muted).fixedSize(horizontal: false, vertical: true)
-            DisclosureGroup("低音・同期の詳細") {
+            DisclosureGroup(playback.visualizationTrack?.version == 3 ? "演奏する役割・同期" : "低音・同期の詳細") {
                 VStack(alignment: .leading, spacing: 23) {
                     Picker("振動モード", selection: $playback.settings.mode) {
-                        ForEach(MusicSettings.Mode.allCases, id: \.self) { Text($0.title).tag($0) }
+                        ForEach(availableModes, id: \.self) { mode in
+                            Text(modeTitle(mode)).tag(mode)
+                        }
                     }.pickerStyle(.segmented).accessibilityIdentifier("music.mode")
-                    ParameterSlider(title: "低音の量", valueLabel: "\(Int(playback.settings.bass * 100))%", leading: "控えめ", trailing: "たっぷり",
-                                    identifier: "music.bass", value: $playback.settings.bass, range: 0...1)
+                    if playback.visualizationTrack?.version != 3 {
+                        ParameterSlider(title: "低音の量", valueLabel: "\(Int(playback.settings.bass * 100))%", leading: "控えめ", trailing: "たっぷり",
+                                        identifier: "music.bass", value: $playback.settings.bass, range: 0...1)
+                    }
                     ParameterSlider(title: "同期の補正", valueLabel: String(format: "%+.0f ms", playback.settings.offset * 1_000), leading: "振動を早く", trailing: "振動を遅く",
                                     identifier: "music.offset", value: $playback.settings.offset, range: -1...1, step: 0.01)
                     Text("Bluetoothで音が遅れる場合は、振動を遅くする方向へ調整してください。")
@@ -201,6 +254,19 @@ struct MusicPlayerScreen: View {
                 .font(.system(size: 12)).foregroundStyle(LabTheme.muted).fixedSize(horizontal: false, vertical: true)
         }
         .labPanel()
+    }
+
+    private var availableModes: [MusicSettings.Mode] {
+        playback.visualizationTrack?.version == 3 ? [.mix, .beats, .bass] : MusicSettings.Mode.allCases
+    }
+
+    private func modeTitle(_ mode: MusicSettings.Mode) -> String {
+        guard playback.visualizationTrack?.version == 3 else { return mode.title }
+        switch mode {
+        case .mix: return "編曲"
+        case .beats: return "アクセント"
+        case .bass, .energy: return "持続"
+        }
     }
 }
 

@@ -10,10 +10,21 @@ import shutil
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
-DOCS = ['INSTALL.md', 'INSTALL-WINDOWS.md', 'BUILD.md', 'AI-INSTALL.md',
-        'API.md', 'PC-SERVER.md', 'GOOGLE-LOGIN.md', 'MUSIC.md']
+DOCS = ['INSTALL.md', 'INSTALL-WINDOWS.md', 'BUILD.md', 'AI-INSTALL.md', 'AHAP.md',
+        'API.md', 'PC-SERVER.md', 'GOOGLE-LOGIN.md', 'MUSIC.md', 'HAPTIC-ARRANGEMENT-DESIGN.md',
+        'verification/SERENADE.md', 'verification/serenade-metrics.json',
+        'verification/serenade-arrangement.png', 'verification/serenade-56s-bed.ahap',
+        'verification/serenade-56s-accents.ahap',
+        'verification/SERENADE-REFERENCE.md', 'verification/serenade-reference.json',
+        'verification/SERENADE-IMPROVED.md',
+        'verification/arrangement-3.3/serenade-metrics.json',
+        'verification/arrangement-3.3/serenade-rhythm-checks.json',
+        'verification/arrangement-3.3/serenade-arrangement.png',
+        'verification/arrangement-3.3/serenade-56s-bed.ahap',
+        'verification/arrangement-3.3/serenade-56s-accents.ahap']
 COMPANION = ['server.py', 'worker.py', 'signal_analysis.py', 'client.py',
-             'requirements.txt', 'Start-PCServer.ps1', 'Stop-PCServer.ps1', 'start.sh']
+             'music_ai.py', 'music_rhythm.py', 'haptic_arrangement.py', 'check-ml.py', 'setup-ml.ps1', 'setup-ml.sh',
+             'requirements-ml.txt', 'requirements.txt', 'Start-PCServer.ps1', 'Stop-PCServer.ps1', 'start.sh']
 
 
 def digest(path):
@@ -48,7 +59,7 @@ def package(output, source_commit=None):
     info = dict(displayName='Reson', version=version, build=plist['CFBundleVersion'],
                 bundleIdentifier=plist['CFBundleIdentifier'], minimumOSVersion=plist['MinimumOSVersion'],
                 signed=False, sourceCommit=commit, repository=repository,
-                ipaSHA256=digest(ipa), apiVersion='1.0.0', protocolVersion=1,
+                ipaSHA256=digest(ipa), apiVersion='1.1.0', protocolVersion=1,
                 nativeTestsPassed=summary['passedTests'], nativeTestsFailed=0,
                 physicalHapticsTested=False)
     if run_id:
@@ -75,7 +86,7 @@ def package(output, source_commit=None):
                          'Reson: YouTube videos with synchronized iPhone haptics.\n'
                          'Open docs/INSTALL.md for installation or docs/AI-INSTALL.md for an AI prompt.\n'
                          'Sign HapticLab-unsigned.ipa locally with your own Apple Account.\n'
-                         'Optional PC server: docs/PC-SERVER.md. API: docs/API.md.\n')
+                         'Music AI preparation on PC: docs/PC-SERVER.md. API: docs/API.md.\n')
         archive.writestr('SHA256SUMS.txt', f"{info['ipaSHA256']}  HapticLab-unsigned.ipa\n")
         for name, path in sorted(files.items()):
             archive.write(path, name)
@@ -85,7 +96,9 @@ def package(output, source_commit=None):
         if set(archive.namelist()) != set(files) | {'START-HERE.txt', 'SHA256SUMS.txt'}:
             raise ValueError('Unexpected file in installation bundle.')
     for name in DOCS:
-        shutil.copyfile(ROOT / 'docs' / name, output / name)
+        destination = output / name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / 'docs' / name, destination)
     shutil.copyfile(ROOT / 'llms.txt', output / 'llms.txt')
     assets = [ipa, bundle, output / 'BUILD-INFO.json', output / 'TEST-SUMMARY.json']
     (output / 'SHA256SUMS.txt').write_text(''.join(f'{digest(path)}  {path.name}\n' for path in assets), encoding='utf-8')

@@ -15,7 +15,14 @@ MAX_BYTES = 512 * 1024 * 1024
 def atomic_json(path, value):
     temporary = path.with_suffix('.tmp')
     temporary.write_text(json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(',', ':')), encoding='utf-8')
-    temporary.replace(path)
+    for attempt in range(16):
+        try:
+            temporary.replace(path)
+            return
+        except PermissionError:
+            # Windows readers and antivirus may briefly hold a file without delete sharing.
+            if attempt == 15: raise
+            time.sleep(min(.1, .01 * 2**attempt))
 
 
 def run(folder):
@@ -41,7 +48,7 @@ def run(folder):
             cache_key = digest
         track_id = hashlib.sha256(('music-player-pc-v2:' + style + ':' + profile + ':' + cache_key).encode()).hexdigest()
         stored = root / 'tracks' / (track_id + '.json')
-        if stored.exists():
+        if style != 'arranged' and stored.exists():
             atomic_json(folder / 'status.json', dict(state='done', progress=1, message='PCに保存した振動を再利用します', trackID=track_id))
             return
         if request.get('videoID'):
@@ -63,32 +70,70 @@ def run(folder):
             options = dict(format='bestaudio/best', noplaylist=True, quiet=True, no_warnings=True,
                 outtmpl=str(folder / 'source.%(ext)s'), max_filesize=MAX_BYTES, socket_timeout=30,
                 retries=2, fragment_retries=2, match_filter=filter_video, progress_hooks=[downloaded])
-            if node:
-                options['js_runtimes'] = {'node': {'path': node}}
             with yt_dlp.YoutubeDL(options) as downloader:
-                info = downloader.extract_info('https://www.youtube.com/watch?v=' + video_id, download=True)
+                try:
+                    info = downloader.extract_info('https://www.youtube.com/watch?v=' + video_id, download=True)
+                except yt_dlp.utils.DownloadError:
+                    if not node: raise
+                    # Prefer yt-dlp's tested default client. Explicit Node changes the
+                    # client/format selection and can itself trigger a CDN 403.
+                    alternate = dict(options, js_runtimes={'node': {'path': node}})
+                    with yt_dlp.YoutubeDL(alternate) as retry:
+                        info = retry.extract_info('https://www.youtube.com/watch?v=' + video_id, download=True)
                 if not info:
                     raise ValueError('この動画の音源を取得できませんでした。')
                 source = Path(downloader.prepare_filename(info))
+                if request.get('title') in ('YouTube動画', '音源'):
+                    request['title'] = str(info.get('title') or request['title'])[:300]
             if source.resolve().parent != folder.resolve() or source.stat().st_size > MAX_BYTES:
                 raise ValueError('音源を取得できませんでした。')
             with source.open('rb') as audio:
                 digest = hashlib.file_digest(audio, 'sha256').hexdigest()
         progress(.13, '音源をデコードしています')
         pcm, duration = decode(source, folder / 'decoded.f32')
-        track = analyze(pcm, duration, digest, progress, canceled)
-        bpm = None
-        if profile == 'orchestral':
-            from signal_analysis import orchestral
-            track = orchestral(track)
-        elif style == 'musical':
-            beats, downbeats, bpm = estimate_beats(track)
-            track = compose(track, beats, downbeats)
-        pcm._mmap.close()
-        pcm = None
+        if style == 'arranged':
+            import soundfile as sf
+            from music_ai import analyze_music, cache_identity, MODEL_SPEC, PIPELINE_VERSION
+            from haptic_arrangement import arrange, export_ahap
+            with (folder / 'decoded.f32').open('rb') as samples:
+                digest = hashlib.file_digest(samples, 'sha256').hexdigest()
+            track_id = cache_identity(digest, profile)
+            stored = root / 'tracks' / (track_id + '.json')
+            if stored.exists():
+                atomic_json(folder / 'status.json', dict(state='done', progress=1,
+                    message='同じ音源・モデル・編曲設定の振動を再利用します', trackID=track_id))
+                return
+            wav = folder / 'decoded.wav'
+            sf.write(wav, pcm, RATE, subtype='FLOAT')
+            source_features = analyze(pcm, duration, digest,
+                lambda fraction, message: progress(.14 + fraction*.05, '音の可視化を準備しています'), canceled)
+            pcm._mmap.close(); pcm = None
+            model_work = folder / 'model-work'
+            graph = analyze_music(wav, model_work, Path(__file__).resolve().parent.parent / '.pc-server' / 'models',
+                                  duration, digest, progress)
+            progress(.91, 'サビのモチーフ・休符・楽器の役割から振動を編曲しています')
+            track, score = arrange(graph, source_features['spectrum'], profile)
+            bpm = graph['structure']['tempoBPM']
+            track['analysis'] = dict(engine='pc', elapsedSeconds=time.monotonic()-started, sampleRate=RATE,
+                hopMilliseconds=20, fftSize=4096, serverTrackID=track_id, style=style, tempoBPM=bpm,
+                profile=profile, pipeline=PIPELINE_VERSION, models=MODEL_SPEC)
+            atomic_json(root / 'tracks' / (track_id + '.graph.json'), graph)
+            atomic_json(root / 'tracks' / (track_id + '.score.json'), score)
+            export_ahap(track, root / 'exports' / track_id)
+        else:
+            track = analyze(pcm, duration, digest, progress, canceled)
+            bpm = None
+            if profile == 'orchestral':
+                from signal_analysis import orchestral
+                track = orchestral(track)
+            elif style == 'musical':
+                beats, downbeats, bpm = estimate_beats(track)
+                track = compose(track, beats, downbeats)
+            pcm._mmap.close()
+            pcm = None
+            track['analysis'] = dict(engine='pc', elapsedSeconds=time.monotonic() - started, sampleRate=RATE,
+                hopMilliseconds=10, fftSize=4096, serverTrackID=track_id, style=style, tempoBPM=bpm, profile=profile)
         progress(.96, '振動を保存しています')
-        track['analysis'] = dict(engine='pc', elapsedSeconds=time.monotonic() - started, sampleRate=RATE,
-            hopMilliseconds=10, fftSize=4096, serverTrackID=track_id, style=style, tempoBPM=bpm, profile=profile)
         atomic_json(stored, track)
         atomic_json(root / 'tracks' / (track_id + '.meta.json'), dict(id=track_id, title=request.get('title', '音源')[:300],
             duration=duration, createdAt=time.time(), videoID=request.get('videoID'), style=style, profile=profile))
@@ -109,6 +154,9 @@ def run(folder):
                     path.unlink()
                 except OSError:
                     pass
+        model_work = folder / 'model-work'
+        if model_work.is_dir() and model_work.resolve().parent == folder.resolve():
+            shutil.rmtree(model_work, ignore_errors=True)
 
 
 if __name__ == '__main__':

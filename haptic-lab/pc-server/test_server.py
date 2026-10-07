@@ -139,6 +139,32 @@ class PCServerTests(unittest.TestCase):
         self.assertFalse((self.companion.jobs[identity]['folder'] / 'source').exists())
         self.assertFalse((self.companion.jobs[identity]['folder'] / 'decoded.f32').exists())
 
+    def test_exited_worker_cannot_leave_phone_polling_stale_running_progress(self):
+        identity = self.companion.create_job('Stopped worker', 'following')
+        job = self.companion.jobs[identity]
+        (job['folder'] / 'status.json').write_text(json.dumps(dict(state='running', progress=.4, message='old')),
+                                                 encoding='utf-8')
+        job['ended'] = True
+        status = self.api('/jobs/' + identity)
+        self.assertEqual(status['state'], 'failed')
+        self.assertEqual(status['progress'], 0)
+
+    def test_atomic_status_write_retries_transient_windows_reader_locks(self):
+        from worker import atomic_json
+        from unittest.mock import patch
+        replace = Path.replace
+        calls = []
+        def reader_lock(source, destination):
+            calls.append(source)
+            if len(calls) < 3: raise PermissionError('temporary Windows read handle')
+            return replace(source, destination)
+        destination = self.root / 'progress.json'
+        destination.write_text('{"old":true}', encoding='utf-8')
+        with patch.object(Path, 'replace', reader_lock):
+            atomic_json(destination, dict(state='running', progress=.7))
+        self.assertEqual(json.loads(destination.read_text(encoding='utf-8')), dict(state='running', progress=.7))
+        self.assertFalse(destination.with_suffix('.tmp').exists())
+
     def test_saved_spectrum_locates_audio_tones_and_preserves_silent_sections(self):
         for frequency in (80, 300, 3000):
             with self.subTest(frequency=frequency):

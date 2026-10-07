@@ -16,6 +16,7 @@ from openapi_spec_validator import validate
 
 from client import APIClient, main as client_main
 from server import Companion, Handler, OPENAPI, PRIVATE, ROOT
+from unittest.mock import patch
 
 
 class PublicAPITests(unittest.TestCase):
@@ -55,6 +56,7 @@ class PublicAPITests(unittest.TestCase):
         self.conforms('Health', self.client.request('/health'))
         for path, method in [('/health', 'GET'), ('/openapi.json', 'GET'), ('/tracks', 'GET'),
                              ('/tracks/' + 'a' * 64, 'GET'), ('/tracks/' + 'a' * 64, 'DELETE'),
+                             ('/tracks/' + 'a' * 64 + '/ahap', 'GET'),
                              ('/jobs', 'POST'), ('/jobs/upload', 'POST'),
                              ('/jobs/unknown', 'GET'), ('/jobs/unknown', 'DELETE'), ('/shutdown', 'POST')]:
             with self.subTest(path=path, method=method):
@@ -73,6 +75,8 @@ class PublicAPITests(unittest.TestCase):
         self.assertAlmostEqual(track['duration'], 12, places=2)
         identity = track['analysis']['serverTrackID']
         self.assertEqual(self.client.request('/tracks/' + identity), track)
+        with self.assertRaisesRegex(RuntimeError, 'HTTP 404'):
+            self.client.request('/tracks/' + identity + '/ahap')
         for metadata in self.client.request('/tracks'):
             self.conforms('TrackMetadata', metadata)
         self.server.companion = Companion(self.root, token=self.companion.token)
@@ -90,7 +94,7 @@ class PublicAPITests(unittest.TestCase):
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             code = client_main(['--connection', str(connection), 'analyze', '--file',
-                                str(ROOT / 'HapticLab/Resources/MusicDemo.wav'), '--output', str(output)])
+                                str(ROOT / 'HapticLab/Resources/MusicDemo.wav'), '--style', 'following', '--output', str(output)])
         self.assertEqual(code, 0)
         self.conforms('HapticTrack', json.loads(output.read_text(encoding='utf-8')))
         self.assertNotIn(self.companion.token, stdout.getvalue())
@@ -104,6 +108,20 @@ class PublicAPITests(unittest.TestCase):
             self.client.request('/tracks/' + 'a' * 64)
         with self.assertRaises(ValueError):
             APIClient('http://example.com:8765', self.companion.token)
+
+    def test_arrangement_request_without_runtime_fails_before_queueing_instead_of_dsp_fallback(self):
+        with patch('server.arrangement_available', return_value=False):
+            self.assertFalse(self.client.request('/health')['arrangementAvailable'])
+            with self.assertRaisesRegex(RuntimeError, 'HTTP 400'):
+                self.client.analyze_video('gNg2Qw5R-Q4', 'arranged')
+        self.assertFalse(self.companion.jobs)
+
+    def test_ahap_export_client_rejects_server_supplied_paths_before_writing(self):
+        destination = self.root / 'export-test'
+        with patch.object(self.client, 'request', return_value={'manifest':{},'files':{'../outside.ahap':{}}}):
+            with self.assertRaises(ValueError):
+                self.client.export_ahap('a'*64, destination)
+        self.assertFalse(destination.exists())
 
 
 if __name__ == '__main__':

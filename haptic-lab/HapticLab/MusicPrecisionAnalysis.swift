@@ -178,7 +178,7 @@ final class MusicPrecisionProcessor {
         envelope.append(.init(time: duration, bass: last.bass, energy: last.energy, sharpness: last.sharpness,
                               mid: last.mid, high: last.high, texture: last.texture))
         spectrum.append(.init(time: duration, levels: spectrum[spectrum.count - 1].levels))
-        var track = MusicHapticTrack(version: MusicHapticTrack.currentVersion, audioSHA256: hash,
+        var track = MusicHapticTrack(version: 2, audioSHA256: hash,
                                    duration: duration, envelope: envelope, taps: taps)
         track.spectrum = spectrum
         return try track.validated()

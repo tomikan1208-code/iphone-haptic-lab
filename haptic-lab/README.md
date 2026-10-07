@@ -2,18 +2,24 @@
 
 Resonは、YouTube動画の音に合わせてiPhoneを振動させるプレーヤーです。音楽動画の再生を主な用途として、低音の響き、打音、曲の強弱を手でも感じられるようにします。
 
-最初に動画の音声を解析して振動を保存し、再生時はYouTubeプレーヤーの時刻に合わせて振動を鳴らします。2回目からは保存した振動を使います。解析はiPhoneだけで完結し、PCサーバーとGoogleログインは必要な人が追加できます。
+初回はPCで楽器・拍・サビ・曲の雰囲気をAI解析し、振動をもう一つの楽器として編曲します。iPhoneへ保存後は、PCなしでYouTubeの時刻に同期して再生します。LLMやクラウド推論は使いません。Googleログインは自分の再生リストを使う場合の追加設定です。
+
+このソースは2.8の初期実装です。指定曲の全曲解析・API・キャッシュ・AHAPはPCで検証済み。XcodeビルドとiPhone実機の触感は未検証です。[調査・設計](docs/HAPTIC-ARRANGEMENT-DESIGN.md)、[指定曲の検証結果](docs/verification/SERENADE.md)。
 
 > **初めて使う方:** [Releasesからダウンロード](https://github.com/tomikan1208-code/iphone-haptic-lab/releases/latest) → [インストール手順](docs/INSTALL.md)。AIに導入を手伝ってもらう場合は [AI向け導入ガイド](docs/AI-INSTALL.md) の依頼文を使えます。
 
 ## 再生できること
 
 - YouTubeの動画・チャンネル・公開再生リストを検索して選ぶ。
-- 初回に音声を一時取得して解析し、振動と音の周波数データを保存する。解析後に一時音声を削除する。
+- PCでHTDemucsの楽器分離、All-In-Oneの曲構造推定、Beat Thisの拍追跡、CLAPの音声・属性比較を実行する。
+- モチーフ・変奏・歌との重なり・休符を選び、持続とアクセントの振動を編曲する。
+- 振動・区間・周波数表示を保存し、取得音源と分離音声は削除する。
 - 動画の再生・一時停止・シークに振動を同期する。
 - 全体の強さ、持続振動、瞬間振動、瞬間の鋭さ、ビート密度を曲ごとに調整する。
 - 履歴と「再生リスト → 作成済み」から保存した曲を開く。
-- 音に追従する振動、リズム中心、オーケストラ向けの仕上げを選ぶ。
+- サビ候補や間奏の区間を表示し、その区間へ移動する。
+- 標準／オーケストラ向けの仕上げを選ぶ。
+- 振動サンプルを最大4レイヤーで重ね、AHAPを読み書きする。
 - Googleログインを設定したビルドでは、自分のYouTube再生リストを利用する。
 
 「振動サンプル」「振動を調整」「タッチパッド」は右上の「…」にある補助機能です。プロジェクト初期の触感実験ラボから、現在は動画プレーヤーへ発展しました。ソースやIPAの `HapticLab` という名前は、その頃の内部名です。ホーム画面のアプリ名は **Reson** です。
@@ -25,7 +31,7 @@ Resonは、YouTube動画の音に合わせてiPhoneを振動させるプレー�
 1. [最新Release](https://github.com/tomikan1208-code/iphone-haptic-lab/releases/latest) の `Reson-install.zip` をPCへダウンロードして展開します。
 2. Windows / macOSの [Sideloadly](https://sideloadly.io/) で、同梱の `HapticLab-unsigned.ipa` を自分のApple Accountで署名してiPhoneへ入れます。MacではXcodeからソースを実機へ入れる方法も使えます。
 3. 開発者の信頼・デベロッパモードを設定し、Resonを開きます。
-4. 「検索」で音楽動画を選びます。初回の振動作成が終わると、動画と振動を一緒に再生できます。
+4. [PCサーバー](docs/PC-SERVER.md)を設定して「検索」で音楽動画を選びます。初回の編曲後は、保存した振動と動画を再生できます。
 
 詳しくは [共通インストール手順](docs/INSTALL.md)、[Windowsの操作手順](docs/INSTALL-WINDOWS.md)、[音楽と振動の使い方](docs/MUSIC.md) を参照してください。無料署名は7日ごとに更新が必要です。Apple Accountの認証情報をGitHubやAIへ渡す必要はありません。[AppleのPersonal Teamの説明](https://developer.apple.com/help/account/basics/about-your-developer-account/)。
 
@@ -35,14 +41,15 @@ Releaseがまだない場合や自分で変更する場合は、[ビルド手順
 
 | 目的 | 必要なもの | ガイド |
 | --- | --- | --- |
-| 公開動画の検索・振動付き再生 | iPhoneアプリ | [使い方](docs/MUSIC.md) |
-| PCで解析・結果を保存 | 自分のPC、uv、解析サーバー | [PCサーバー](docs/PC-SERVER.md) |
+| 公開動画の検索・保存済み振動の再生 | iPhoneアプリ | [使い方](docs/MUSIC.md) |
+| 新しい振動をAIで編曲 | 自分のPC、uv、解析サーバー | [PCサーバー](docs/PC-SERVER.md) |
+| 触感を重ねる・AHAPを交換 | iPhoneアプリ | [AHAPとレイヤー](docs/AHAP.md) |
 | 自分のプログラムやAIから解析 | PCサーバーの接続キー | [HTTP API](docs/API.md) / [OpenAPI 3.1](docs/api/openapi.json) |
 | 自分のYouTube再生リスト | 自分のGoogle iOS OAuthクライアントを設定したビルド | [Googleログイン](docs/GOOGLE-LOGIN.md) |
 
 基本の再生に、共有クラウドAPIや有料APIキーは必要ありません。PC解析APIは利用者のPCで動き、音源のアップロード、解析の進捗確認、振動JSONの取得に対応します。動作確認用の12秒音源と [Pythonサンプル](pc-server/client.py) を同梱しています。
 
-YouTube音声の取得はiPhoneでは [YouTubeKit](https://github.com/alexeichhorn/YouTubeKit)、PCでは [yt-dlp](https://github.com/yt-dlp/yt-dlp) を使います。動画の制限やYouTube側の変更で取得できない場合があります。Googleログインは [YouTube Data API](https://developers.google.com/youtube/v3) を使う別の機能です。
+新規のYouTube音声取得はPCの [yt-dlp](https://github.com/yt-dlp/yt-dlp) を使います。動画の制限やYouTube側の変更で取得できない場合があります。Googleログインは [YouTube Data API](https://developers.google.com/youtube/v3) を使う別の機能です。
 
 ## 開発・配布
 
@@ -59,6 +66,6 @@ Mac + Xcodeでは、続けて `bash scripts/build-ios.sh` と `bash scripts/test
 
 ActionsはPC解析・API・ネイティブアプリを検証してIPAを作成します。配布時は `Reson-install.zip`、`BUILD-INFO.json`、`SHA256SUMS.txt` を含むReleaseを作ります。バージョン、ソースコミット、テスト結果、チェックサムを照合できます。[再ビルドとReleaseの手順](docs/BUILD.md)。
 
-SwiftUI + Core Hapticsで実装しています。主な構成は、`MusicView.swift`（検索と準備）、`MusicPlayback.swift`（同期再生）、`MusicPrecisionAnalysis.swift`（iPhone解析）、`MusicLibrary.swift`（保存）、`PCAnalysis.swift` と `pc-server/`（PC解析API）です。
+SwiftUI + Core Hapticsで実装しています。`music_ai.py`（音楽AI）、`haptic_arrangement.py`（モチーフ編曲とAHAP）、`MusicModels.swift`（version 3の触覚譜）、`MusicPlayback.swift`（同期する独立レイヤー）、`HapticAHAP.swift`（AHAP入出力）が中心です。旧データと内部テストのための端末解析コードは残し、新規作成の画面からは外しています。
 
 触感の強さや感じ方、YouTube動画との同期は実機でも確認してください。過去の検証記録は `docs/*VERIFICATION.md` にあります。AI向けの入口は [llms.txt](llms.txt) です。

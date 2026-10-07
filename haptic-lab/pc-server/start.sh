@@ -14,6 +14,9 @@ if ! command -v uv >/dev/null 2>&1; then
   echo 'Install uv first: https://docs.astral.sh/uv/getting-started/installation/' >&2
   exit 1
 fi
+if [[ ! -f .pc-server/ml-venv/bin/python ]] || ! .pc-server/ml-venv/bin/python pc-server/check-ml.py; then
+  bash pc-server/setup-ml.sh
+fi
 if [[ ! -f .pc-server/venv/bin/python ]]; then
   uv --cache-dir .build/uv-cache venv .pc-server/venv --python 3.13
 fi

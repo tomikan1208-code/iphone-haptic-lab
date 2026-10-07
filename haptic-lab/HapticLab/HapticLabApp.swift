@@ -15,6 +15,24 @@ struct HapticLabApp: App {
             let root = FileManager.default.temporaryDirectory.appendingPathComponent("MusicUITestLibrary", isDirectory: true)
             if ProcessInfo.processInfo.arguments.contains("--reset-music-test-library") { try? FileManager.default.removeItem(at: root) }
             var services = MusicPreparationServices()
+            services.analyzeOnPC = { _, selection, file, _, _, progress in
+                guard let file else {
+                    progress(0.4, "AIが曲の展開を推定しています")
+                    try await Task.sleep(nanoseconds: 120_000_000_000)
+                    throw MusicError.network("テスト用のPC解析処理です。")
+                }
+                let source = try await MusicAnalyzer.analyze(file, quality: .precision, progress: progress)
+                let info = MusicAnalysisInfo(engine: "pc", elapsedSeconds: 1, sampleRate: 44_100,
+                    hopMilliseconds: 10, fftSize: 4_096, style: .arranged, profile: .standard)
+                let score = MusicArrangementScore(version: 1, sections: [
+                    .init(id: "fixture", start: 0, end: source.duration, label: "chorus",
+                          confidence: 0.8, mood: "driving", family: "drive")
+                ], bars: [], rhythmAgreement: 1, rhythmSource: "all-in-one")
+                return MusicHapticTrack(version: 3, audioSHA256: source.audioSHA256, duration: source.duration,
+                    envelope: source.envelope.map { point in
+                        var point = point; point.intensity = point.energy * 0.25; return point
+                    }, taps: source.taps, analysis: info, spectrum: source.spectrum, arrangement: score)
+            }
             if ProcessInfo.processInfo.arguments.contains("--music-test-progress") {
                 services.youtubeAudioURL = { _ in
                     try await Task.sleep(nanoseconds: 120_000_000_000)
@@ -46,7 +64,7 @@ struct HapticLabApp: App {
                        let audioURL = Bundle.main.url(forResource: "MusicDemo", withExtension: "wav") {
                         let selection = MusicSelection(id: "music-ui-fixture", kind: .file, title: "Playback Fixture",
                                                        artist: "UI Test", url: "")
-                        library.prepare(selection, audioFile: audioURL, quality: .precision)
+                        library.prepare(selection, audioFile: audioURL, method: .device, style: .following, quality: .precision)
                     }
                     #endif
                 }

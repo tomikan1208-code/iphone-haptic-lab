@@ -97,6 +97,11 @@ struct MusicPreparationServices: Sendable {
         }
         return try await MusicMediaDownload(destination: destination, progress: progress).download(source)
     }
+    var analyzeOnPC: @Sendable (PCServerConnection, MusicSelection, URL?, MusicGenerationStyle, MusicArrangement,
+                                @escaping Progress) async throws -> MusicHapticTrack = { connection, selection, file, style, profile, progress in
+        try await PCAnalysisClient(connection: connection).analyze(selection: selection, file: file,
+            style: style, profile: profile, progress: progress)
+    }
 }
 
 @MainActor
@@ -163,9 +168,9 @@ final class MusicLibrary: ObservableObject {
     }
 
     func prepare(_ selection: MusicSelection, audioFile: URL? = nil, audioDownloadURL: URL? = nil,
-                 method: MusicAnalysisMethod = .device, style: MusicGenerationStyle = .following,
+                 method: MusicAnalysisMethod = .pc, style: MusicGenerationStyle = .arranged,
                  profile: MusicArrangement = .standard,
-                 quality: MusicAnalysisQuality = .standard,
+                 quality: MusicAnalysisQuality = .precision,
                  connection: PCServerConnection? = nil) {
         var correctedSelection = selection
         // Cached duration was previously replaced with the faulty analysis length.
@@ -173,6 +178,10 @@ final class MusicLibrary: ObservableObject {
         if selection.kind == .youtube, method == .device, audioFile == nil, audioDownloadURL == nil,
            record(for: selection)?.requiresAudioReanalysis == true { correctedSelection.duration = nil }
         let selection = correctedSelection
+        if style == .arranged && method != .pc {
+            message = "AI編曲はPCで実行します。PCの接続設定を確認してください。"
+            return
+        }
         guard preparation == nil, storageAvailable else {
             message = storageAvailable ? "解析中の曲が終わってから追加してください。" : "保存先を利用できません。"
             return
@@ -202,7 +211,7 @@ final class MusicLibrary: ObservableObject {
             try Task.checkCancellation()
             if method == .pc, selection.kind == .youtube, audioFile == nil, audioDownloadURL == nil {
                 guard let connection else { throw MusicError.network("メニューの「解析方法・PCサーバー」でPCを設定してください。") }
-                return try await PCAnalysisClient(connection: connection).analyze(selection: selection, file: nil, style: style, profile: profile, progress: report)
+                return try await services.analyzeOnPC(connection, selection, nil, style, profile, report)
             }
             if let audioFile {
                 let access = audioFile.startAccessingSecurityScopedResource()
@@ -221,7 +230,7 @@ final class MusicLibrary: ObservableObject {
             try Task.checkCancellation()
             if method == .pc {
                 guard let connection else { throw MusicError.network("PCサーバーを設定してください。") }
-                return try await PCAnalysisClient(connection: connection).analyze(selection: selection, file: localURL, style: style, profile: profile, progress: report)
+                return try await services.analyzeOnPC(connection, selection, localURL, style, profile, report)
             }
             report(0.1, quality == .precision ? "帯域別の精密解析を開始しています" : "高速解析を開始しています")
             let analysisStarted = Date()

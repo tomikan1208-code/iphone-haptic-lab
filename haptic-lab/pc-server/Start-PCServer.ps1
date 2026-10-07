@@ -7,6 +7,16 @@ Set-Location -LiteralPath $playerRoot
 if (!(Get-Command uv -ErrorAction SilentlyContinue)) {
     throw 'uvが必要です。winget install --id astral-sh.uv -e を実行し、PowerShellを開き直してください。'
 }
+$mlInterpreter = Join-Path $privateRoot 'ml-venv/Scripts/python.exe'
+$mlVerified = $false
+if (Test-Path -LiteralPath $mlInterpreter) {
+    & $mlInterpreter (Join-Path $PSScriptRoot 'check-ml.py')
+    $mlVerified = $LASTEXITCODE -eq 0
+}
+if (!$mlVerified) {
+    & (Join-Path $PSScriptRoot 'setup-ml.ps1')
+    if ($LASTEXITCODE -ne 0) { throw 'AI解析環境を準備できませんでした。' }
+}
 $serverScript = Join-Path $PSScriptRoot 'server.py'
 $pidFile = Join-Path $privateRoot 'server.pid'
 if (Test-Path -LiteralPath $pidFile) {

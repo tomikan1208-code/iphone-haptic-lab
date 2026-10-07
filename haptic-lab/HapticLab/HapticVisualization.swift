@@ -23,6 +23,10 @@ enum HapticVisualSignal {
         let settings = settings.normalized
         let sourceTime = time - settings.offset
         let output = active ? track.output(at: sourceTime, settings: settings) : MusicHapticOutput(continuous: 0, sharpness: 0, transient: 0)
+        if track.version == 3 {
+            // An arranged instrument has no one-to-one frequency attribution to the audio.
+            return .init(audio: audio, haptics: Array(repeating: 0, count: audio.count), output: output)
+        }
         let source = track.spectrum(at: sourceTime) ?? audio
         let precision = track.value(at: sourceTime).texture != nil
         let firstTap = lowerBound(track.taps, time: max(0, sourceTime - 0.06), key: { $0.time })
@@ -129,7 +133,8 @@ struct HapticSpectrumView: View {
                         }
                     }
                 }
-                .accessibilityElement(children: .ignore).accessibilityLabel("音の周波数と振動への反映")
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(track?.version == 3 ? "音の周波数（参考）" : "音の周波数と振動への反映")
                 .accessibilityValue("\(MusicFrequencyBands.count)帯域、振動\(Int(snapshot.output.level * 100))パーセント")
                 .accessibilityIdentifier("haptics.spectrum")
                 if !compact {

@@ -18,13 +18,23 @@ import threading
 import time
 from urllib.parse import urlsplit
 import uuid
+from music_ai import PIPELINE_VERSION
 
 ROOT = Path(__file__).resolve().parent.parent
 PRIVATE = ROOT / '.pc-server'
 DATA = PRIVATE / 'data'
 OPENAPI = ROOT / 'docs' / 'api' / 'openapi.json'
 MAX_BYTES = 512 * 1024 * 1024
-STYLES = {'following', 'musical'}
+STYLES = {'following', 'musical', 'arranged'}
+ML_PYTHON = PRIVATE / 'ml-venv' / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+
+
+def arrangement_available():
+    try:
+        ready = json.loads((PRIVATE / 'ml-ready.json').read_text(encoding='utf-8'))
+        return ML_PYTHON.is_file() and ready.get('pipeline') == PIPELINE_VERSION
+    except (OSError, ValueError):
+        return False
 
 
 class Companion:
@@ -40,13 +50,17 @@ class Companion:
         self.worker_slot = threading.Semaphore(1)
 
     def health(self):
-        return dict(protocolVersion=1, profile='44.1 kHz / 4096 FFT / 10 ms',
+        ready = arrangement_available()
+        return dict(protocolVersion=1, profile='Music AI arrangement / 20 ms envelope' if ready else 'Legacy DSP / 10 ms',
             youtubeAvailable=importlib.util.find_spec('yt_dlp') is not None,
-            apiVersion='1.0.0', openapi='/openapi.json')
+            arrangementAvailable=ready, trackVersions=[1, 2, 3],
+            apiVersion='1.1.0', openapi='/openapi.json')
 
     def create_job(self, title, style, video_id=None, profile='standard'):
         if style not in STYLES:
             raise ValueError('振動の作り方が正しくありません。')
+        if style == 'arranged' and not arrangement_available():
+            raise ValueError('PCのAI解析環境を設定してください。pc-server/setup-ml.ps1を実行すると使えます。')
         if profile not in ('standard', 'orchestral'):
             raise ValueError('仕上げが正しくありません。')
         if video_id is not None and (not isinstance(video_id, str) or not re.fullmatch(r'[A-Za-z0-9_-]{11}', video_id)):
@@ -73,13 +87,15 @@ class Companion:
                     job['ended'] = True
                     return
                 folder = job['folder']
+                request = json.loads((folder / 'request.json').read_text(encoding='utf-8'))
+                interpreter = str(ML_PYTHON) if request['style'] == 'arranged' else sys.executable
                 environment = dict(os.environ, PYTHONUTF8='1')
                 with (folder / 'worker.log').open('wb') as log:
                     with self.lock:
                         if job['canceled']:
                             job['ended'] = True
                             return
-                        job['process'] = subprocess.Popen([sys.executable, str(ROOT / 'pc-server' / 'worker.py'), str(folder)],
+                        job['process'] = subprocess.Popen([interpreter, str(ROOT / 'pc-server' / 'worker.py'), str(folder)],
                             stdout=log, stderr=log, env=environment, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
                     job['process'].wait()
                 job['ended'] = True
@@ -97,6 +113,11 @@ class Companion:
                     path.unlink()
                 except OSError:
                     pass
+        model_work = folder / 'model-work'
+        if model_work.is_dir() and model_work.resolve().parent == folder:
+            import shutil
+            # This directory only contains this job's separated audio and spectrograms.
+            shutil.rmtree(model_work, ignore_errors=True)
 
     def status(self, identity):
         job = self.jobs.get(identity)
@@ -109,6 +130,9 @@ class Companion:
             state='failed' if job['ended'] else 'queued', progress=0,
             message='PCの処理に失敗しました。ログを確認してください。' if job['ended'] else 'PCの解析待ちです')
         status['id'] = identity
+        if job['ended'] and status['state'] in ('queued', 'running'):
+            status.update(state='failed', progress=0,
+                message='PCの解析処理が途中で終了しました。PCのログを確認し、もう一度試してください。')
         if status['state'] == 'done':
             track_id = status['trackID']
             if not re.fullmatch(r'[0-9a-f]{64}', track_id):
@@ -153,8 +177,20 @@ class Companion:
     def delete_track(self, identity):
         if not re.fullmatch(r'[0-9a-f]{64}', identity):
             raise ValueError('保存IDが正しくありません。')
-        for suffix in ['.json', '.meta.json']:
+        for suffix in ['.json', '.meta.json', '.graph.json', '.score.json']:
             (self.tracks / (identity + suffix)).unlink(missing_ok=True)
+        exports = self.root / 'exports' / identity
+        if exports.is_dir() and exports.resolve().parent == (self.root / 'exports').resolve():
+            import shutil
+            shutil.rmtree(exports)
+
+    def load_ahap(self, identity):
+        self.load_track(identity)  # Validate identity and require a committed track.
+        folder = self.root / 'exports' / identity
+        if not (folder / 'manifest.json').is_file():
+            raise FileNotFoundError('この曲にはAHAPの書き出しがありません。AI編曲で作り直してください。')
+        return dict(manifest=json.loads((folder / 'manifest.json').read_text(encoding='utf-8')),
+                    files={path.name: json.loads(path.read_text(encoding='utf-8')) for path in folder.glob('*.ahap')})
 
     def load_track(self, identity):
         if not re.fullmatch(r'[0-9a-f]{64}', identity):
@@ -199,6 +235,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.respond(200, companion.stored_tracks())
             elif self.command == 'GET' and len(parts) == 2 and parts[0] == 'tracks':
                 self.respond(200, companion.load_track(parts[1]))
+            elif self.command == 'GET' and len(parts) == 3 and parts[0] == 'tracks' and parts[2] == 'ahap':
+                self.respond(200, companion.load_ahap(parts[1]))
             elif self.command == 'POST' and parts == ['shutdown']:
                 self.respond(200, dict(stopping=True))
                 threading.Thread(target=self.server.shutdown, daemon=True).start()

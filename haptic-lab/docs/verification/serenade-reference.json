@@ -1,0 +1,253 @@
+{
+  "date": "2026-10-07",
+  "track": {
+    "artist": "natori",
+    "title": "Serenade",
+    "url": "https://www.youtube.com/watch?v=gNg2Qw5R-Q4",
+    "cacheID": "a74989fc2b3ef4f53293c191b1d7467e8771d476bf5db53d24b8b8d79f2ec57a",
+    "durationSeconds": 217.74,
+    "pipeline": "arrangement-3.2"
+  },
+  "reference": {
+    "tempoBPM": 137,
+    "tempoStatus": "corroborated transcription reference; not verified composer-issued tempo",
+    "meter": "4/4 base; transcriber listings report 3 meter changes; exact changes unverified",
+    "groove": "16th-note shuffle indicated by piano arranger; original recording swing ratio unverified",
+    "chorusBoundaryGroundTruth": null,
+    "keyGroundTruth": null,
+    "sources": [
+      {
+        "url": "https://www.chord-rinne.jp/dcode.php?id=9617",
+        "supports": [
+          "original tempo 137 BPM",
+          "same YouTube video ID"
+        ]
+      },
+      {
+        "url": "https://www.kokomu.jp/sheet-music/serenade-natori-oshi-no-ko-ost-130742",
+        "supports": [
+          "tempo 137 BPM",
+          "4/4 with 3 reported meter changes",
+          "arranger section names"
+        ]
+      },
+      {
+        "url": "https://deo-piano.com/score/page/1161",
+        "supports": [
+          "arranger performance advice: swung sixteenth notes"
+        ]
+      },
+      {
+        "url": "https://ototoy.jp/news/126785",
+        "supports": [
+          "published artist statement of song intent"
+        ]
+      }
+    ]
+  },
+  "audit": {
+    "method": "Existing model beat timestamps only. Regular mean uses 0.35 < inter-beat interval < 0.55 seconds. Window BPM = 60 / least-squares slope of beat time against consecutive local beat index. Unfiltered window fits deliberately retain extra events and are not tempo-change ground truth.",
+    "models": {
+      "all_in_one": {
+        "beatCount": 490,
+        "regularIntervalCount": 477,
+        "regularIntervalMeanTempoBPM": 136.99679287731556,
+        "medianIntervalTempoBPM": 136.36363636363706,
+        "integerInstantaneousTempoModeBPM": 136,
+        "windowFits": [
+          {
+            "start": 10,
+            "end": 30,
+            "beatCount": 46,
+            "tempoBPM": 137.00096178082944,
+            "residualRMSSeconds": 0.003449658843153809
+          },
+          {
+            "start": 50,
+            "end": 85,
+            "beatCount": 82,
+            "tempoBPM": 140.85506021815334,
+            "residualRMSSeconds": 0.23258847129144639
+          },
+          {
+            "start": 90,
+            "end": 115,
+            "beatCount": 57,
+            "tempoBPM": 136.98415258739485,
+            "residualRMSSeconds": 0.004606473948925759
+          },
+          {
+            "start": 117,
+            "end": 131,
+            "beatCount": 32,
+            "tempoBPM": 137.0188685563126,
+            "residualRMSSeconds": 0.0031742815013573503
+          },
+          {
+            "start": 161,
+            "end": 190,
+            "beatCount": 68,
+            "tempoBPM": 141.1876299364632,
+            "residualRMSSeconds": 0.23109946230687212
+          },
+          {
+            "start": 190,
+            "end": 211,
+            "beatCount": 48,
+            "tempoBPM": 137.04662441607928,
+            "residualRMSSeconds": 0.007030096099625992
+          }
+        ]
+      },
+      "beat_this": {
+        "beatCount": 502,
+        "regularIntervalCount": 483,
+        "regularIntervalMeanTempoBPM": 137.11203633610899,
+        "medianIntervalTempoBPM": 136.36363636363706,
+        "integerInstantaneousTempoModeBPM": 136,
+        "windowFits": [
+          {
+            "start": 10,
+            "end": 30,
+            "beatCount": 45,
+            "tempoBPM": 137.17032735334158,
+            "residualRMSSeconds": 0.013382605490068747
+          },
+          {
+            "start": 50,
+            "end": 85,
+            "beatCount": 80,
+            "tempoBPM": 136.92760265959234,
+            "residualRMSSeconds": 0.017410848865802516
+          },
+          {
+            "start": 90,
+            "end": 115,
+            "beatCount": 57,
+            "tempoBPM": 137.00381848858913,
+            "residualRMSSeconds": 0.025833391474346965
+          },
+          {
+            "start": 117,
+            "end": 131,
+            "beatCount": 34,
+            "tempoBPM": 139.96407339292585,
+            "residualRMSSeconds": 0.16088491638589345
+          },
+          {
+            "start": 161,
+            "end": 190,
+            "beatCount": 71,
+            "tempoBPM": 144.25635253633865,
+            "residualRMSSeconds": 0.2874474176112663
+          },
+          {
+            "start": 190,
+            "end": 211,
+            "beatCount": 47,
+            "tempoBPM": 136.98427616503193,
+            "residualRMSSeconds": 0.014008452413881774
+          }
+        ]
+      }
+    },
+    "outputBarCount": 126,
+    "outputMeterHistogram": {
+      "4": 112,
+      "5": 3,
+      "6": 3,
+      "2": 7,
+      "3": 1
+    },
+    "duplicateBeatExamples": [
+      {
+        "start": 44.14,
+        "end": 45.9,
+        "outputMeter": 5,
+        "outputReliable": true,
+        "durationIn137BPMQuarterNotes": 4.018666666666662,
+        "allInOneBeats": [
+          44.19,
+          44.63,
+          45.07,
+          45.51
+        ],
+        "beatThisBeats": [
+          44.14,
+          44.58,
+          45.02,
+          45.12,
+          45.48
+        ]
+      },
+      {
+        "start": 45.9,
+        "end": 47.66,
+        "outputMeter": 5,
+        "outputReliable": true,
+        "durationIn137BPMQuarterNotes": 4.018666666666662,
+        "allInOneBeats": [
+          45.94,
+          46.38,
+          46.82,
+          47.26
+        ],
+        "beatThisBeats": [
+          45.9,
+          46.34,
+          46.44,
+          46.78,
+          47.22
+        ]
+      },
+      {
+        "start": 162.38,
+        "end": 164.16,
+        "outputMeter": 5,
+        "outputReliable": true,
+        "durationIn137BPMQuarterNotes": 4.064333333333336,
+        "allInOneBeats": [
+          162.44,
+          162.88,
+          163.32,
+          163.76
+        ],
+        "beatThisBeats": [
+          162.38,
+          162.82,
+          163.28,
+          163.72,
+          163.82
+        ]
+      },
+      {
+        "start": 164.16,
+        "end": 165.9,
+        "outputMeter": 6,
+        "outputReliable": true,
+        "durationIn137BPMQuarterNotes": 3.9730000000000207,
+        "allInOneBeats": [
+          164.19,
+          164.63,
+          165.07,
+          165.51
+        ],
+        "beatThisBeats": [
+          164.16,
+          164.58,
+          164.68,
+          165.02,
+          165.14,
+          165.46
+        ]
+      }
+    ],
+    "agreementWarning": "Reported model agreement is directional nearest-neighbor agreement, not annotation accuracy; extra events are not penalized by the reference-to-candidate direction.",
+    "tempoWarning": "Replacing displayed tempo alone does not fix beat timestamps. Arrangement uses observed beat times, not a fixed-BPM metronome.",
+    "verificationLimits": [
+      "No new audio listening or manual beat annotations in this audit.",
+      "Score PDFs not purchased or fully inspected; public listing metadata and advice only.",
+      "Exact original meter changes, chorus boundaries and swing ratio remain unverified."
+    ]
+  }
+}

@@ -84,7 +84,7 @@ final class MusicPrecisionTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: root) }
         let url = try XCTUnwrap(Bundle.main.url(forResource: "MusicDemo", withExtension: "wav"))
         let library = MusicLibrary(root: root)
-        library.prepare(MusicSelection.file(url), audioFile: url, quality: .precision)
+        library.prepare(MusicSelection.file(url), audioFile: url, method: .device, style: .following, quality: .precision)
         let deadline = Date().addingTimeInterval(40)
         while library.preparation != nil, Date() < deadline { try await Task.sleep(nanoseconds: 20_000_000) }
         let record = try XCTUnwrap(library.prepared.first, library.message ?? "No precision track")

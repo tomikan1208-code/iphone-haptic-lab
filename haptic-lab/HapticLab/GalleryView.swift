@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct GalleryView: View {
     @EnvironmentObject private var haptics: HapticController
@@ -6,6 +7,12 @@ struct GalleryView: View {
     @State private var presets: [HapticPatternSpec] = []
     @State private var selectedCategory = "all"
     @State private var catalogError: String?
+    @State private var layering = false
+    @State private var loopTexture = false
+    @State private var importingAHAP = false
+    @State private var exportingAHAP = false
+    @State private var ahapFile = AHAPFile(data: Data())
+    @State private var exportName = "pattern.ahap"
 
     private let filters: [(String, String)] = [
         ("all", "すべて"), ("tap", "クリック"), ("rhythm", "リズム"),
@@ -31,12 +38,25 @@ struct GalleryView: View {
                 HStack {
                     Label("\(presets.count)の見本", systemImage: "sparkles")
                     Spacer()
-                    Text("音は鳴りません")
+                    Text("見本は音を鳴らしません")
                 }
                 .font(.system(size: 11))
                 .foregroundStyle(LabTheme.muted)
             }
             .labPanel()
+
+            VStack(alignment: .leading, spacing: 12) {
+                Toggle("再生中の触感に重ねる", isOn: $layering)
+                    .accessibilityIdentifier("layers.enabled")
+                Toggle("持続の見本を繰り返す（最大60秒）", isOn: $loopTexture)
+                    .font(.system(size: 12)).accessibilityIdentifier("layers.loop")
+                Button { importingAHAP = true } label: {
+                    Label("AHAPを読み込んで再生", systemImage: "square.and.arrow.down")
+                }.accessibilityIdentifier("ahap.import")
+                Text("見本を長押しするとAHAPを書き出せます。")
+                    .font(.system(size: 11)).foregroundStyle(LabTheme.muted)
+            }.tint(LabTheme.mint).labPanel()
+            HapticLayersView()
 
             ScrollView(.horizontal) {
                 HStack(spacing: 8) {
@@ -97,6 +117,23 @@ struct GalleryView: View {
             do { presets = try PatternCatalog.load() }
             catch { catalogError = error.localizedDescription }
         }
+        .fileImporter(isPresented: $importingAHAP, allowedContentTypes: [.resonAHAP, .json]) { result in
+            do {
+                let url = try result.get()
+                let scoped = url.startAccessingSecurityScopedResource()
+                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+                guard size <= 2 * 1_024 * 1_024 else { throw PatternError.invalid("AHAPは2 MB以内で選んでください。") }
+                let document = try HapticAHAP(data: Data(contentsOf: url))
+                let name = url.deletingPathExtension().lastPathComponent
+                if layering { haptics.addAHAPLayer(document, name: name) }
+                else { haptics.playAHAP(document, name: name) }
+            } catch { haptics.message = error.localizedDescription }
+        }
+        .fileExporter(isPresented: $exportingAHAP, document: ahapFile,
+                      contentType: .resonAHAP, defaultFilename: exportName) { result in
+            if case .failure(let error) = result { haptics.message = error.localizedDescription }
+        }
     }
 
     private func presetCard(_ preset: HapticPatternSpec) -> some View {
@@ -117,7 +154,11 @@ struct GalleryView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(preset.name)をお気に入り\(favoriteIDs.contains(preset.id) ? "から外す" : "に追加")")
             }
-            Button { haptics.play(preset) } label: {
+            Button {
+                let loop = loopTexture && preset.category == "texture"
+                if layering { haptics.addLayer(preset, loop: loop) }
+                else { haptics.play(preset, loop: loop) }
+            } label: {
                 VStack(alignment: .leading, spacing: 7) {
                     Text(preset.name).font(.system(size: 16, weight: .bold))
                     Text(preset.subtitle)
@@ -146,6 +187,18 @@ struct GalleryView: View {
         .overlay {
             RoundedRectangle(cornerRadius: 20).strokeBorder(.white.opacity(0.045), lineWidth: 1)
         }
+        .contextMenu {
+            Button {
+                do {
+                    ahapFile = AHAPFile(data: try HapticAHAP.encode(preset))
+                    exportName = preset.id + ".ahap"
+                    exportingAHAP = true
+                } catch { haptics.message = error.localizedDescription }
+            } label: { Label("AHAPを書き出す", systemImage: "square.and.arrow.up") }
+            Button {
+                haptics.addLayer(preset, loop: loopTexture && preset.category == "texture")
+            } label: { Label("レイヤーとして追加", systemImage: "square.stack.3d.up") }
+        }
     }
 
     private func toggleFavorite(_ id: String) {
@@ -154,4 +207,3 @@ struct GalleryView: View {
         favorites = ids.sorted().joined(separator: ",")
     }
 }
-

@@ -300,9 +300,12 @@ struct MusicView: View {
             guard library.preparation == nil else { library.message = "解析中の曲が終わってから選んでください。"; return }
             playback.pause()
             haptics.stop()
-            library.prepare(selection, method: .device,
-                style: record?.analysis?.style ?? preferences.style,
-                profile: record?.analysis?.profile ?? preferences.profile, quality: preferences.quality)
+            guard let connection = preferences.connection else {
+                pending = MusicPreparationRequest(selection: selection)
+                return
+            }
+            library.prepare(selection, method: .pc, style: .arranged,
+                profile: preferences.profile, connection: connection)
             if library.preparation?.selection.id == selection.id {
                 playAfterPreparation = selection
                 preparationSelection = selection
@@ -336,8 +339,8 @@ struct MusicPreparationView: View {
     @EnvironmentObject private var preferences: AnalysisPreferences
     @Environment(\.dismiss) private var dismiss
     @State private var importing = false
-    @State private var method: MusicAnalysisMethod = .device
-    @State private var style: MusicGenerationStyle = .following
+    @State private var method: MusicAnalysisMethod = .pc
+    @State private var style: MusicGenerationStyle = .arranged
     @State private var profile: MusicArrangement = .standard
     @State private var quality: MusicAnalysisQuality = .precision
     @State private var audioURLText = ""
@@ -352,18 +355,8 @@ struct MusicPreparationView: View {
                         .accessibilityIdentifier("music.firstPreparation")
                     Text(selection.title).font(.system(size: 17, weight: .semibold))
                     Text(selection.artist).font(.system(size: 13)).foregroundStyle(LabTheme.muted)
-                    Picker("解析する場所", selection: $method) {
-                        ForEach(MusicAnalysisMethod.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }.pickerStyle(.segmented).accessibilityIdentifier("analysis.method")
-                    if method == .device {
-                        Picker("iPhoneの解析精度", selection: $quality) {
-                            ForEach(MusicAnalysisQuality.allCases, id: \.self) { Text($0.title).tag($0) }
-                        }.pickerStyle(.segmented).accessibilityIdentifier("analysis.quality")
-                        Text(quality.detail).font(.system(size: 12)).foregroundStyle(LabTheme.muted)
-                    }
-                    Picker("振動の作り方", selection: $style) {
-                        ForEach(MusicGenerationStyle.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }.pickerStyle(.segmented).accessibilityIdentifier("analysis.style")
+                    Label("PCでAI解析・振動を編曲", systemImage: "desktopcomputer")
+                        .font(.system(size: 15, weight: .semibold))
                     Text(style.detail).font(.system(size: 13)).foregroundStyle(LabTheme.muted)
                     Picker("仕上げ", selection: $profile) {
                         ForEach(MusicArrangement.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -372,15 +365,10 @@ struct MusicPreparationView: View {
                         Text("拍ごとのタップを控え、低音・クレッシェンド・余韻をなめらかな持続振動にします。")
                             .font(.system(size: 12)).foregroundStyle(LabTheme.muted)
                     }
-                    Text(method == .pc
-                         ? "PCが音源を取得・解析し、振動をPCとiPhoneへ保存します。次回の再生にはPCは不要です。YouTubeは公開動画のURLだけで作成できます。"
-                         : selection.kind == .youtube
-                           ? "このiPhoneで動画の音声を一時的に取得し、周波数を解析します。振動の保存後に音声を削除し、次回は保存した振動とYouTube動画を再生します。"
-                           : "iPhone内で音源を解析し、振動を保存します。次回から解析せずに再生できます。")
+                    Text("PCが音源を取得し、楽器・サビ・曲の雰囲気を解析して振動を編曲します。振動はPCとiPhoneへ保存し、次回の再生にはPCは不要です。")
                         .font(.system(size: 14)).foregroundStyle(LabTheme.muted).lineSpacing(5)
-                    if method == .pc {
-                        Button("PCの接続設定") { showPCSettings = true }.foregroundStyle(LabTheme.mint)
-                    } else if selection.kind == .youtube {
+                    Button("PCの接続設定") { showPCSettings = true }.foregroundStyle(LabTheme.mint)
+                    if selection.kind == .youtube {
                         DisclosureGroup("同じ音源のファイル・URLを使う") {
                             TextField("音声のダウンロードURL（任意）", text: $audioURLText)
                                 .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -407,7 +395,7 @@ struct MusicPreparationView: View {
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("閉じる") { dismiss() } } }
         }
         .preferredColorScheme(.dark)
-        .onAppear { method = selection.kind == .youtube ? .device : preferences.method; style = preferences.style; profile = preferences.profile; quality = preferences.quality }
+        .onAppear { method = .pc; style = .arranged; profile = preferences.profile; quality = .precision }
         .sheet(isPresented: $showPCSettings) {
             NavigationStack {
                 AnalysisSettingsView().toolbar {

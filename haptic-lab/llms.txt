@@ -15,7 +15,13 @@ Application sources are in haptic-lab/. Workflows are at the repository root.
 - [Playback](docs/MUSIC.md): Search YouTube, prepare haptics, play, adjust and use saved tracks.
 - [Build](docs/BUILD.md): Fork + GitHub Actions, Xcode and release publishing.
 
-## Optional APIs
+## Design research
+
+- [Haptic arrangement](docs/HAPTIC-ARRANGEMENT-DESIGN.md): PC neural analysis and motif composition; initial implementation completed 2026-10-07. Includes remaining research and device evaluation.
+- [Real song verification](docs/verification/SERENADE.md): natori - Serenade, full-track neural/API/cache/AHAP verification on this Windows RTX 3050 PC. Native build and physical haptics unverified.
+- [AHAP and layers](docs/AHAP.md): Sample layering, dynamic controls, import/export and clip playback.
+
+## PC analysis and optional integrations
 
 - [PC server](docs/PC-SERVER.md): Install uv, start on Windows/macOS/Linux, connect over LAN, stop.
 - [HTTP API](docs/API.md): Bearer authentication, uploads, jobs, saved haptic JSON and examples.
@@ -25,4 +31,4 @@ Application sources are in haptic-lab/. Workflows are at the repository root.
 
 ## Constraints
 
-iOS 16+ on a physical Core Haptics-capable iPhone. No Android app. A simulator cannot reproduce the physical haptics. Initial IPA installation requires Windows/macOS and local Apple Account signing. Free signing expires after 7 days; renew with the same Apple Account and app ID without deleting the app. Basic YouTube search, playback and on-device analysis require no Google login or PC server. PC API runs locally; there is no shared hosted analysis API or paid key. Do not ask users to share Apple passwords, verification codes, Google tokens or PC connection keys in chat. An API result is haptic data, not remote control of the phone's vibration.
+iOS 16+ on a physical Core Haptics-capable iPhone. No Android app. A simulator cannot reproduce physical haptics. New music arrangements require the local PC server and pretrained ML environment; cached tracks play without a PC. No LLM or cloud inference. Windows reference setup: Python 3.11, CUDA PyTorch 2.5.1, pinned Windows ports of All-In-One/Demucs, Beat This and CLAP. Initial IPA installation requires Windows/macOS and local signing. Do not ask users to share Apple passwords, verification codes, Google tokens or PC connection keys in chat. API results are haptic data, not remote control of the phone. Current source is 2.8; native build and device evaluation remain unverified.

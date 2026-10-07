@@ -37,6 +37,12 @@ struct HapticCurveSpec: Codable, Equatable {
     let points: [Point]
 }
 
+struct HapticDynamicSpec: Codable, Equatable {
+    let parameter: HapticCurveSpec.Parameter
+    let time: Double
+    let value: Double
+}
+
 struct HapticPatternSpec: Codable, Identifiable, Equatable {
     let id: String
     let name: String
@@ -46,6 +52,29 @@ struct HapticPatternSpec: Codable, Identifiable, Equatable {
     let duration: Double
     let events: [HapticEventSpec]
     let curves: [HapticCurveSpec]
+    var dynamicParameters: [HapticDynamicSpec] = []
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, subtitle, symbol, category, duration, events, curves, dynamicParameters
+    }
+
+    init(id: String, name: String, subtitle: String, symbol: String, category: String,
+         duration: Double, events: [HapticEventSpec], curves: [HapticCurveSpec],
+         dynamicParameters: [HapticDynamicSpec] = []) {
+        self.id = id; self.name = name; self.subtitle = subtitle; self.symbol = symbol
+        self.category = category; self.duration = duration; self.events = events; self.curves = curves
+        self.dynamicParameters = dynamicParameters
+    }
+
+    init(from decoder: Decoder) throws {
+        let value = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(id: try value.decode(String.self, forKey: .id), name: try value.decode(String.self, forKey: .name),
+            subtitle: try value.decode(String.self, forKey: .subtitle), symbol: try value.decode(String.self, forKey: .symbol),
+            category: try value.decode(String.self, forKey: .category), duration: try value.decode(Double.self, forKey: .duration),
+            events: try value.decode([HapticEventSpec].self, forKey: .events),
+            curves: try value.decode([HapticCurveSpec].self, forKey: .curves),
+            dynamicParameters: try value.decodeIfPresent([HapticDynamicSpec].self, forKey: .dynamicParameters) ?? [])
+    }
 
     func validated() throws -> HapticPatternSpec {
         guard !id.isEmpty, !name.isEmpty,
@@ -72,6 +101,16 @@ struct HapticPatternSpec: Codable, Identifiable, Equatable {
             }
         }
 
+        guard curves.count <= 512, dynamicParameters.count <= 256 else {
+            throw PatternError.invalid("パラメータが多すぎます。")
+        }
+        for parameter in dynamicParameters {
+            let range = parameter.parameter == .intensity ? 0.0...1.0 : -1.0...1.0
+            guard parameter.time.isFinite, (0...duration).contains(parameter.time),
+                  parameter.value.isFinite, range.contains(parameter.value) else {
+                throw PatternError.invalid("動的パラメータの値・時刻が範囲外です。")
+            }
+        }
         for curve in curves {
             guard (2...16).contains(curve.points.count) else {
                 throw PatternError.invalid("強弱の変化点は2〜16個にしてください。")
@@ -80,7 +119,8 @@ struct HapticPatternSpec: Codable, Identifiable, Equatable {
             for point in curve.points {
                 guard point.time.isFinite, point.time >= 0, point.time <= duration,
                       point.time > previousTime,
-                      point.value.isFinite, (0...1).contains(point.value) else {
+                      point.value.isFinite,
+                      (curve.parameter == .intensity ? 0.0...1.0 : -1.0...1.0).contains(point.value) else {
                     throw PatternError.invalid("強弱の変化点は時刻順に設定してください。")
                 }
                 previousTime = point.time

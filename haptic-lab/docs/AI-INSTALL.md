@@ -7,7 +7,8 @@ https://github.com/tomikan1208-code/iphone-haptic-lab のResonを自分のiPhone
 ResonはYouTube動画（主に音楽）を振動付きで再生するアプリです。
 PCはWindows 11、iPhoneはSE第3世代、iOSは自分の端末のバージョンです。
 リポジトリのREADME、llms.txt、haptic-lab/docs/INSTALL.mdを読んで、
-最新Releaseの入手からSideloadlyでの署名、デベロッパモード、最初の動画の再生まで案内してください。
+最新Releaseが目的の機能を含むか確認し、入手からSideloadlyでの署名、デベロッパモード、
+PCの音楽AI環境の準備と接続、最初の動画の再生まで案内してください。
 Releaseがない場合はhaptic-lab/docs/BUILD.mdのFork + GitHub Actionsの手順を使ってください。
 Apple Accountの認証と2段階認証は私がPC上で行います。
 まず不足している環境情報を確認し、今実行する操作を順番に説明してください。
@@ -30,8 +31,10 @@ PCサーバーを起動し、同梱のMusicDemo.wavから振動JSONを取得で�
 - 初回インストールにはWindows / Macとデータケーブルを用意する。未署名IPAをiPhoneで開くだけでは入らない。
 - 配布先はReleases。`Reson-install.zip` または `HapticLab-unsigned.ipa` を使う。GitHubの `Source code` はIPAではない。
 - 無料署名は7日。更新は同じApple Account・同じアプリIDで上書きし、保存データを保持する。
-- 検索・公開動画の再生・iPhone解析にGoogleログインや共有APIキーは不要。
-- PC解析は追加機能。`-Lan` / `--lan`、同じWi-Fi、PCのLAN URL、接続キー、ローカルネットワーク権限が必要。
+- 検索・公開動画の再生にGoogleログインや共有APIキーは不要。
+- ソース版2.8.0の新規作成はPCの音楽AI解析・振動編曲を使う。LLMではない。Windows / RTX 3050で指定曲全体を検証済み。iPhoneの高速解析を選ぶ画面は廃止した。
+- PC接続は `-Lan` / `--lan`、同じWi-Fi、LAN URL、接続キー、ローカルネットワーク権限が必要。作成済みの振動の再生にはPC不要。
+- 2.8.0のiPhone側はXcodeビルド・実機確認が未実施。公開済みIPAがこのソース変更を含むと断定しない。[検証](verification/SERENADE.md)を参照。
 - Googleログインを使う場合は、自分のiOS OAuthクライアントIDを入れて再ビルドする。共通の開発者キーは配布しない。
 - 接続キー、Apple Accountのパスワード、認証コード、Googleトークンはチャット・GitHub・Issueへ記載しない。
 - リポジトリ直下とアプリの `haptic-lab/` を区別する。コマンドは各ガイドが指定したフォルダーで実行する。

@@ -1,14 +1,10 @@
 # Resonの解析API
 
-ResonはYouTube動画を振動付きで再生するiPhoneアプリです。ここでは、追加機能のPC解析を自分のプログラムやAIから利用する方法を説明します。iPhoneだけで使う場合、APIの設定は不要です。
-
-APIは利用者のPCで動きます。共通のクラウドAPI・有料APIキー・開発者のサーバーへの接続はありません。Google OAuth、YouTube Data API、Appleの署名は別の設定です。
+自分のPCに音源を送り、AI解析と振動の編曲結果を取得するHTTP API。共通のクラウド推論サーバーや有料APIキーは使用しない。[PC環境の準備](PC-SERVER.md)、[OpenAPI 3.1仕様](api/openapi.json)、[クライアント](../pc-server/client.py)。
 
 ## 最短で試す
 
-[PCサーバーの手順](PC-SERVER.md)でサーバーを起動してください。以下は `haptic-lab/`、または `Reson-install.zip` を展開したフォルダーから実行します。YouTubeの状況に左右されないよう、最初は同梱の12秒音源を使います。
-
-Windows PowerShell:
+PCサーバーを起動した後、`haptic-lab/` または対応する配布ZIPのフォルダーから実行する。CLIの新規解析は `arranged` が標準。
 
 ```powershell
 .\.pc-server\venv\Scripts\python.exe pc-server\client.py health
@@ -16,23 +12,22 @@ Windows PowerShell:
 .\.pc-server\venv\Scripts\python.exe pc-server\client.py tracks
 ```
 
-macOS / Linux（サーバーを起動したまま、別のターミナルで）:
+macOS / Linuxでは `.pc-server/venv/bin/python pc-server/client.py` と置き換える。
 
-```sh
-.pc-server/venv/bin/python pc-server/client.py health
-.pc-server/venv/bin/python pc-server/client.py analyze --file HapticLab/Resources/MusicDemo.wav --output .build/demo-haptics.json
-.pc-server/venv/bin/python pc-server/client.py tracks
+`health` は `protocolVersion: 1`、`apiVersion: "1.1.0"`、`trackVersions: [1,2,3]`、`arrangementAvailable` を返す。AI環境が未設定の場合、`arranged` は受け付けず旧方式へ自動で切り替えない。サンプルクライアントはPython標準ライブラリで動く。
+
+指定曲で試す場合：
+
+```powershell
+.\.pc-server\venv\Scripts\python.exe pc-server\client.py analyze --video-id gNg2Qw5R-Q4 --output .build\serenade-haptics.json
+.\.pc-server\venv\Scripts\python.exe pc-server\client.py export-ahap <trackID> --output .build\serenade-ahap
 ```
-
-`health` は `protocolVersion: 1`、`apiVersion: "1.0.0"` を返します。解析はジョブの作成・進捗確認・結果取得まで自動で行い、約12秒の振動データをJSONへ保存します。サンプルクライアントはPython標準ライブラリだけで動きます。
 
 ## 接続と認証
 
-標準のURLはPC自身なら `http://127.0.0.1:8765`。iPhoneや別のPCなら、`-Lan` / `--lan` で起動し、`.pc-server/connection.json` の `addresses` にある `http://192.168.…:8765` 等を使います。iPhoneの `127.0.0.1` はiPhone自身を指します。
+`arrangement-3.3`の`rhythmAgreement`と`downbeatAgreement`は、70 ms以内の一対一照合によるF1値。余分な拍と検出漏れを評価するモデル間の整合性指標で、正答率ではない。`rhythmDiagnostics`にはprecision/recall/F1と除去した拍時刻を保存する。各sectionの任意フィールド`groove`には、16分シャッフルの支持率・観測数と細分音符の分割位置を保存する。支持率は校正された正答確率ではない。旧スコアの読み込みは維持する。
 
-すべてのリクエストに `Authorization: Bearer <接続キー>` が必要です。接続キーは初回起動時に生成され、`.pc-server/server-key.txt` に保持します。`connection.json`、接続キー、ログ、音源、キャッシュはGitに含めません。APIは同じローカルネットワークで利用してください。
-
-PowerShellでHTTPを直接呼ぶ例（キーはローカルファイルから読み込みます）:
+PC自身では `http://127.0.0.1:8765`。別端末からはLANモードで起動し、`.pc-server/connection.json` のLAN URLを使う。全てのリクエストに `Authorization: Bearer <接続キー>` が必要。キーは `server-key.txt` と `connection.json` に保存する。これらはGitへ含めず、同じローカルネットワークで使う。
 
 ```powershell
 $resonConnection = Get-Content .pc-server\connection.json -Raw | ConvertFrom-Json
@@ -40,55 +35,71 @@ $resonPort = ([uri]$resonConnection.addresses[0]).Port
 $resonBase = 'http://127.0.0.1:' + $resonPort
 $resonHeaders = @{ Authorization = 'Bearer ' + $resonConnection.token }
 Invoke-RestMethod -Uri ($resonBase + '/health') -Headers $resonHeaders
-$resonJob = Invoke-RestMethod -Method Post -Uri ($resonBase + '/jobs/upload') -Headers $resonHeaders -ContentType 'application/octet-stream' -InFile HapticLab\Resources\MusicDemo.wav
+$resonUploadHeaders = $resonHeaders.Clone()
+$resonUploadHeaders['X-Generation-Style'] = 'arranged'
+$resonJob = Invoke-RestMethod -Method Post -Uri ($resonBase + '/jobs/upload') -Headers $resonUploadHeaders -ContentType 'application/octet-stream' -InFile HapticLab\Resources\MusicDemo.wav
 Invoke-RestMethod -Uri ($resonBase + '/jobs/' + $resonJob.id) -Headers $resonHeaders
 ```
 
-最後のリクエストを約1秒間隔で繰り返し、`state` が `done` になったら `track` を取得します。処理中は `queued` / `running`、終了時は `done` / `failed` / `canceled` です。解析の失敗はHTTP 200でも `state: "failed"` として返るので、状態と `message` を確認してください。
+最後のリクエストを約1秒間隔で繰り返す。状態は `queued` / `running` / `done` / `failed` / `canceled`。`done` の `track` が結果。HTTP 200でも `state: "failed"` の場合があるため、状態と `message` を確認する。
 
 ## エンドポイント
 
 | メソッド・パス | 内容 |
 | --- | --- |
-| `GET /health` | 接続、互換性、YouTube取得ツールの有無 |
-| `GET /openapi.json` | 起動中のAPIのOpenAPI 3.1仕様（認証が必要） |
+| `GET /health` | 互換性、YouTube取得ツールとAI環境の可用性 |
+| `GET /openapi.json` | 認証付きのOpenAPI仕様 |
 | `POST /jobs` | YouTube動画IDから解析ジョブを作成 |
-| `POST /jobs/upload` | 音声・動画のバイト列を送って解析ジョブを作成 |
-| `GET /jobs/{jobID}` | 状態・進捗・完成した振動データ |
-| `DELETE /jobs/{jobID}` | 解析をキャンセル |
-| `GET /tracks` | PCに保存した振動の一覧 |
-| `GET /tracks/{trackID}` | 保存した振動データを取得 |
-| `DELETE /tracks/{trackID}` | PCの保存データを1曲削除 |
-| `POST /shutdown` | サーバー停止。保存した振動は保持 |
+| `POST /jobs/upload` | 音声・動画の生バイト列から解析ジョブを作成 |
+| `GET /jobs/{jobID}` | 状態・進捗・完成した振動 |
+| `DELETE /jobs/{jobID}` | キャンセル |
+| `GET /tracks` | 保存一覧 |
+| `GET /tracks/{trackID}` | 振動JSONを取得 |
+| `GET /tracks/{trackID}/ahap` | `{manifest, files}` 形式のAHAP JSONバンドル |
+| `DELETE /tracks/{trackID}` | 対応する振動・スコア・グラフ・AHAPを削除 |
+| `POST /shutdown` | 停止。保存した振動は保持 |
 
-AIやクライアント生成ツールには、リポジトリにある [openapi.json](api/openapi.json) を渡せます。認証なしで読める静的ファイルと、起動中サーバーの仕様は同じ内容です。[サンプルのコード](../pc-server/client.py)も参照してください。
-
-`POST /jobs` のJSON:
+YouTubeジョブのJSON：
 
 ```json
-{"videoID":"BaW_jenozKc","title":"試験動画","style":"following","profile":"standard"}
+{"videoID":"gNg2Qw5R-Q4","title":"natori - Serenade","style":"arranged","profile":"standard"}
 ```
 
-`videoID` はURLではなく11文字のIDです。`style` は `following`（音に追従、標準）か `musical`（リズム中心）、`profile` は `standard`（標準）か `orchestral`（オーケストラ向け）です。`orchestral` は自然な打音を優先し、リズム中心の固定拍の追加より優先されます。YouTubeの取得はyt-dlpを使うため、制限や仕様変更で失敗する場合があります。
+`videoID` は11文字のID。`style` は `arranged`（AI編曲）、`following`（旧音追従）、`musical`（旧リズム中心）。HTTPとPythonのライブラリ関数で `style` を省略した場合は旧クライアント互換のため `following`。新しいCLIとiPhoneは `arranged` を明示する。`profile` は `standard` / `orchestral`。後者は疎な自然のアタックを優先する。
 
-`POST /jobs/upload` はmultipartではなくファイルの生バイト列です。`Content-Length` が必要で、chunked送信には対応していません。必要に応じて次のヘッダーを付けます。
+アップロードはmultipartではなく生バイト列で、`Content-Length` が必要。chunked送信は未対応。
 
 | ヘッダー | 値 |
 | --- | --- |
 | `Content-Type` | `application/octet-stream` |
-| `X-Media-Title` | 曲名のUTF-8をBase64へ変換した文字列 |
-| `X-Generation-Style` | `following` / `musical` |
+| `X-Media-Title` | 曲名UTF-8のBase64 |
+| `X-Generation-Style` | `arranged` / `following` / `musical` |
 | `X-Music-Profile` | `standard` / `orchestral` |
 
-## 結果と制限
+YouTubeはyt-dlpで取得する。動画の制限やサービスの仕様変更で失敗する場合がある。
 
-結果の `version` は振動データ形式の **2**、HTTP互換性の `protocolVersion` は **1** です。`duration` と各 `time` は秒、振動の強さ・鋭さ・帯域レベルは0〜1。`envelope` は持続振動、`taps` は瞬間振動、`spectrum` は20 Hz〜8 kHzの24帯域です。`analysis.serverTrackID` はPC保存IDで、`GET /tracks/{trackID}` に使用します。結果JSONを取得してもiPhoneの振動は自動で発生しません。振動を鳴らすにはResonなど、実機のCore Hapticsを扱うアプリが必要です。
+## 結果とAHAP
+
+`arranged` の結果は振動データ **version 3**。旧方式はversion 2。HTTP互換性の `protocolVersion` は1を維持する。
+
+- `duration` / `time` は秒。`envelope.intensity` が編曲済みの持続強度、`taps` が独立したアクセント。強度・イベントの鋭さは0〜1。
+- `arrangement.sections` はAIの区間推定とモチーフ系統、`bars` は小節ごとの選択、`rhythmSource` / `rhythmAgreement` / `downbeatAgreement` は拍の採用根拠。
+- `confidence` はモデル出力の平均値で、実際の正答率ではない。CLAPは音の雰囲気の比較で、歌詞や意図の解釈はしない。
+- `spectrum` は20 Hz〜8 kHzの参考周波数表示で、振動生成の根拠とは別。
+- `analysis.serverTrackID` を保存結果とAHAPの取得に使う。モデル・設定・音声SHA-256を使ってキャッシュする。
+
+AHAPは8秒以下のクリップへ分け、持続用とアクセント用を別プレーヤーへ載せて同時開始する。manifestは各クリップの開始時刻とファイル名を持つ。持続の制御曲線をアクセントへ掛けないために分けている。音楽の音声ファイルは含まない。[詳細](AHAP.md)。旧方式の保存データにはAHAPがなく、その取得は404になる。
+
+結果JSONを取得してもiPhoneの振動は自動では発生しない。Reson等のCore Hapticsを扱う実機アプリで再生する。
+
+## 制限と保存
 
 - 1曲20分以内、1ファイル512 MiB以内（536,870,912バイト）。
 - 未完了ジョブは最大8件、処理は1件ずつ。
-- `jobID` はサーバー再起動で失効。保存した `trackID` と振動データは保持。
-- 取得した音源は処理終了・失敗・キャンセル時に削除。保存データは `.pc-server/data/tracks/`。
-- HTTP 400は入力不正・上限・待ち行列超過、401は認証または接続元、404は対象なし、500はサーバー内の失敗。
-- ブラウザー向けのCORS設定はありません。連携にはPython等のHTTPクライアントを使います。
+- `jobID` はサーバー再起動で失効。保存した `trackID` は保持。
+- 一時音源、分離音源、スペクトログラムは成功・失敗・キャンセル時に削除。
+- `.pc-server/data/tracks/` に振動・解析グラフ・スコア、`data/exports/` にAHAPを保存。
+- HTTP 400は入力・上限・AI未設定、401は認証または接続元、404は対象なし、500は内部の失敗。
+- CORSは用意していない。Python等のHTTPクライアントを使う。
 
-外部のAIに相談する際は、OS、実行したコマンド、接続キーを除いたエラーと `state` を伝えると切り分けできます。
+相談時はOS、実行コマンド、接続キーを除いたエラーとジョブ状態を伝える。
