@@ -450,6 +450,8 @@ final class HapticLabUITests: XCTestCase {
         let prepare = app.buttons["music.prepare"]
         reveal(prepare, app: app)
         prepare.tap()
+        XCTAssertTrue(app.staticTexts["保存した振動を使用"].waitForExistence(timeout: 40))
+        app.buttons["閉じる"].tap()
         expectation(for: NSPredicate { _, _ in video.isHittable && !app.buttons["music.analysisBanner"].exists }, evaluatedWith: video)
         waitForExpectations(timeout: 40)
         XCTAssertTrue(app.buttons["tab.search"].isSelected)
