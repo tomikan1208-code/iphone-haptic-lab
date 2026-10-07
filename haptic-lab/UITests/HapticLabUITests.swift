@@ -156,6 +156,10 @@ final class HapticLabUITests: XCTestCase {
         waitForExpectations(timeout: 10)
         play.tap()
         screenshot("10-haptic-spectrum", app: app)
+        // An arranged track opens with its composed waveform on every presentation.
+        XCTAssertTrue(app.otherElements["haptics.waveform"].exists)
+        app.buttons["haptics.toggle"].tap()
+        XCTAssertTrue(app.otherElements["haptics.spectrum"].exists)
         app.buttons["haptics.toggle"].tap()
         XCTAssertTrue(app.otherElements["haptics.waveform"].exists)
         screenshot("13-current-haptic-waveform", app: app)
