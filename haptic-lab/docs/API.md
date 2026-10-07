@@ -76,7 +76,7 @@ YouTubeジョブのJSON：
 | `X-Generation-Style` | `arranged` / `following` / `musical` |
 | `X-Music-Profile` | `standard` / `orchestral` |
 
-YouTubeはyt-dlpで取得する。動画の制限やサービスの仕様変更で失敗する場合がある。
+YouTubeはyt-dlpで取得する。動画の制限やサービスの仕様変更で失敗する場合がある。`POST /jobs` と `POST /jobs/upload` は毎回取得・解析・編曲を実行し、保存済みの結果を再利用しない。同一音源・モデル・設定でも、新しい結果IDで保存する。保存結果の再取得は `GET /tracks/{trackID}` を使う。
 
 ## 結果とAHAP
 
@@ -86,7 +86,7 @@ YouTubeはyt-dlpで取得する。動画の制限やサービスの仕様変更�
 - `arrangement.sections` はAIの区間推定とモチーフ系統、`bars` は小節ごとの選択、`rhythmSource` / `rhythmAgreement` / `downbeatAgreement` は拍の採用根拠。
 - `confidence` はモデル出力の平均値で、実際の正答率ではない。CLAPは音の雰囲気の比較で、歌詞や意図の解釈はしない。
 - `spectrum` は20 Hz〜8 kHzの参考周波数表示で、振動生成の根拠とは別。
-- `analysis.serverTrackID` を保存結果とAHAPの取得に使う。モデル・設定・音声SHA-256を使ってキャッシュする。
+- `analysis.serverTrackID` を保存結果とAHAPの取得に使う。モデル・設定・音声SHA-256とジョブIDで結果ごとのIDを作る。前の結果を上書きせず、個別に取得・削除できる。
 
 AHAPは8秒以下のクリップへ分け、持続用とアクセント用を別プレーヤーへ載せて同時開始する。manifestは各クリップの開始時刻とファイル名を持つ。持続の制御曲線をアクセントへ掛けないために分けている。音楽の音声ファイルは含まない。[詳細](AHAP.md)。旧方式の保存データにはAHAPがなく、その取得は404になる。
 

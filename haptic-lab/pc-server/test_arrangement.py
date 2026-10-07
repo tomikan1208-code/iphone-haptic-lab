@@ -33,6 +33,35 @@ def fixture():
 
 
 class ArrangementTests(unittest.TestCase):
+    def test_voice_or_drums_without_accompaniment_keep_unmetered_touch_and_true_silence(self):
+        for role in ('vocals', 'drums'):
+            for profile in ('standard', 'orchestral'):
+                with self.subTest(role=role, profile=profile):
+                    graph = fixture()
+                    for source in ('structure', 'rhythm'):
+                        graph[source]['beats'] = []
+                        graph[source]['downbeats'] = []
+                    for name in ('bass', 'other', 'vocals', 'drums'):
+                        graph['features'][name] = graph['features']['mix'].copy() if name == role else [0.] * len(graph['features']['times'])
+                    track, _ = arrange(graph, profile=profile)
+                    self.assertFalse(track['taps'])
+                    active = [p['intensity'] for p in track['envelope'] if 1 <= p['time'] < 5 or 10 <= p['time'] < 15]
+                    self.assertGreater(min(active), .05)
+                    self.assertTrue(all(p['intensity'] == 0 for p in track['envelope'] if 6.15 <= p['time'] < 8.35))
+
+    def test_sustained_touch_hands_over_between_roles_without_silent_audible_bars(self):
+        for profile in ('standard', 'orchestral'):
+            graph = fixture()
+            times = np.array(graph['features']['times'])
+            graph['features']['mix'] = [.1] * len(times)
+            for index, name in enumerate(('bass', 'vocals', 'drums', 'other')):
+                graph['features'][name] = np.where((times >= index * 4) & (times < (index+1) * 4), .1, 0).tolist()
+            track, _ = arrange(graph, profile=profile)
+            levels = np.array([p['intensity'] for p in track['envelope'][:-1]])
+            self.assertGreater(float(levels.min()), .025)
+            self.assertLess(float(np.abs(np.diff(levels)).max()), .08)
+            self.assertFalse(any(b['motif'] == 'rest' for b in track['arrangement']['bars']))
+
     def test_sub_frame_ending_section_keeps_metadata_and_serializes_for_phone(self):
         graph = fixture()
         graph['structure']['segments'][-1]['end'] = 15.99

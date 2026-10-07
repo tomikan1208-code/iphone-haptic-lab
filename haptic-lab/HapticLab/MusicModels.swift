@@ -189,6 +189,25 @@ extension MusicSettings {
     }
 }
 
+struct MusicAnalysisVariant: Codable, Identifiable, Equatable {
+    var id: String
+    var createdAt: Date
+    var lastUsedAt: Date?
+    var trackFilename: String
+    var mediaFilename: String?
+    var trackBytes: Int
+    var analysis: MusicAnalysisInfo?
+
+    var title: String {
+        let engine = analysis?.engine == "pc" ? "PC" : "iPhone"
+        let style = analysis?.style?.title ?? "保存済み解析"
+        let profile = analysis?.profile?.title ?? "標準"
+        let pipeline = analysis?.pipeline.map { " · \($0)" } ?? ""
+        return "\(engine) · \(style) · \(profile)\(pipeline)"
+    }
+    var dateText: String { createdAt.formatted(.dateTime.month().day().hour().minute().second()) }
+}
+
 struct MusicRecord: Codable, Identifiable, Equatable {
     var selection: MusicSelection
     var createdAt = Date()
@@ -203,6 +222,28 @@ struct MusicRecord: Codable, Identifiable, Equatable {
         usesGlobalSettings.map { !$0 } ?? (settings.normalized != MusicSettings())
     }
     var analysis: MusicAnalysisInfo?
+    var variants: [MusicAnalysisVariant]? = nil
+    var activeVariantID: String? = nil
+    var analysisVariants: [MusicAnalysisVariant] {
+        if let variants { return variants }
+        guard let trackFilename else { return [] }
+        return [.init(id: trackFilename, createdAt: createdAt, lastUsedAt: lastPlayedAt,
+                      trackFilename: trackFilename, mediaFilename: mediaFilename, trackBytes: trackBytes, analysis: analysis)]
+    }
+    var selectedVariantID: String? { activeVariantID ?? analysisVariants.last?.id }
+    var totalTrackBytes: Int {
+        analysisVariants.reduce(0) { total, variant in
+            let (sum, overflow) = total.addingReportingOverflow(variant.trackBytes)
+            return overflow ? Int.max : sum
+        }
+    }
+    mutating func useVariant(_ variant: MusicAnalysisVariant) {
+        activeVariantID = variant.id
+        trackFilename = variant.trackFilename
+        mediaFilename = variant.mediaFilename
+        trackBytes = variant.trackBytes
+        analysis = variant.analysis
+    }
     var id: String { selection.id }
     var isPrepared: Bool { trackFilename != nil }
     var requiresAudioReanalysis: Bool {

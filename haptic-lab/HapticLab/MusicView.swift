@@ -89,17 +89,9 @@ struct MusicView: View {
         .sheet(isPresented: $showPlayer, onDismiss: { playback.pause() }) {
             MusicPlayerScreen().environmentObject(playback).environmentObject(library)
         }
-        .alert("この曲の保存データを削除しますか？", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
-            Button("削除", role: .destructive) {
-                guard let record = deleting else { return }
-                if playback.selection?.id == record.id { playback.stop() }
-                do { try library.delete(record); youtube.synchronize(records: library.records) }
-                catch { library.message = error.localizedDescription }
-                deleting = nil
-            }
-            Button("キャンセル", role: .cancel) { deleting = nil }
-        } message: {
-            Text("振動・調整値・このアプリの履歴を削除します。読み込んだ音源のアプリ内コピーも削除されます。")
+        .sheet(item: $deleting) { record in
+            NavigationStack { MusicAnalysisDeletionView(recordID: record.id) }
+                .environmentObject(library).preferredColorScheme(.dark)
         }
         .onChange(of: library.recentlyPreparedID) { id in
             if let id {
@@ -235,7 +227,7 @@ struct MusicView: View {
                 MusicEmptyState(title: empty, detail: detail, symbol: tab == .history ? "clock" : "waveform")
             }
             ForEach(records) { record in
-                MusicSongRow(selection: record.selection, prepared: record.isPrepared, bytes: record.trackBytes,
+                MusicSongRow(selection: record.selection, prepared: record.isPrepared, bytes: record.totalTrackBytes,
                              action: { select(record.selection) }, delete: { deleting = record },
                              regenerate: {
                                  playAfterPreparation = nil
@@ -319,7 +311,8 @@ struct MusicView: View {
             let track = withHaptics ? try record.map { try library.disk.track($0) } : nil
             haptics.stop()
             playback.load(record?.selection ?? selection, track: track,
-                          mediaURL: record.flatMap { library.disk.mediaURL($0) }, settings: library.settings(for: selection.id))
+                          mediaURL: record.flatMap { library.disk.mediaURL($0) }, settings: library.settings(for: selection.id),
+                          variantID: withHaptics ? record?.selectedVariantID : nil)
             if pending != nil { openPlayerAfterDismiss = true; pending = nil }
             else { showPlayer = true }
         } catch {
@@ -329,6 +322,13 @@ struct MusicView: View {
     }
     private func refreshPlaybackSettings() {
         guard let id = playback.selection?.id else { return }
+        if playback.hasHaptics {
+            guard let record = library.records.first(where: { $0.id == id }) else { playback.stop(); return }
+            if let variantID = record.selectedVariantID, playback.analysisVariantID != variantID {
+                do { try playback.switchAnalysis(library.disk.track(record), variantID: variantID) }
+                catch { playback.message = error.localizedDescription }
+            }
+        }
         let settings = library.settings(for: id)
         if playback.settings != settings { playback.settings = settings }
     }
@@ -360,6 +360,10 @@ struct MusicPreparationView: View {
                         .accessibilityIdentifier("music.firstPreparation")
                     Text(selection.title).font(.system(size: 17, weight: .semibold))
                     Text(selection.artist).font(.system(size: 13)).foregroundStyle(LabTheme.muted)
+                    if library.record(for: selection)?.isPrepared == true {
+                        Text("保存済みの解析は残し、新しい解析結果を追加します。完成後は「振動を調整」で切り替えられます。")
+                            .font(.system(size: 13)).foregroundStyle(LabTheme.mint)
+                    }
                     Picker("解析方法", selection: $method) {
                         ForEach(MusicAnalysisMethod.allCases, id: \.self) { Text($0.title).tag($0) }
                     }.pickerStyle(.segmented).accessibilityIdentifier("analysis.method")
@@ -382,7 +386,7 @@ struct MusicPreparationView: View {
                             .font(.system(size: 12)).foregroundStyle(LabTheme.muted)
                     }
                     Text(method == .pc
-                         ? "PCが音源を取得し、楽器・サビ・曲の雰囲気を解析して振動を編曲します。振動はPCとiPhoneへ保存し、次回の再生にはPCは不要です。"
+                         ? "PCが音源を取得し、楽器・サビ・曲の雰囲気を解析して振動を編曲します。作成・作り直しは保存済みの結果を使わず、毎回解析します。振動はPCとiPhoneへ保存し、次回の再生にはPCは不要です。"
                          : "iPhoneが音源を取得し、低音・音量・打音を帯域別に精密解析します。PCは不要です。振動を保存して、次回は解析せずに再生できます。")
                         .font(.system(size: 14)).foregroundStyle(LabTheme.muted).lineSpacing(5)
                     if method == .pc {
@@ -496,7 +500,7 @@ struct MusicSongRow: View {
             .buttonStyle(.plain).accessibilityIdentifier("music.song.\(selection.id)")
             if let delete {
                 Menu {
-                    if let regenerate { Button(action: regenerate) { Label("振動を作り直す", systemImage: "waveform.badge.plus") } }
+                    if let regenerate { Button(action: regenerate) { Label("別の解析を追加", systemImage: "waveform.badge.plus") } }
                     Button(role: .destructive, action: delete) { Label("保存データを削除", systemImage: "trash") }
                 } label: { Image(systemName: "ellipsis").foregroundStyle(LabTheme.muted).frame(width: 30, height: 44) }
                 .accessibilityLabel("\(selection.title)の操作")

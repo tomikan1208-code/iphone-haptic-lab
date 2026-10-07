@@ -98,7 +98,7 @@ class PCServerTests(unittest.TestCase):
             self.api('/jobs/upload', 'POST', b'')
         self.assertEqual(failure.exception.code, 400)
 
-    def test_upload_analyzes_real_demo_then_reuses_persists_and_deletes_one_track(self):
+    def test_upload_reanalyzes_real_demo_then_persists_and_deletes_one_track(self):
         audio = (ROOT / 'HapticLab' / 'Resources' / 'MusicDemo.wav').read_bytes()
         first = self.done(self.upload(audio))
         track = first['track']
@@ -114,18 +114,26 @@ class PCServerTests(unittest.TestCase):
         self.assertGreater(len(track['taps']), 10)
         self.assertTrue(all(0 <= point['energy'] <= 1 and 0 <= point['bass'] <= 1 for point in track['envelope']))
         self.metrics['demo12SecondsAnalysis'] = track['analysis']['elapsedSeconds']
+        previous_created = self.api('/tracks')[0]['createdAt']
+        # An identifiable saved result must not be returned by an explicit new analysis.
+        stored = self.companion.tracks / (first['trackID'] + '.json')
+        stale = json.loads(stored.read_text(encoding='utf-8'))
+        stale['analysis']['elapsedSeconds'] = -123
+        stored.write_text(json.dumps(stale), encoding='utf-8')
         repeated = self.done(self.upload(audio))
-        self.assertEqual(first['trackID'], repeated['trackID'])
-        self.assertEqual(repeated['track']['analysis']['elapsedSeconds'], track['analysis']['elapsedSeconds'])
+        self.assertNotEqual(first['trackID'], repeated['trackID'])
+        self.assertGreater(repeated['track']['analysis']['elapsedSeconds'], 0)
+        self.assertNotIn('再利用', repeated['message'])
+        self.assertGreater(self.api('/tracks')[0]['createdAt'], previous_created)
         restored = Companion(self.root)
-        self.assertEqual(len(restored.stored_tracks()), 1)
+        self.assertEqual(len(restored.stored_tracks()), 2)
         arranged = self.done(self.upload(audio, profile='orchestral'))
         self.assertNotEqual(first['trackID'], arranged['trackID'])
         self.assertEqual(arranged['track']['analysis']['profile'], 'orchestral')
-        self.assertEqual(len(self.api('/tracks')), 2)
+        self.assertEqual(len(self.api('/tracks')), 3)
         self.api('/tracks/' + first['trackID'], 'DELETE')
         remaining = self.api('/tracks')
-        self.assertEqual([item['id'] for item in remaining], [arranged['trackID']])
+        self.assertEqual([item['id'] for item in remaining], [arranged['trackID'], repeated['trackID']])
         self.assertFalse((self.companion.tracks / (first['trackID'] + '.json')).exists())
         self.assertTrue((self.companion.tracks / (arranged['trackID'] + '.json')).exists())
         for job in self.companion.jobs.values():

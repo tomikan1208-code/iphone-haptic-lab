@@ -66,7 +66,7 @@ final class HapticLabUITests: XCTestCase {
         let menu = app.buttons["Playback Fixtureの操作"]
         reveal(menu, app: app)
         menu.tap()
-        app.buttons["振動を作り直す"].tap()
+        app.buttons["別の解析を追加"].tap()
         XCTAssertTrue(app.staticTexts["music.firstPreparation"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.segmentedControls["analysis.quality"].exists)
         XCTAssertTrue(app.segmentedControls["analysis.method"].exists)
@@ -192,6 +192,9 @@ final class HapticLabUITests: XCTestCase {
         reveal(menu, app: app)
         menu.tap()
         app.buttons["保存データを削除"].tap()
+        XCTAssertTrue(app.buttons["analysis.selectAll"].waitForExistence(timeout: 5))
+        app.buttons["analysis.selectAll"].tap()
+        app.buttons["analysis.deleteSelected"].tap()
         app.alerts.buttons["削除"].tap()
         XCTAssertFalse(song.exists)
     }
@@ -340,6 +343,7 @@ final class HapticLabUITests: XCTestCase {
         let scope = app.staticTexts["music.settingsScope"]
         XCTAssertTrue(scope.waitForExistence(timeout: 5))
         XCTAssertEqual(scope.label, "この曲の個別設定")
+        reveal(app.buttons["music.resetToGlobal"], app: app)
         app.buttons["music.resetToGlobal"].tap()
         XCTAssertEqual(scope.label, "グローバル設定を使用中")
         screenshot("20-global-settings-reset", app: app)
@@ -372,6 +376,50 @@ final class HapticLabUITests: XCTestCase {
         XCTAssertTrue(scope.waitForExistence(timeout: 5))
         XCTAssertEqual(scope.label, "グローバル設定を使用中")
         XCTAssertFalse(app.buttons["music.resetToGlobal"].isEnabled)
+    }
+
+    func testAnalysisComparisonsSwitchPersistAndDeleteOnlyTwoSelectedResults() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--music-test-library", "--reset-music-test-library", "--music-test-prepared", "--music-test-variants"]
+        app.launch()
+        let song = app.buttons["music.song.music-ui-fixture"]
+        XCTAssertTrue(song.waitForExistence(timeout: 40))
+        let preparation = app.buttons["music.analysisBanner"]
+        if preparation.exists { expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: preparation); waitForExpectations(timeout: 40) }
+        song.tap()
+        XCTAssertTrue(app.buttons["music.settings"].waitForExistence(timeout: 10))
+        app.buttons["music.settings"].tap()
+        let count = app.staticTexts["music.analysisCount"]
+        XCTAssertTrue(count.waitForExistence(timeout: 5))
+        expectation(for: NSPredicate { _, _ in count.label.hasPrefix("3件") }, evaluatedWith: count)
+        waitForExpectations(timeout: 40)
+        app.buttons["music.analysisVariant"].tap()
+        let device = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "iPhone · 音に追従")).firstMatch
+        XCTAssertTrue(device.waitForExistence(timeout: 5))
+        device.tap()
+        XCTAssertTrue(app.staticTexts["music.activeAnalysis"].label.hasPrefix("iPhone"))
+        app.terminate()
+        app.launchArguments = ["--music-test-library"]
+        app.launch()
+        app.buttons["tab.playlists"].tap()
+        app.buttons["music.preparedPlaylist"].tap()
+        XCTAssertTrue(song.waitForExistence(timeout: 10))
+        reveal(song, app: app)
+        song.tap()
+        XCTAssertTrue(app.buttons["music.settings"].waitForExistence(timeout: 10))
+        app.buttons["music.settings"].tap()
+        XCTAssertTrue(app.staticTexts["music.activeAnalysis"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["music.activeAnalysis"].label.hasPrefix("iPhone"))
+        app.buttons["music.deleteAnalyses"].tap()
+        let pcOptions = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@", "analysis.deleteOption.", "PC"))
+        XCTAssertEqual(pcOptions.count, 2)
+        for index in 0..<2 { pcOptions.element(boundBy: index).tap() }
+        screenshot("21-analysis-comparison-delete", app: app)
+        app.buttons["analysis.deleteSelected"].tap()
+        app.alerts.buttons["削除"].tap()
+        XCTAssertTrue(count.waitForExistence(timeout: 5))
+        XCTAssertTrue(count.label.hasPrefix("1件"))
+        XCTAssertTrue(app.staticTexts["music.activeAnalysis"].label.hasPrefix("iPhone"))
     }
 
     private func reveal(_ element: XCUIElement, app: XCUIApplication) {

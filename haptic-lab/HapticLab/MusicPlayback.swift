@@ -153,6 +153,7 @@ final class MusicPlayback: ObservableObject {
     @Published private(set) var position = 0.0
     @Published private(set) var duration = 0.0
     @Published private(set) var hasHaptics = false
+    @Published private(set) var analysisVariantID: String?
     @Published private(set) var isBuffering = false
     @Published private(set) var containsVideo = false
     @Published var message: String?
@@ -200,10 +201,11 @@ final class MusicPlayback: ObservableObject {
             }
     }
 
-    func load(_ selection: MusicSelection, track: MusicHapticTrack?, mediaURL: URL?, settings: MusicSettings) {
+    func load(_ selection: MusicSelection, track: MusicHapticTrack?, mediaURL: URL?, settings: MusicSettings, variantID: String? = nil) {
         stop()
         self.selection = selection
         self.track = track
+        analysisVariantID = variantID
         containsVideo = selection.kind == .youtube
         self.settings = settings.normalized
         hasHaptics = track != nil
@@ -244,6 +246,18 @@ final class MusicPlayback: ObservableObject {
 
     func toggle() { isPlaying ? pause() : play() }
 
+    func switchAnalysis(_ track: MusicHapticTrack, variantID: String) throws {
+        let validated = try track.validated()
+        renderer.stop()
+        self.track = validated
+        analysisVariantID = variantID
+        hasHaptics = true
+        durationGate.reset()
+        clearDurationWaiting()
+        loggedPlay = false
+        // Keep the media player and clock running; the next snapshot resumes haptics.
+    }
+
     func play() {
         guard selection != nil, isReady else { return }
         do {
@@ -278,6 +292,7 @@ final class MusicPlayback: ObservableObject {
         webView = nil
         selection = nil
         track = nil
+        analysisVariantID = nil
         hasHaptics = false
         isReady = false
         position = 0

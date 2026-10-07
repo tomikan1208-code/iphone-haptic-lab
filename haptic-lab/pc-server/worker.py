@@ -47,11 +47,10 @@ def run(folder):
             with source.open('rb') as audio:
                 digest = hashlib.file_digest(audio, 'sha256').hexdigest()
             cache_key = digest
-        track_id = hashlib.sha256(('music-player-pc-v2:' + style + ':' + profile + ':' + cache_key).encode()).hexdigest()
+        track_id = hashlib.sha256(('music-player-pc-v2:' + style + ':' + profile + ':' + cache_key + ':' + folder.name).encode()).hexdigest()
         stored = root / 'tracks' / (track_id + '.json')
-        if style != 'arranged' and stored.exists():
-            atomic_json(folder / 'status.json', dict(state='done', progress=1, message='PCに保存した振動を再利用します', trackID=track_id))
-            return
+        # A job is an explicit request to analyze/create, including regeneration.
+        # Saved tracks serve playback/GET requests; never return one in place of a new job.
         if request.get('videoID'):
             import yt_dlp
             video_id = request['videoID']
@@ -98,12 +97,9 @@ def run(folder):
             from haptic_arrangement import arrange, export_ahap
             with (folder / 'decoded.f32').open('rb') as samples:
                 digest = hashlib.file_digest(samples, 'sha256').hexdigest()
-            track_id = cache_identity(digest, profile)
+            # Every completed analysis is a separate result, even for identical inputs.
+            track_id = hashlib.sha256(('music-arrangement-result:' + cache_identity(digest, profile) + ':' + folder.name).encode()).hexdigest()
             stored = root / 'tracks' / (track_id + '.json')
-            if stored.exists():
-                atomic_json(folder / 'status.json', dict(state='done', progress=1,
-                    message='同じ音源・モデル・編曲設定の振動を再利用します', trackID=track_id))
-                return
             wav = folder / 'decoded.wav'
             sf.write(wav, pcm, RATE, subtype='FLOAT')
             source_features = analyze(pcm, duration, digest,

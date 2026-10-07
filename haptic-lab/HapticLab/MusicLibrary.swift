@@ -23,7 +23,12 @@ struct MusicLibrarySnapshot: Codable {
         guard version == 1, records.count <= 5_000,
               Set(records.map(\.id)).count == records.count else { throw MusicError.storage("保存した曲を読み込めません。保存データを確認してください。") }
         for record in records {
+            let variants = record.analysisVariants
             guard !record.id.isEmpty, record.trackBytes >= 0,
+                  variants.count <= 200, Set(variants.map(\.id)).count == variants.count,
+                  variants.allSatisfy({ !$0.id.isEmpty && $0.trackBytes >= 0 && MusicLibraryDisk.safeFilename($0.trackFilename)
+                      && ($0.mediaFilename.map(MusicLibraryDisk.safeFilename) ?? true) }),
+                  record.activeVariantID.map({ id in variants.contains { $0.id == id } }) ?? true,
                   [record.trackFilename, record.mediaFilename].compactMap({ $0 }).allSatisfy(MusicLibraryDisk.safeFilename) else {
                 throw MusicError.storage("曲の保存先が不正です。")
             }
@@ -80,8 +85,9 @@ struct MusicLibraryDisk {
 
     // Recover interrupted commits/deletions without removing any referenced data.
     func removeOrphans(records: [MusicRecord]) throws {
-        for (directory, names) in [(tracks, Set(records.compactMap(\.trackFilename))),
-                                   (media, Set(records.compactMap(\.mediaFilename)))] {
+        let variants = records.flatMap(\.analysisVariants)
+        for (directory, names) in [(tracks, Set(variants.map(\.trackFilename)).union(records.compactMap(\.trackFilename))),
+                                   (media, Set(variants.compactMap(\.mediaFilename)).union(records.compactMap(\.mediaFilename)))] {
             for url in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) {
                 if !names.contains(url.lastPathComponent) { try FileManager.default.removeItem(at: url) }
             }
@@ -190,6 +196,11 @@ final class MusicLibrary: ObservableObject {
             var next = records
             if let index = next.firstIndex(where: { $0.id == selection.id }) {
                 next[index].lastPlayedAt = Date()
+                var variants = next[index].analysisVariants
+                if let active = variants.firstIndex(where: { $0.id == next[index].selectedVariantID }) {
+                    variants[active].lastUsedAt = Date()
+                    next[index].variants = variants
+                }
             } else {
                 var record = MusicRecord(selection: selection)
                 record.lastPlayedAt = Date()
@@ -210,6 +221,38 @@ final class MusicLibrary: ObservableObject {
     func delete(_ record: MusicRecord) throws {
         if preparation?.selection.id == record.id { cancelPreparation() }
         try persist(records.filter { $0.id != record.id })
+        try disk.removeOrphans(records: records)
+    }
+
+    @discardableResult
+    func selectVariant(_ variantID: String, for id: String) throws -> MusicHapticTrack {
+        guard let index = records.firstIndex(where: { $0.id == id }),
+              let variant = records[index].analysisVariants.first(where: { $0.id == variantID }) else { throw MusicError.missingTrack }
+        var next = records
+        var variants = next[index].analysisVariants
+        let position = variants.firstIndex(where: { $0.id == variantID })!
+        variants[position].lastUsedAt = Date()
+        next[index].variants = variants
+        next[index].useVariant(variant)
+        let track = try disk.track(next[index])
+        try persist(next)
+        return track
+    }
+
+    func deleteVariants(_ variantIDs: Set<String>, for id: String) throws {
+        guard let index = records.firstIndex(where: { $0.id == id }), !variantIDs.isEmpty else { return }
+        let record = records[index]
+        guard variantIDs.isSubset(of: Set(record.analysisVariants.map(\.id))) else { throw MusicError.missingTrack }
+        let remaining = record.analysisVariants.filter { !variantIDs.contains($0.id) }
+        if remaining.isEmpty { try delete(record); return }
+        var next = records
+        next[index].variants = remaining
+        if let selected = remaining.first(where: { $0.id == record.selectedVariantID }) {
+            next[index].useVariant(selected)
+        } else if let fallback = remaining.max(by: { ($0.lastUsedAt ?? $0.createdAt) < ($1.lastUsedAt ?? $1.createdAt) }) {
+            next[index].useVariant(fallback)
+        }
+        try persist(next)
         try disk.removeOrphans(records: records)
     }
 
@@ -347,24 +390,31 @@ final class MusicLibrary: ObservableObject {
         let data = try JSONEncoder().encode(track)
         let filename = "\(UUID().uuidString).json"
         let trackURL = disk.tracks.appendingPathComponent(filename)
-        let mediaFilename = localURL.map { "\(UUID().uuidString).\($0.pathExtension)" }
+        let existing = record(for: selection)
+        let reuseMedia = localURL.flatMap { source in
+            existing.flatMap { record in disk.mediaURL(record).map { FileManager.default.contentsEqual(atPath: source.path, andPath: $0.path) } }
+        } ?? false
+        let mediaFilename = reuseMedia ? existing?.mediaFilename : localURL.map { "\(UUID().uuidString).\($0.pathExtension)" }
         let mediaURL = mediaFilename.map { disk.media.appendingPathComponent($0) }
         do {
             try data.write(to: trackURL, options: .atomic)
-            if let localURL, let mediaURL { try FileManager.default.moveItem(at: localURL, to: mediaURL) }
+            if let localURL, let mediaURL, !reuseMedia { try FileManager.default.moveItem(at: localURL, to: mediaURL) }
             var record = self.record(for: selection) ?? MusicRecord(selection: selection)
+            var variants = record.analysisVariants
+            guard variants.count < 200 else { throw MusicError.storage("この曲の解析結果が200件あります。不要な結果を削除してから追加してください。") }
             record.selection = selection
             record.selection.duration = track.duration
-            record.trackFilename = filename
-            record.trackBytes = data.count
-            record.analysis = track.analysis
-            record.mediaFilename = mediaFilename
+            let variant = MusicAnalysisVariant(id: UUID().uuidString, createdAt: Date(), lastUsedAt: Date(),
+                trackFilename: filename, mediaFilename: mediaFilename, trackBytes: data.count, analysis: track.analysis)
+            variants.append(variant)
+            record.variants = variants
+            record.useVariant(variant)
             var next = records.filter { $0.id != selection.id }
             next.append(record)
             try persist(next)
         } catch {
             try? FileManager.default.removeItem(at: trackURL)
-            if let mediaURL { try? FileManager.default.removeItem(at: mediaURL) }
+            if let mediaURL, !reuseMedia { try? FileManager.default.removeItem(at: mediaURL) }
             throw error
         }
         try disk.removeOrphans(records: records)

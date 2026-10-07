@@ -15,7 +15,7 @@ struct HapticLabApp: App {
             let root = FileManager.default.temporaryDirectory.appendingPathComponent("MusicUITestLibrary", isDirectory: true)
             if ProcessInfo.processInfo.arguments.contains("--reset-music-test-library") { try? FileManager.default.removeItem(at: root) }
             var services = MusicPreparationServices()
-            services.analyzeOnPC = { _, selection, file, _, _, progress in
+            services.analyzeOnPC = { _, selection, file, style, profile, progress in
                 guard let file else {
                     progress(0.4, "AIが曲の展開を推定しています")
                     try await Task.sleep(nanoseconds: 120_000_000_000)
@@ -23,7 +23,7 @@ struct HapticLabApp: App {
                 }
                 let source = try await MusicAnalyzer.analyze(file, quality: .precision, progress: progress)
                 let info = MusicAnalysisInfo(engine: "pc", elapsedSeconds: 1, sampleRate: 44_100,
-                    hopMilliseconds: 10, fftSize: 4_096, style: .arranged, profile: .standard)
+                    hopMilliseconds: 10, fftSize: 4_096, style: style, profile: profile)
                 let score = MusicArrangementScore(version: 1, sections: [
                     .init(id: "fixture", start: 0, end: source.duration, label: "chorus",
                           confidence: 0.8, mood: "driving", family: "drive")
@@ -65,6 +65,14 @@ struct HapticLabApp: App {
                         let selection = MusicSelection(id: "music-ui-fixture", kind: .file, title: "Playback Fixture",
                                                        artist: "UI Test", url: "")
                         library.prepare(selection, audioFile: audioURL, method: .device, style: .following, quality: .precision)
+                        if ProcessInfo.processInfo.arguments.contains("--music-test-variants") {
+                            for profile in [MusicArrangement.standard, .orchestral] {
+                                let deadline = Date().addingTimeInterval(30)
+                                while library.preparation != nil, Date() < deadline { try? await Task.sleep(nanoseconds: 20_000_000) }
+                                guard library.preparation == nil else { return }
+                                library.prepare(selection, audioFile: audioURL, method: .pc, style: .arranged, profile: profile)
+                            }
+                        }
                     }
                     #endif
                 }

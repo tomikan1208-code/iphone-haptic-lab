@@ -32,7 +32,7 @@
       "post": {
         "operationId": "analyzeYouTubeVideo",
         "summary": "Queue a YouTube video for analysis",
-        "description": "Requires yt-dlp and a downloadable video of at most 20 minutes. Video availability can change. Up to 8 unfinished jobs, processed one at a time. Poll GET /jobs/{jobID} until done, failed or canceled.",
+        "description": "Requires yt-dlp and a downloadable video of at most 20 minutes. Video availability can change. Up to 8 unfinished jobs, processed one at a time. Poll GET /jobs/{jobID} until done, failed or canceled. Every request fetches and analyzes again, preserving prior results with independent track IDs. Retrieve saved results with GET /tracks/{trackID}.",
         "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/VideoRequest"}, "example": {"videoID": "BaW_jenozKc", "title": "Example", "style": "following", "profile": "standard"}}}},
         "responses": {
           "202": {"$ref": "#/components/responses/Accepted"},
@@ -45,7 +45,7 @@
       "post": {
         "operationId": "analyzeAudioFile",
         "summary": "Upload an audio or video file for analysis",
-        "description": "Send raw bytes, not multipart/form-data. Content-Length is required; chunked uploads are unsupported. Limit: 512 MiB, 20 minutes of decoded audio. FFmpeg-supported unprotected files such as WAV, M4A, MP3 and MP4. Metadata goes in headers.",
+        "description": "Send raw bytes, not multipart/form-data. Content-Length is required; chunked uploads are unsupported. Limit: 512 MiB, 20 minutes of decoded audio. FFmpeg-supported unprotected files such as WAV, M4A, MP3 and MP4. Metadata goes in headers. Every request analyzes again and preserves prior results with independent track IDs; saved results are retrieved with GET /tracks/{trackID}.",
         "x-upload-max-bytes": 536870912,
         "parameters": [
           {"in": "header", "name": "X-Media-Title", "description": "Base64 of the UTF-8 title. Omit to use the default title.", "schema": {"type": "string", "contentEncoding": "base64"}},

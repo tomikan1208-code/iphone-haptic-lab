@@ -20,8 +20,8 @@ MOTIFS = {
     'breath': ([], .34),
     'rest': ([], 0.0),
 }
-FAMILIES = {'drive': ['drive', 'offbeat', 'sparse', 'rest'],
-            'pulse': ['pulse', 'sparse', 'rest'], 'sway': ['breath', 'pulse', 'rest']}
+FAMILIES = {'drive': ['drive', 'offbeat', 'sparse', 'breath'],
+            'pulse': ['pulse', 'sparse', 'breath'], 'sway': ['breath', 'pulse']}
 
 
 def normalized(values):
@@ -68,9 +68,19 @@ def arrange(graph, spectrum=None, profile='standard'):
     duration = graph['duration']
     raw = graph['features']
     times = np.asarray(raw['times'])
-    features = {name: normalized(raw[name]) for name in ('mix', 'bass', 'drums', 'vocals', 'other')}
     absolute = np.asarray(raw['mix'])
-    audible = absolute > max(.0001, float(absolute.max()) * .008)
+    mix_reference = max(float(np.percentile(absolute, 95)), 1e-8)
+    features = {'mix': normalized(absolute)}
+    for name in ('bass', 'drums', 'vocals', 'other'):
+        values = np.asarray(raw[name])
+        # Do not amplify near-silent separation leakage into a foreground instrument.
+        reference = max(float(np.percentile(values, 95)), mix_reference*.04, 1e-8)
+        features[name] = np.clip(values / reference, 0, 1)
+    audible = absolute > max(.00003, float(absolute.max()) * .001)
+    # Each role can carry the sustained voice. Weighted maxima hand over smoothly
+    # when bass/accompaniment stop; the mix supplies a soft separation-error fallback.
+    carrier = np.maximum.reduce([features['bass'], .9*features['other'],
+                                 .8*features['vocals'], .72*features['drums'], .3*features['mix']])
     bars, agreement, downbeat_agreement, rhythm_source, diagnostics = rhythm_grid(graph)
     observed_beats = sorted(set(t for bar in bars for t in bar['beats']))
     sections = copy.deepcopy(graph['structure']['segments'])
@@ -146,11 +156,11 @@ def arrange(graph, spectrum=None, profile='standard'):
         mask = (times >= bar['start']) & (times < bar['end'])
         covered[mask] = True
         phase = (times[mask]-bar['start']) / (bar['end']-bar['start'])
-        # The sustained voice follows bass/other instruments, with a phrase-shaped envelope.
+        # A phrase follows whichever musical role is currently carrying the sound.
         contour = .7 + .3*np.sin(np.pi*phase)**2
-        if motif == 'breath': contour = np.sin(np.pi*phase)**2
+        if motif == 'breath': contour = .3 + .7*np.sin(np.pi*phase)**2
         if section['label'] == 'chorus': bed_gain *= 1.12
-        bed[mask] = bed_gain * (.55*features['bass'][mask]+.45*features['other'][mask]) * contour
+        bed[mask] = bed_gain * carrier[mask] * contour
         bed[mask] *= 1-.35*features['vocals'][mask]
         sharpness[mask] = np.clip(.18+.5*features['drums'][mask], .12, .7)
         # Convert fractional beat positions through the observed grid; no fixed 4/4 or BPM.
@@ -174,8 +184,7 @@ def arrange(graph, spectrum=None, profile='standard'):
     for section in sections:
         mask = (times >= section['start']) & (times < section['end']) & ~covered
         phase = (times[mask]-section['start']) / max(.02, section['end']-section['start'])
-        bed[mask] = (.16+.08*np.sin(np.pi*phase)**2) * (
-            .5*features['bass'][mask]+.5*features['other'][mask]) * (1-.35*features['vocals'][mask])
+        bed[mask] = (.16+.08*np.sin(np.pi*phase)**2) * carrier[mask] * (1-.35*features['vocals'][mask])
     # Quiet regions, including leading/trailing silence, are hard rests after smoothing.
     kernel = np.exp(-.5*(np.arange(-5, 6)/1.5)**2)
     kernel /= kernel.sum()

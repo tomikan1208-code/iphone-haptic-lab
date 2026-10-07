@@ -223,6 +223,29 @@ struct MusicPlayerScreen: View {
 
     private var settingsPanel: some View {
         VStack(alignment: .leading, spacing: 16) {
+            if let record = playback.selection.flatMap({ library.record(for: $0) }) {
+                Text("解析方法の切り替え").font(.system(size: 16, weight: .semibold))
+                if let selected = record.analysisVariants.first(where: { $0.id == record.selectedVariantID }) {
+                    Text(selected.title).font(.system(size: 12)).foregroundStyle(LabTheme.mint)
+                        .accessibilityIdentifier("music.activeAnalysis")
+                }
+                Picker("保存した解析結果", selection: Binding(get: { record.selectedVariantID ?? "" }, set: { id in
+                    do {
+                        let track = try library.selectVariant(id, for: record.id)
+                        try playback.switchAnalysis(track, variantID: id)
+                    } catch { playback.message = error.localizedDescription }
+                })) {
+                    ForEach(record.analysisVariants.reversed()) { variant in
+                        Text("\(variant.title) · \(variant.dateText)").tag(variant.id)
+                    }
+                }.pickerStyle(.menu).accessibilityIdentifier("music.analysisVariant")
+                Text("\(record.analysisVariants.count)件の解析結果を保存。再生位置を保って切り替え、次回も最後に選んだ結果を使います。")
+                    .font(.system(size: 12)).foregroundStyle(LabTheme.muted)
+                    .accessibilityIdentifier("music.analysisCount")
+                NavigationLink("解析結果を選んで削除") { MusicAnalysisDeletionView(recordID: record.id) }
+                    .accessibilityIdentifier("music.deleteAnalyses")
+                Divider()
+            }
             Text(hasIndividualSettings ? "この曲の個別設定" : "グローバル設定を使用中")
                 .font(.system(size: 14, weight: .semibold)).foregroundStyle(LabTheme.mint)
                 .accessibilityIdentifier("music.settingsScope")
