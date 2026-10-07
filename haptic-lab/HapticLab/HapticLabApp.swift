@@ -16,6 +16,15 @@ struct HapticLabApp: App {
             if ProcessInfo.processInfo.arguments.contains("--reset-music-test-library") { try? FileManager.default.removeItem(at: root) }
             var services = MusicPreparationServices()
             services.analyzeOnPC = { _, selection, file, style, profile, progress in
+                if file == nil, ProcessInfo.processInfo.arguments.contains("--music-test-completion") {
+                    progress(0.4, "AIが曲の展開を推定しています")
+                    try await Task.sleep(nanoseconds: 3_000_000_000)
+                    let duration = selection.duration ?? 12
+                    return MusicHapticTrack(version: 1, audioSHA256: String(repeating: "a", count: 64), duration: duration,
+                        envelope: [0.0, duration].map { .init(time: $0, bass: 0.3, energy: 0.3, sharpness: 0.3) }, taps: [],
+                        analysis: .init(engine: "pc", elapsedSeconds: 3, sampleRate: 44_100,
+                                        hopMilliseconds: 10, fftSize: 4_096, style: style, profile: profile))
+                }
                 guard let file else {
                     progress(0.4, "AIが曲の展開を推定しています")
                     try await Task.sleep(nanoseconds: 120_000_000_000)

@@ -96,8 +96,6 @@ struct MusicView: View {
         .onChange(of: library.recentlyPreparedID) { id in
             if let id {
                 pending = nil
-                tab = .playlists
-                showingPrepared = true
                 let wasShowingPreparation = showPreparation
                 showPreparation = false
                 if let selection = playAfterPreparation, selection.id == id {

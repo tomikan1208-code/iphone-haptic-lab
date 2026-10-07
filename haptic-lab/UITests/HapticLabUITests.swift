@@ -61,6 +61,7 @@ final class HapticLabUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--music-test-library", "--reset-music-test-library", "--music-test-prepared"]
         app.launch()
+        openPreparedPlaylist(app)
         let song = app.buttons["music.song.music-ui-fixture"]
         XCTAssertTrue(song.waitForExistence(timeout: 40))
         let menu = app.buttons["Playback Fixtureの操作"]
@@ -324,6 +325,7 @@ final class HapticLabUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--music-test-library", "--reset-music-test-library", "--music-test-prepared"]
         app.launch()
+        openPreparedPlaylist(app)
         let song = app.buttons["music.song.music-ui-fixture"]
         XCTAssertTrue(song.waitForExistence(timeout: 40))
         app.buttons["player.menu"].tap()
@@ -382,6 +384,7 @@ final class HapticLabUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--music-test-library", "--reset-music-test-library", "--music-test-prepared", "--music-test-variants"]
         app.launch()
+        openPreparedPlaylist(app)
         let song = app.buttons["music.song.music-ui-fixture"]
         XCTAssertTrue(song.waitForExistence(timeout: 40))
         let preparation = app.buttons["music.analysisBanner"]
@@ -420,6 +423,50 @@ final class HapticLabUITests: XCTestCase {
         XCTAssertTrue(count.waitForExistence(timeout: 5))
         XCTAssertTrue(count.label.hasPrefix("1件"))
         XCTAssertTrue(app.staticTexts["music.activeAnalysis"].label.hasPrefix("iPhone"))
+    }
+
+    func testCompletedAnalysisKeepsTheOpenYouTubePlaylistAndSearchTab() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--music-test-library", "--reset-music-test-library", "--youtube-browser-fixture", "--music-test-completion"]
+        app.launch()
+        let input = app.textFields["music.searchQuery"]
+        XCTAssertTrue(input.waitForExistence(timeout: 10))
+        input.tap()
+        input.typeText("NHK\n")
+        let channel = app.buttons["youtube.channel-UC8T8_deSUS97DWZeKO_TL9Q"]
+        XCTAssertTrue(channel.waitForExistence(timeout: 10))
+        reveal(channel, app: app)
+        channel.tap()
+        app.segmentedControls["youtube.channelTabs"].buttons["再生リスト"].tap()
+        let playlist = app.buttons["youtube.playlist-PL-TestPlaylist"]
+        XCTAssertTrue(playlist.waitForExistence(timeout: 5))
+        reveal(playlist, app: app)
+        playlist.tap()
+        let video = app.buttons["music.song.youtube-lkiV3U0GfGg"]
+        XCTAssertTrue(video.waitForExistence(timeout: 5))
+        reveal(video, app: app)
+        video.tap()
+        XCTAssertTrue(app.staticTexts["music.firstPreparation"].waitForExistence(timeout: 5))
+        let prepare = app.buttons["music.prepare"]
+        reveal(prepare, app: app)
+        prepare.tap()
+        expectation(for: NSPredicate { _, _ in video.isHittable && !app.buttons["music.analysisBanner"].exists }, evaluatedWith: video)
+        waitForExpectations(timeout: 40)
+        XCTAssertTrue(app.buttons["tab.search"].isSelected)
+        XCTAssertFalse(app.buttons["tab.playlists"].isSelected)
+        XCTAssertTrue(app.buttons["youtube.browserBack"].exists)
+        XCTAssertTrue(app.staticTexts["テスト再生リスト"].exists)
+        XCTAssertFalse(app.buttons["music.playlistsBack"].exists)
+        screenshot("22-analysis-completion-keeps-playlist", app: app)
+        reveal(video, app: app)
+        video.tap()
+        XCTAssertTrue(app.staticTexts["保存した振動を使用"].waitForExistence(timeout: 10))
+    }
+
+    private func openPreparedPlaylist(_ app: XCUIApplication) {
+        XCTAssertTrue(app.buttons["tab.playlists"].waitForExistence(timeout: 10))
+        app.buttons["tab.playlists"].tap()
+        app.buttons["music.preparedPlaylist"].tap()
     }
 
     private func reveal(_ element: XCUIElement, app: XCUIApplication) {
