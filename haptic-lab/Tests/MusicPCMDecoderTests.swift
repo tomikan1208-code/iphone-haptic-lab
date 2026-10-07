@@ -111,7 +111,7 @@ final class MusicPCMDecoderTests: XCTestCase {
         }
         let library = MusicLibrary(root: root, services: services)
         XCTAssertTrue(try XCTUnwrap(library.record(for: selection)).requiresAudioReanalysis)
-        library.prepare(selection)
+        library.prepare(selection, method: .device, style: .following)
         XCTAssertEqual(try library.disk.track(XCTUnwrap(library.record(for: selection))), old)
         for _ in 0..<1_000 {
             if library.preparation == nil { break }

@@ -146,7 +146,7 @@ struct MusicPlayerScreen: View {
             }.scrollIndicators(.hidden)
             Text("曲の区間はAIの推定です。持続とアクセントを重ねて再生します。")
                 .font(.system(size: 10)).foregroundStyle(LabTheme.muted)
-        }.accessibilityIdentifier("music.arrangement")
+        }.accessibilityElement(children: .contain).accessibilityIdentifier("music.arrangement")
     }
 
     private func sectionTitle(_ label: String) -> String {

@@ -50,7 +50,7 @@ final class YouTubeMediaTests: XCTestCase {
         let library = MusicLibrary(root: root, services: services)
         var selection = try MusicSelection.youtube(id: "dQw4w9WgXcQ", title: "テスト動画")
         selection.duration = 12
-        library.prepare(selection)
+        library.prepare(selection, method: .device, style: .following)
         try await waitForPreparation(library)
         let record = try XCTUnwrap(library.record(for: selection))
         XCTAssertTrue(record.isPrepared)
@@ -77,7 +77,7 @@ final class YouTubeMediaTests: XCTestCase {
             throw MusicError.network("取得失敗")
         }
         let library = MusicLibrary(root: root, services: services)
-        library.prepare(try MusicSelection.youtube(id: "dQw4w9WgXcQ"))
+        library.prepare(try MusicSelection.youtube(id: "dQw4w9WgXcQ"), method: .device, style: .following)
         try await waitForPreparation(library)
         XCTAssertTrue(library.records.isEmpty)
         XCTAssertEqual(library.message, "取得失敗")
