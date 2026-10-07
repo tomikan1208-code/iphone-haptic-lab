@@ -32,9 +32,9 @@ PCサーバーを起動し、同梱のMusicDemo.wavから振動JSONを取得で�
 - 配布先はReleases。`Reson-install.zip` または `HapticLab-unsigned.ipa` を使う。GitHubの `Source code` はIPAではない。
 - 無料署名は7日。更新は同じApple Account・同じアプリIDで上書きし、保存データを保持する。
 - 検索・公開動画の再生にGoogleログインや共有APIキーは不要。
-- ソース版2.8.0の新規作成はPCの音楽AI解析・振動編曲を使う。LLMではない。Windows / RTX 3050で指定曲全体を検証済み。iPhoneの高速解析を選ぶ画面は廃止した。
+- ソース版2.8.1では、初回と作り直しに解析方法を確認する。iPhoneの帯域別精密解析かPCの音楽AI編曲を選べる。高速解析は使えない。AI編曲はLLMではない。Windows / RTX 3050で指定曲全体を検証済み。
 - PC接続は `-Lan` / `--lan`、同じWi-Fi、LAN URL、接続キー、ローカルネットワーク権限が必要。作成済みの振動の再生にはPC不要。
-- 2.8.0のiPhone側はXcodeビルド・実機確認が未実施。公開済みIPAがこのソース変更を含むと断定しない。[検証](verification/SERENADE.md)を参照。
+- アプリの版、ソースコミット、Xcodeビルドとテスト結果はBUILD-INFO.jsonとTEST-SUMMARY.jsonで確認する。iPhone実機の触感は未確認。[検証](verification/SERENADE.md)を参照。
 - Googleログインを使う場合は、自分のiOS OAuthクライアントIDを入れて再ビルドする。共通の開発者キーは配布しない。
 - 接続キー、Apple Accountのパスワード、認証コード、Googleトークンはチャット・GitHub・Issueへ記載しない。
 - リポジトリ直下とアプリの `haptic-lab/` を区別する。コマンドは各ガイドが指定したフォルダーで実行する。

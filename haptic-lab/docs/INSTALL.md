@@ -13,7 +13,7 @@ ResonはYouTube動画を振動付きで再生するiPhoneアプリです。音�
 
 対象はiOS 16以降、Core Haptics対応のiPhone実機です。iPadやシミュレーターで同じ触感を再現することはできません。PCはインストール・無料署名の更新と、新規の音楽AI解析に使います。作成済みの振動はiPhoneに保存し、再生時はPC不要です。
 
-ソース版2.8.0はPCの音楽AI解析、レイヤー再生、AHAPを追加した初期実装です。このWindows環境ではXcodeビルドと実機確認をしていません。公開済みReleaseがこれらの変更を含むとは限りません。[指定曲のPC検証](verification/SERENADE.md)。
+ソース版2.8.1では、初回と作り直しに解析方法を確認し、iPhoneの精密解析かPCのAI編曲を選べます。高速解析は使えません。アプリの版、ソースコミット、Xcodeビルドとテスト結果はBUILD-INFO.jsonとTEST-SUMMARY.jsonで確認してください。iPhone実機の触感は未確認です。[指定曲のPC検証](verification/SERENADE.md)。
 
 ## 1. アプリを取得
 

@@ -65,7 +65,7 @@ struct MusicView: View {
             else if let progress = library.preparation {
                 preparationSelection = progress.selection
                 showPreparation = true
-            }
+            } else { playAfterPreparation = nil }
         }) { request in
             MusicPreparationView(selection: request.selection, initialAudio: request.audioURL) {
                 open(request.selection, withHaptics: false)
@@ -233,7 +233,10 @@ struct MusicView: View {
             ForEach(records) { record in
                 MusicSongRow(selection: record.selection, prepared: record.isPrepared, bytes: record.trackBytes,
                              action: { select(record.selection) }, delete: { deleting = record },
-                             regenerate: { pending = MusicPreparationRequest(selection: record.selection, audioURL: library.disk.mediaURL(record)) })
+                             regenerate: {
+                                 playAfterPreparation = nil
+                                 pending = MusicPreparationRequest(selection: record.selection, audioURL: library.disk.mediaURL(record))
+                             })
             }
         }
     }
@@ -296,23 +299,14 @@ struct MusicView: View {
         if record?.isPrepared == true, record?.requiresAudioReanalysis != true {
             playAfterPreparation = nil
             open(selection, withHaptics: true)
-        } else if selection.kind == .youtube {
+        } else {
             guard library.preparation == nil else { library.message = "解析中の曲が終わってから選んでください。"; return }
             playback.pause()
             haptics.stop()
-            guard let connection = preferences.connection else {
-                pending = MusicPreparationRequest(selection: selection)
-                return
-            }
-            library.prepare(selection, method: .pc, style: .arranged,
-                profile: preferences.profile, connection: connection)
-            if library.preparation?.selection.id == selection.id {
-                playAfterPreparation = selection
-                preparationSelection = selection
-                urlFocused = false
-                showPreparation = true
-            }
-        } else { pending = MusicPreparationRequest(selection: selection) }
+            urlFocused = false
+            playAfterPreparation = selection
+            pending = MusicPreparationRequest(selection: selection, audioURL: record.flatMap { library.disk.mediaURL($0) })
+        }
     }
 
     private func open(_ selection: MusicSelection, withHaptics: Bool) {
@@ -343,6 +337,8 @@ struct MusicPreparationView: View {
     @State private var style: MusicGenerationStyle = .arranged
     @State private var profile: MusicArrangement = .standard
     @State private var quality: MusicAnalysisQuality = .precision
+    @State private var selectedAudio: URL?
+    @State private var initialized = false
     @State private var audioURLText = ""
     @State private var showPCSettings = false
     @State private var errorText: String?
@@ -355,8 +351,19 @@ struct MusicPreparationView: View {
                         .accessibilityIdentifier("music.firstPreparation")
                     Text(selection.title).font(.system(size: 17, weight: .semibold))
                     Text(selection.artist).font(.system(size: 13)).foregroundStyle(LabTheme.muted)
-                    Label("PCでAI解析・振動を編曲", systemImage: "desktopcomputer")
+                    Picker("解析方法", selection: $method) {
+                        ForEach(MusicAnalysisMethod.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }.pickerStyle(.segmented).accessibilityIdentifier("analysis.method")
+                    Label(method == .pc ? "PCでAI解析・振動を編曲" : "iPhoneで精密解析（帯域別）",
+                          systemImage: method == .pc ? "desktopcomputer" : "iphone")
                         .font(.system(size: 15, weight: .semibold))
+                    if method == .device {
+                        Text(MusicAnalysisQuality.precision.detail).font(.system(size: 12)).foregroundStyle(LabTheme.muted)
+                        Picker("振動の作り方", selection: $style) {
+                            Text(MusicGenerationStyle.following.title).tag(MusicGenerationStyle.following)
+                            Text(MusicGenerationStyle.musical.title).tag(MusicGenerationStyle.musical)
+                        }.pickerStyle(.segmented).accessibilityIdentifier("analysis.style")
+                    }
                     Text(style.detail).font(.system(size: 13)).foregroundStyle(LabTheme.muted)
                     Picker("仕上げ", selection: $profile) {
                         ForEach(MusicArrangement.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -365,9 +372,17 @@ struct MusicPreparationView: View {
                         Text("拍ごとのタップを控え、低音・クレッシェンド・余韻をなめらかな持続振動にします。")
                             .font(.system(size: 12)).foregroundStyle(LabTheme.muted)
                     }
-                    Text("PCが音源を取得し、楽器・サビ・曲の雰囲気を解析して振動を編曲します。振動はPCとiPhoneへ保存し、次回の再生にはPCは不要です。")
+                    Text(method == .pc
+                         ? "PCが音源を取得し、楽器・サビ・曲の雰囲気を解析して振動を編曲します。振動はPCとiPhoneへ保存し、次回の再生にはPCは不要です。"
+                         : "iPhoneが音源を取得し、低音・音量・打音を帯域別に精密解析します。PCは不要です。振動を保存して、次回は解析せずに再生できます。")
                         .font(.system(size: 14)).foregroundStyle(LabTheme.muted).lineSpacing(5)
-                    Button("PCの接続設定") { showPCSettings = true }.foregroundStyle(LabTheme.mint)
+                    if method == .pc {
+                        Button("PCの接続設定") { showPCSettings = true }.foregroundStyle(LabTheme.mint)
+                            .accessibilityIdentifier("analysis.pcSettings")
+                    }
+                    if let selectedAudio {
+                        Text("選択した音源: \(selectedAudio.lastPathComponent)").font(.system(size: 12))
+                    }
                     if selection.kind == .youtube {
                         DisclosureGroup("同じ音源のファイル・URLを使う") {
                             TextField("音声のダウンロードURL（任意）", text: $audioURLText)
@@ -391,11 +406,21 @@ struct MusicPreparationView: View {
                 }.padding(24)
             }
             .background(LabTheme.background).foregroundStyle(.white)
-            .navigationTitle("初回の準備").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("解析方法の確認").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("閉じる") { dismiss() } } }
         }
         .preferredColorScheme(.dark)
-        .onAppear { method = .pc; style = .arranged; profile = preferences.profile; quality = .precision }
+        .onAppear {
+            guard !initialized else { return }
+            method = preferences.method
+            style = method == .pc ? .arranged : (preferences.style == .musical ? .musical : .following)
+            profile = preferences.profile
+            quality = .precision
+            initialized = true
+        }
+        .onChange(of: method) { method in
+            style = method == .pc ? .arranged : (preferences.style == .musical ? .musical : .following)
+        }
         .sheet(isPresented: $showPCSettings) {
             NavigationStack {
                 AnalysisSettingsView().toolbar {
@@ -406,11 +431,9 @@ struct MusicPreparationView: View {
         .fileImporter(isPresented: $importing, allowedContentTypes: [.audio, .movie], allowsMultipleSelection: false) { result in
             do {
                 guard let url = try result.get().first else { return }
-                preferences.quality = quality
-                library.prepare(selection, audioFile: url, method: method, style: style, profile: profile,
-                                quality: quality, connection: preferences.connection)
-                dismiss()
-            } catch { library.message = error.localizedDescription }
+                selectedAudio = url
+                errorText = nil
+            } catch { errorText = error.localizedDescription }
         }
     }
     private func start() {
@@ -422,13 +445,15 @@ struct MusicPreparationView: View {
         if method == .pc, preferences.connection == nil { showPCSettings = true; return }
         do {
             let audioURL = audioURLText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : try MusicSelection.audioDownloadURL(audioURLText)
-            if selection.kind == .file && initialAudio == nil {
+            let audioFile = selectedAudio ?? initialAudio
+            if selection.kind == .file && audioFile == nil {
                 importing = true
                 return
             }
-            library.prepare(selection, audioFile: initialAudio, audioDownloadURL: audioURL,
+            library.prepare(selection, audioFile: audioFile, audioDownloadURL: audioURL,
                             method: method, style: style, profile: profile, quality: quality, connection: preferences.connection)
-            dismiss()
+            if library.preparation?.selection.id == selection.id { dismiss() }
+            else { errorText = library.message }
         } catch { errorText = error.localizedDescription }
     }
 }

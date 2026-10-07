@@ -3,6 +3,37 @@ import XCTest
 
 final class MusicArrangementTests: XCTestCase {
     @MainActor
+    func testAnalysisPreferencesRestoreDevicePrecisionAndEditedConnection() throws {
+        let suite = "AnalysisPreferences-" + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("device", forKey: "analysis.method")
+        defaults.set("musical", forKey: "analysis.style")
+        defaults.set("standard", forKey: "analysis.quality")
+        let preferences = AnalysisPreferences(storage: defaults)
+        XCTAssertEqual(preferences.method, .device)
+        XCTAssertEqual(preferences.style, .musical)
+        XCTAssertEqual(preferences.quality, .precision)
+        preferences.address = "http://192.168.1.12:8765"
+        preferences.token = String(repeating: "a", count: 32)
+        let restored = AnalysisPreferences(storage: defaults)
+        XCTAssertEqual(restored.method, .device)
+        XCTAssertEqual(restored.style, .musical)
+        XCTAssertEqual(restored.connection?.baseURL.absoluteString, "http://192.168.1.12:8765")
+    }
+
+    @MainActor
+    func testDeviceFastAnalysisDoesNotStartAJob() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let library = MusicLibrary(root: root)
+        library.prepare(try MusicSelection.youtube(id: "dQw4w9WgXcQ"), method: .device, style: .following, quality: .standard)
+        XCTAssertNil(library.preparation)
+        XCTAssertEqual(library.message, "iPhoneでは精密解析を選んでください。高速解析は利用できません。")
+        XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: library.disk.working.path).isEmpty)
+    }
+
+    @MainActor
     func testDefaultYouTubePreparationUsesPCAndPersistsArrangedTrack() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

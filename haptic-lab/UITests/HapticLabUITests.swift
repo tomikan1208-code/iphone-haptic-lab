@@ -69,8 +69,14 @@ final class HapticLabUITests: XCTestCase {
         app.buttons["振動を作り直す"].tap()
         XCTAssertTrue(app.staticTexts["music.firstPreparation"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.segmentedControls["analysis.quality"].exists)
-        XCTAssertFalse(app.segmentedControls["analysis.method"].exists)
+        XCTAssertTrue(app.segmentedControls["analysis.method"].exists)
         XCTAssertTrue(app.staticTexts["PCでAI解析・振動を編曲"].exists)
+        app.segmentedControls["analysis.method"].buttons["iPhoneで精密解析"].tap()
+        XCTAssertTrue(app.staticTexts["iPhoneで精密解析（帯域別）"].exists)
+        XCTAssertTrue(app.segmentedControls["analysis.style"].buttons["音に追従"].exists)
+        XCTAssertTrue(app.segmentedControls["analysis.style"].buttons["リズム中心"].exists)
+        XCTAssertFalse(app.buttons["高速"].exists)
+        app.segmentedControls["analysis.method"].buttons["PCでAI編曲"].tap()
         screenshot("05-first-preparation", app: app)
         XCTAssertFalse(app.buttons["音楽AI"].exists)
         let profile = app.segmentedControls["analysis.profile"]
@@ -253,6 +259,13 @@ final class HapticLabUITests: XCTestCase {
         reveal(video, app: app)
         screenshot("15-youtube-playlist", app: app)
         video.tap()
+        XCTAssertTrue(app.staticTexts["music.firstPreparation"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["music.preparingTitle"].exists)
+        XCTAssertFalse(app.buttons["music.analysisBanner"].exists)
+        XCTAssertTrue(app.segmentedControls["analysis.method"].exists)
+        let prepare = app.buttons["music.prepare"]
+        reveal(prepare, app: app)
+        prepare.tap()
         XCTAssertTrue(app.staticTexts["music.preparingTitle"].waitForExistence(timeout: 5))
         screenshot("16-visible-preparation", app: app)
         app.buttons["music.minimizePreparation"].tap()
@@ -273,6 +286,34 @@ final class HapticLabUITests: XCTestCase {
         for _ in 0..<3 { if !back.isHittable { app.swipeDown() } }
         back.tap()
         XCTAssertTrue(channel.exists)
+    }
+
+    func testPCAddressCanBeReplacedSavedAndRestored() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--music-test-library", "--reset-music-test-library"]
+        app.launch()
+        XCTAssertTrue(app.buttons["player.menu"].waitForExistence(timeout: 10))
+        app.buttons["player.menu"].tap()
+        app.buttons["menu.analysis"].tap()
+        let address = app.textFields["analysis.address"]
+        XCTAssertTrue(address.waitForExistence(timeout: 5))
+        reveal(app.buttons["analysis.clearAddress"], app: app)
+        app.buttons["analysis.clearAddress"].tap()
+        address.typeText("http://192.168.1.12:8765\n")
+        let done = app.buttons["入力を終了"]
+        if done.exists { done.tap() }
+        let save = app.buttons["analysis.saveConnection"]
+        reveal(save, app: app)
+        save.tap()
+        XCTAssertTrue(app.staticTexts["接続設定を保存しました: http://192.168.1.12:8765"].waitForExistence(timeout: 5))
+        app.terminate()
+        app.launchArguments = ["--music-test-library"]
+        app.launch()
+        XCTAssertTrue(app.buttons["player.menu"].waitForExistence(timeout: 10))
+        app.buttons["player.menu"].tap()
+        app.buttons["menu.analysis"].tap()
+        XCTAssertTrue(address.waitForExistence(timeout: 5))
+        XCTAssertEqual(address.value as? String, "http://192.168.1.12:8765")
     }
 
     private func reveal(_ element: XCUIElement, app: XCUIApplication) {

@@ -24,7 +24,7 @@ DOCS = ['INSTALL.md', 'INSTALL-WINDOWS.md', 'BUILD.md', 'AI-INSTALL.md', 'AHAP.m
         'verification/arrangement-3.3/serenade-56s-accents.ahap']
 COMPANION = ['server.py', 'worker.py', 'signal_analysis.py', 'client.py',
              'music_ai.py', 'music_rhythm.py', 'haptic_arrangement.py', 'check-ml.py', 'setup-ml.ps1', 'setup-ml.sh',
-             'requirements-ml.txt', 'requirements.txt', 'Start-PCServer.ps1', 'Stop-PCServer.ps1', 'start.sh']
+             'requirements-ml.txt', 'requirements.txt', 'Start-PCServer.ps1', 'Show-PCServer.ps1', 'Stop-PCServer.ps1', 'start.sh']
 
 
 def digest(path):
@@ -71,6 +71,7 @@ def package(output, source_commit=None):
         'BUILD-INFO.json': output / 'BUILD-INFO.json',
         'TEST-SUMMARY.json': output / 'TEST-SUMMARY.json',
         'README.md': ROOT / 'README.md',
+        'Start-PCServer.bat': ROOT / 'Start-PCServer.bat',
         'llms.txt': ROOT / 'llms.txt',
         'docs/api/openapi.json': ROOT / 'docs/api/openapi.json',
         'HapticLab/Resources/MusicDemo.wav': ROOT / 'HapticLab/Resources/MusicDemo.wav'

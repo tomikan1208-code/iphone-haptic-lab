@@ -2,9 +2,9 @@
 
 Resonは、YouTube動画の音に合わせてiPhoneを振動させるプレーヤーです。音楽動画の再生を主な用途として、低音の響き、打音、曲の強弱を手でも感じられるようにします。
 
-初回はPCで楽器・拍・サビ・曲の雰囲気をAI解析し、振動をもう一つの楽器として編曲します。iPhoneへ保存後は、PCなしでYouTubeの時刻に同期して再生します。LLMやクラウド推論は使いません。Googleログインは自分の再生リストを使う場合の追加設定です。
+初回と作り直しでは、解析方法を確認してから開始します。iPhoneの帯域別精密解析、またはPCで楽器・拍・サビ・曲の雰囲気をAI解析して振動を編曲する方法を選べます。iPhoneへ保存後は、PCなしでYouTubeの時刻に同期して再生します。LLMやクラウド推論は使いません。Googleログインは自分の再生リストを使う場合の追加設定です。
 
-このソースは2.8の初期実装です。指定曲の全曲解析・API・キャッシュ・AHAPはPCで検証済み。XcodeビルドとiPhone実機の触感は未検証です。[調査・設計](docs/HAPTIC-ARRANGEMENT-DESIGN.md)、[指定曲の検証結果](docs/verification/SERENADE.md)。
+このソースは2.8.1です。指定曲の全曲解析・API・キャッシュ・AHAPはPCで検証済み。Xcodeビルドとテスト結果は配布物のBUILD-INFO.jsonとTEST-SUMMARY.jsonで確認できます。iPhone実機の触感は未検証です。[調査・設計](docs/HAPTIC-ARRANGEMENT-DESIGN.md)、[指定曲の検証結果](docs/verification/SERENADE.md)。
 
 > **初めて使う方:** [Releasesからダウンロード](https://github.com/tomikan1208-code/iphone-haptic-lab/releases/latest) → [インストール手順](docs/INSTALL.md)。AIに導入を手伝ってもらう場合は [AI向け導入ガイド](docs/AI-INSTALL.md) の依頼文を使えます。
 
@@ -31,7 +31,7 @@ Resonは、YouTube動画の音に合わせてiPhoneを振動させるプレー�
 1. [最新Release](https://github.com/tomikan1208-code/iphone-haptic-lab/releases/latest) の `Reson-install.zip` をPCへダウンロードして展開します。
 2. Windows / macOSの [Sideloadly](https://sideloadly.io/) で、同梱の `HapticLab-unsigned.ipa` を自分のApple Accountで署名してiPhoneへ入れます。MacではXcodeからソースを実機へ入れる方法も使えます。
 3. 開発者の信頼・デベロッパモードを設定し、Resonを開きます。
-4. [PCサーバー](docs/PC-SERVER.md)を設定して「検索」で音楽動画を選びます。初回の編曲後は、保存した振動と動画を再生できます。
+4. 「検索」で音楽動画を選び、確認画面でiPhoneの精密解析かPCのAI編曲を選びます。AI編曲の場合は[PCサーバー](docs/PC-SERVER.md)を設定します。作成後は、保存した振動と動画を再生できます。
 
 詳しくは [共通インストール手順](docs/INSTALL.md)、[Windowsの操作手順](docs/INSTALL-WINDOWS.md)、[音楽と振動の使い方](docs/MUSIC.md) を参照してください。無料署名は7日ごとに更新が必要です。Apple Accountの認証情報をGitHubやAIへ渡す必要はありません。[AppleのPersonal Teamの説明](https://developer.apple.com/help/account/basics/about-your-developer-account/)。
 

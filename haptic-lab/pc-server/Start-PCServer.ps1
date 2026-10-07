@@ -1,4 +1,4 @@
-﻿param([switch]$Lan, [ValidateRange(1,65535)][int]$Port = 8765)
+﻿param([switch]$Lan, [ValidateRange(1,65535)][int]$Port = 8765, [switch]$Watch)
 $ErrorActionPreference = 'Stop'
 $playerRoot = Split-Path -Parent $PSScriptRoot
 $privateRoot = Join-Path $playerRoot '.pc-server'
@@ -29,6 +29,7 @@ if (Test-Path -LiteralPath $pidFile) {
             throw '起動中のサーバーは接続設定が異なります。Stop-PCServer.ps1で停止してから起動し直してください。'
         }
         Write-Output ('PCサーバーは起動済みです。接続設定: ' + (Join-Path $privateRoot 'connection.json'))
+        & (Join-Path $PSScriptRoot 'Show-PCServer.ps1') -Watch:$Watch
         exit 0
     }
 }
@@ -61,3 +62,4 @@ Set-Content -LiteralPath $pidFile -Value $process.Id
 Write-Output ('PCサーバーを起動しました。接続先・接続キー: ' + (Join-Path $privateRoot 'connection.json'))
 Write-Output ('接続先: ' + ($connection.addresses -join ', '))
 Write-Output ('API仕様: http://127.0.0.1:' + $Port + '/openapi.json (接続キーが必要)')
+& (Join-Path $PSScriptRoot 'Show-PCServer.ps1') -Watch:$Watch

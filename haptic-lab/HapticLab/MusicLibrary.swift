@@ -178,6 +178,10 @@ final class MusicLibrary: ObservableObject {
         if selection.kind == .youtube, method == .device, audioFile == nil, audioDownloadURL == nil,
            record(for: selection)?.requiresAudioReanalysis == true { correctedSelection.duration = nil }
         let selection = correctedSelection
+        if method == .device, quality != .precision {
+            message = "iPhoneでは精密解析を選んでください。高速解析は利用できません。"
+            return
+        }
         if style == .arranged && method != .pc {
             message = "AI編曲はPCで実行します。PCの接続設定を確認してください。"
             return

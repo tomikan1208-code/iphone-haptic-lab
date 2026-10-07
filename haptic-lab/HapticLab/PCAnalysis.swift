@@ -1,9 +1,10 @@
 import Foundation
 import SwiftUI
+import UIKit
 
 enum MusicAnalysisMethod: String, Codable, CaseIterable {
     case device, pc
-    var title: String { self == .device ? "このiPhone" : "PCで精密解析" }
+    var title: String { self == .device ? "iPhoneで精密解析" : "PCでAI編曲" }
 }
 
 enum MusicAnalysisQuality: String, Codable, CaseIterable, Sendable {
@@ -15,7 +16,7 @@ enum MusicAnalysisQuality: String, Codable, CaseIterable, Sendable {
     var hopMilliseconds: Double { Double(hopSize) / sampleRate * 1_000 }
     var detail: String {
         self == .precision
-            ? "PCと同じ44.1 kHz・10 ms間隔。低音を3帯域に分け、重い打音と軽い鋭い打音を作り分けます。PCへの接続は不要です。"
+            ? "44.1 kHz・10 ms間隔で精密解析します。低音を3帯域に分け、重い打音と軽い鋭い打音を作り分けます。PCへの接続は不要です。"
             : "22.05 kHz・20 ms間隔で解析します。処理時間と消費電力を抑えたいときに使えます。"
     }
 }
@@ -99,22 +100,24 @@ final class AnalysisPreferences: ObservableObject {
     @Published var profile: MusicArrangement { didSet { defaults.set(profile.rawValue, forKey: "analysis.profile") } }
     @Published var quality: MusicAnalysisQuality { didSet { defaults.set(quality.rawValue, forKey: "analysis.quality") } }
     var connection: PCServerConnection? { try? PCServerConnection(address: address, token: token) }
-    init() {
-        defaults = ProcessInfo.processInfo.arguments.contains("--music-test-library")
-            ? UserDefaults(suiteName: "MusicPlayerUITestPreferences")! : .standard
+    init(storage: UserDefaults? = nil) {
+        defaults = storage ?? (ProcessInfo.processInfo.arguments.contains("--music-test-library")
+            ? UserDefaults(suiteName: "MusicPlayerUITestPreferences")! : .standard)
         if ProcessInfo.processInfo.arguments.contains("--reset-music-test-library") {
             for key in ["analysis.method", "analysis.address", "analysis.token", "analysis.style", "analysis.profile", "analysis.quality"] { defaults.removeObject(forKey: key) }
         }
-        method = .pc
+        let savedMethod = MusicAnalysisMethod(rawValue: defaults.string(forKey: "analysis.method") ?? "") ?? .pc
+        method = savedMethod
         address = defaults.string(forKey: "analysis.address") ?? ""
         token = defaults.string(forKey: "analysis.token") ?? ""
-        style = .arranged
+        let savedStyle = MusicGenerationStyle(rawValue: defaults.string(forKey: "analysis.style") ?? "")
+        style = savedMethod == .pc ? .arranged : (savedStyle == .musical ? .musical : .following)
         profile = MusicArrangement(rawValue: defaults.string(forKey: "analysis.profile") ?? "") ?? .standard
-        quality = MusicAnalysisQuality(rawValue: defaults.string(forKey: "analysis.quality") ?? "") ?? .precision
+        quality = .precision
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--music-test-library") {
-            address = "http://127.0.0.1:8765"
-            token = "UIFixtureConnectionKeyWithoutNetwork"
+            if defaults.object(forKey: "analysis.address") == nil { address = "http://127.0.0.1:8765" }
+            if defaults.object(forKey: "analysis.token") == nil { token = "UIFixtureConnectionKeyWithoutNetwork" }
         }
         #endif
     }
@@ -234,27 +237,61 @@ struct AnalysisSettingsView: View {
     @State private var message: String?
     @State private var tracks: [PCStoredTrack] = []
     @State private var deleting: PCStoredTrack?
+    @State private var address = ""
+    @State private var token = ""
+    @State private var loaded = false
+    @FocusState private var focusedField: ConnectionField?
+    private enum ConnectionField: Hashable { case address, token }
     var body: some View {
         Form {
-            Section("音楽から振動を編曲") {
-                Text("PCでAI解析・編曲").font(.headline)
+            Section("振動の作り方") {
+                Picker("解析方法", selection: $preferences.method) {
+                    ForEach(MusicAnalysisMethod.allCases, id: \.self) { Text($0.title).tag($0) }
+                }.accessibilityIdentifier("analysis.method")
+                if preferences.method == .device {
+                    Text(MusicAnalysisQuality.precision.detail).font(.system(size: 12)).foregroundStyle(LabTheme.muted)
+                    Picker("振動の作り方", selection: $preferences.style) {
+                        Text(MusicGenerationStyle.following.title).tag(MusicGenerationStyle.following)
+                        Text(MusicGenerationStyle.musical.title).tag(MusicGenerationStyle.musical)
+                    }.accessibilityIdentifier("analysis.style")
+                }
                 Text(preferences.style.detail).font(.system(size: 12)).foregroundStyle(LabTheme.muted)
                 Picker("仕上げ", selection: $preferences.profile) {
                     ForEach(MusicArrangement.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
-                Text("作成時はPCへ接続します。保存後はiPhoneだけで再生できます。作成済みの曲は「振動を作り直す」で新しい編曲に更新できます。")
+                Text("新しく作成するときも「振動を作り直す」ときも、解析方法を確認してから開始します。PCへの接続が必要なのはAI編曲を選んだ場合です。保存後はiPhoneだけで再生できます。")
                     .font(.system(size: 12)).foregroundStyle(LabTheme.muted)
             }
             Section("PCとの接続") {
-                TextField("http://192.168.1.10:8765", text: $preferences.address)
+                Text("HTTP URL").font(.caption).foregroundStyle(LabTheme.muted)
+                TextField("PCに表示されたHTTP URLを入力", text: $address)
                     .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .focused($focusedField, equals: .address).submitLabel(.next)
+                    .onSubmit { focusedField = .token }
                     .accessibilityIdentifier("analysis.address")
-                SecureField("PCに表示された接続キー", text: $preferences.token)
+                HStack {
+                    Button("URLを貼り付け") {
+                        if let text = UIPasteboard.general.string { address = text.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    }.accessibilityIdentifier("analysis.pasteAddress")
+                    Spacer()
+                    Button("URLを消去") { address = ""; focusedField = .address }
+                        .accessibilityIdentifier("analysis.clearAddress")
+                }.buttonStyle(.borderless)
+                Text("接続キー").font(.caption).foregroundStyle(LabTheme.muted)
+                SecureField("PCに表示された接続キー", text: $token)
                     .textInputAutocapitalization(.never).autocorrectionDisabled().accessibilityIdentifier("analysis.token")
+                    .focused($focusedField, equals: .token).submitLabel(.done)
+                    .onSubmit { focusedField = nil; storeDraft() }
+                Button("設定を保存") {
+                    do {
+                        let connection = try saveConnection()
+                        message = "接続設定を保存しました: \(connection.baseURL.absoluteString)"
+                    } catch { message = error.localizedDescription }
+                }.accessibilityIdentifier("analysis.saveConnection")
                 Button(checking ? "接続中…" : "接続を確認") { connect() }.disabled(checking)
                     .accessibilityIdentifier("analysis.connect")
                 if let message { Text(message).font(.system(size: 12)) }
-                Text("同じWi-Fiへ接続してPCサーバーを起動してください。新しく編曲するときにPCへ接続し、作成後の再生には保存した振動を使います。")
+                Text("Start-PCServer.batに表示されたHTTP URLと接続キーを入力してください。PCとiPhoneを同じWi-Fiへ接続してください。")
                     .font(.system(size: 12)).foregroundStyle(LabTheme.muted)
             }
             if !tracks.isEmpty {
@@ -272,6 +309,23 @@ struct AnalysisSettingsView: View {
             }
         }.scrollContentBackground(.hidden).background(LabTheme.background).tint(LabTheme.mint)
             .navigationTitle("解析方法・PC").navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                guard !loaded else { return }
+                address = preferences.address
+                token = preferences.token
+                loaded = true
+            }
+            .onDisappear { if loaded { storeDraft() } }
+            .onChange(of: preferences.method) { method in
+                preferences.style = method == .pc ? .arranged : .following
+                preferences.quality = .precision
+            }
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("入力を終了") { focusedField = nil; storeDraft() }
+                }
+            }
             .alert("PCの振動データを削除しますか？", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
                 Button("削除", role: .destructive) {
                     guard let track = deleting, let connection = preferences.connection else { return }
@@ -284,12 +338,24 @@ struct AnalysisSettingsView: View {
                 Button("キャンセル", role: .cancel) { deleting = nil }
             }
     }
+    private func storeDraft() {
+        preferences.address = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        preferences.token = token.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    private func saveConnection() throws -> PCServerConnection {
+        let connection = try PCServerConnection(address: address, token: token.trimmingCharacters(in: .whitespacesAndNewlines))
+        address = connection.baseURL.absoluteString
+        token = connection.token
+        storeDraft()
+        focusedField = nil
+        return connection
+    }
     private func connect() {
         Task {
             checking = true
             defer { checking = false }
             do {
-                let connection = try PCServerConnection(address: preferences.address, token: preferences.token)
+                let connection = try saveConnection()
                 let client = PCAnalysisClient(connection: connection)
                 let health = try await client.health()
                 tracks = try await client.tracks()
