@@ -13,8 +13,18 @@ struct MusicPlayerScreen: View {
             GeometryReader { geometry in
                 VStack(spacing: 0) {
                     mediaPlayer
-                        .frame(height: min(playback.containsVideo ? 211 : 170, max(100, geometry.size.height * 0.27))).background(.black)
+                        .frame(width: geometry.size.width, height: playback.containsVideo
+                               ? max(200, geometry.size.width * 9 / 16)
+                               : min(170, max(100, geometry.size.height * 0.27))).background(.black)
                         .accessibilityIdentifier("music.mediaPlayer")
+                    HStack {
+                        Button("閉じる") { playback.pause(); dismiss() }.frame(minHeight: 44)
+                        Spacer()
+                        Button { showSettings = true } label: {
+                            Label("振動を調整", systemImage: "slider.horizontal.3")
+                        }.frame(minHeight: 44).disabled(!playback.hasHaptics)
+                            .accessibilityIdentifier("music.settings")
+                    }.font(.system(size: 13)).tint(LabTheme.mint).padding(.horizontal, 16)
                     ScrollView {
                         VStack(alignment: .leading, spacing: 12) {
                             songHeader
@@ -52,23 +62,11 @@ struct MusicPlayerScreen: View {
                             }.frame(height: showSpectrum ? 66 : 48)
                         }
                         controls
-                        if playback.hasHaptics { strengthControl }
                     }.padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 12).background(LabTheme.panel)
                 }
                 .background(LabTheme.background).foregroundStyle(.white)
             }
-            .navigationTitle("再生中").navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("閉じる") { playback.pause(); dismiss() } }
-                ToolbarItem(placement: .primaryAction) {
-                    HStack {
-                        Button { showSettings = true } label: { Image(systemName: "slider.horizontal.3") }
-                            .disabled(!playback.hasHaptics).accessibilityLabel("振動を調整").accessibilityIdentifier("music.settings")
-                        Button { playback.pause() } label: { Image(systemName: "stop.fill").foregroundStyle(LabTheme.coral) }
-                            .accessibilityLabel("停止").accessibilityIdentifier("music.stop")
-                    }
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
         }
         .preferredColorScheme(.dark)
         .onAppear {
@@ -80,6 +78,7 @@ struct MusicPlayerScreen: View {
             NavigationStack {
                 ScrollView { settingsPanel.padding(16) }.background(LabTheme.background)
                     .navigationTitle("振動を調整").navigationBarTitleDisplayMode(.inline)
+                    .toolbar(.visible, for: .navigationBar)
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完了") { showSettings = false } } }
             }.preferredColorScheme(.dark)
         }
@@ -186,26 +185,6 @@ struct MusicPlayerScreen: View {
             if playback.hasHaptics, !playback.renderer.supported {
                 Text("振動の体験には対応するiPhone実機が必要です。").font(.system(size: 12)).foregroundStyle(LabTheme.muted)
             }
-        }
-    }
-
-    private var strengthControl: some View {
-        VStack(spacing: 2) {
-            HStack {
-                Text("全体の強さ").font(.system(size: 12, weight: .semibold))
-                Spacer()
-                Text("\(Int((playback.settings.gain * 100).rounded()))%")
-                    .font(.system(size: 12, weight: .semibold, design: .monospaced)).foregroundStyle(LabTheme.mint)
-                    .accessibilityIdentifier("music.gainValue")
-            }
-            HStack(spacing: 8) {
-                Text("オフ")
-                Slider(value: settingsBinding.gain, in: MusicSettings.gainRange, step: 0.05)
-                    .tint(LabTheme.mint).accessibilityLabel("全体の強さ")
-                    .accessibilityValue("\(Int((playback.settings.gain * 100).rounded()))%")
-                    .accessibilityIdentifier("music.gain")
-                Text("400%")
-            }.font(.system(size: 9)).foregroundStyle(LabTheme.muted)
         }
     }
 

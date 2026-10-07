@@ -86,7 +86,7 @@ struct MusicView: View {
             }
             .environmentObject(library)
         }
-        .sheet(isPresented: $showPlayer, onDismiss: { playback.pause() }) {
+        .fullScreenCover(isPresented: $showPlayer, onDismiss: { playback.pause() }) {
             MusicPlayerScreen().environmentObject(playback).environmentObject(library)
         }
         .sheet(item: $deleting) { record in

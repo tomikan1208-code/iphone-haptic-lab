@@ -73,7 +73,7 @@ struct ContentView: View {
             if showing { haptics.stop(); music.suspend() }
         }
         .sheet(isPresented: $showTools) { PlayerToolsView() }
-        .sheet(isPresented: $showPlayer, onDismiss: { music.pause() }) { MusicPlayerScreen() }
+        .fullScreenCover(isPresented: $showPlayer, onDismiss: { music.pause() }) { MusicPlayerScreen() }
         .sheet(isPresented: $showAccount) { YouTubeAccountView() }
     }
 
