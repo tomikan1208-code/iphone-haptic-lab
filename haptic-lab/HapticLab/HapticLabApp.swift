@@ -75,11 +75,12 @@ struct HapticLabApp: App {
                                                        artist: "UI Test", url: "")
                         library.prepare(selection, audioFile: audioURL, method: .device, style: .following, quality: .precision)
                         if ProcessInfo.processInfo.arguments.contains("--music-test-variants") {
+                            guard let connection = try? PCServerConnection(address: "http://127.0.0.1:8765", token: String(repeating: "a", count: 32)) else { return }
                             for profile in [MusicArrangement.standard, .orchestral] {
                                 let deadline = Date().addingTimeInterval(30)
                                 while library.preparation != nil, Date() < deadline { try? await Task.sleep(nanoseconds: 20_000_000) }
                                 guard library.preparation == nil else { return }
-                                library.prepare(selection, audioFile: audioURL, method: .pc, style: .arranged, profile: profile)
+                                library.prepare(selection, audioFile: audioURL, method: .pc, style: .arranged, profile: profile, connection: connection)
                             }
                         }
                     }

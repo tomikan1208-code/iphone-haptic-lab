@@ -66,8 +66,10 @@ struct MusicPlayerScreen: View {
                 }
                 .background(LabTheme.background).foregroundStyle(.white)
             }
+            .ignoresSafeArea(.container, edges: .top)
             .toolbar(.hidden, for: .navigationBar)
         }
+        .statusBarHidden()
         .preferredColorScheme(.dark)
         .onAppear {
             if playback.visualizationTrack?.version == 3 {

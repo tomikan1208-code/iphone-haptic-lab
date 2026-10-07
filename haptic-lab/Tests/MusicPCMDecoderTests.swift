@@ -78,7 +78,7 @@ final class MusicPCMDecoderTests: XCTestCase {
     }
 
     @MainActor
-    func testLegacyDoubledYouTubeCacheRebuildsOncePreservingGainHistoryAndOldDataUntilSuccess() async throws {
+    func testLegacyDoubledYouTubeCacheRebuildsPreservingGainHistoryAndBothResultsAfterSuccess() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
         let disk = MusicLibraryDisk(root: root)
@@ -126,7 +126,9 @@ final class MusicPCMDecoderTests: XCTestCase {
         XCTAssertEqual(repaired.lastPlayedAt, record.lastPlayedAt)
         XCTAssertEqual(repaired.analysis?.decoderVersion, MusicAnalyzer.decoderVersion)
         XCTAssertFalse(repaired.requiresAudioReanalysis)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: disk.tracks.appendingPathComponent("legacy.json").path))
+        XCTAssertEqual(repaired.analysisVariants.count, 2)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: disk.tracks.appendingPathComponent("legacy.json").path))
+        XCTAssertEqual(try JSONDecoder().decode(MusicHapticTrack.self, from: Data(contentsOf: disk.tracks.appendingPathComponent("legacy.json"))), old)
         XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: disk.working.path).isEmpty)
         XCTAssertNil(repaired.mediaFilename)
         let restored = MusicLibrary(root: root)
