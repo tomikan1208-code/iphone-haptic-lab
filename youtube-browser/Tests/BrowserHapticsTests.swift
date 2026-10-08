@@ -78,7 +78,7 @@ final class BrowserHapticsTests: XCTestCase {
     }
     @MainActor func testAdDurationCannotReplaceSelectedVideoDuration() throws {
         let (_, haptics, renderer, _, _) = try setup()
-        haptics.receive(sample(advertisement: true, duration: 15))
+        haptics.receive(sample(duration: 15, advertisement: true))
         XCTAssertEqual(haptics.status, .advertisement)
         XCTAssertNil(haptics.selection?.duration)
         XCTAssertFalse(renderer.rendering)
@@ -106,7 +106,7 @@ final class BrowserHapticsTests: XCTestCase {
         XCTAssertEqual(haptics.status, .waiting)
         haptics.receive(sample(duration: 100), hostTime: host + 1.1)
         XCTAssertEqual(haptics.status, .mismatch)
-        haptics.receive(sample(paused: true, duration: 100), hostTime: host + 1.2)
+        haptics.receive(sample(duration: 100, paused: true), hostTime: host + 1.2)
         haptics.receive(sample(duration: 100), hostTime: host + 1.3)
         XCTAssertEqual(haptics.status, .waiting)
         haptics.receive(sample(), hostTime: host + 1.4)
