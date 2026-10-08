@@ -288,12 +288,6 @@
 			isa = PBXBuildFile;
 			fileRef = B5A3A8F249CFED560D8FF806;
 		};
-		D97D9D703A01536B322D6BF2 = {
-			isa = PBXFileReference;
-			lastKnownFileType = "video.mpeg-4";
-			path = .build/BrowserFixture.mp4;
-			sourceTree = SOURCE_ROOT;
-		};
 		87A9F49A7628E01F0B35EABF = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.javascript;
@@ -314,24 +308,19 @@
 		};
 		76C8E638A6C792CA49EDF8F2 = {
 			isa = PBXBuildFile;
-			fileRef = D97D9D703A01536B322D6BF2;
+			fileRef = 87A9F49A7628E01F0B35EABF;
 		};
 		1A86ADB16D1E07D4532510A7 = {
 			isa = PBXBuildFile;
-			fileRef = 87A9F49A7628E01F0B35EABF;
-		};
-		1AB2A68084B67758A02A1252 = {
-			isa = PBXBuildFile;
 			fileRef = B127918A4473B4977D881B90;
 		};
-		F8B862F95962409C052C76BF = {
+		1AB2A68084B67758A02A1252 = {
 			isa = PBXBuildFile;
 			fileRef = 376880C88EDA46CA5EF27FF9;
 		};
 		86A44DD5146006ABE3C64383 = {
 			isa = PBXGroup;
 			children = (
-				D97D9D703A01536B322D6BF2,
 				87A9F49A7628E01F0B35EABF,
 				B127918A4473B4977D881B90,
 				376880C88EDA46CA5EF27FF9,
@@ -414,7 +403,6 @@
 				76C8E638A6C792CA49EDF8F2,
 				1A86ADB16D1E07D4532510A7,
 				1AB2A68084B67758A02A1252,
-				F8B862F95962409C052C76BF,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

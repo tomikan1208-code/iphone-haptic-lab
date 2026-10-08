@@ -6,6 +6,9 @@ node --test scripts/test-playback-observation.mjs
 python3 -m venv .build/fixture-venv
 .build/fixture-venv/bin/python -m pip install imageio-ffmpeg==0.6.0
 .build/fixture-venv/bin/python scripts/generate-fixture.py
+python3 -u scripts/serve-fixture.py > .build/fixture-server.log 2>&1 &
+fixture_server=$!
+trap 'kill "$fixture_server" 2>/dev/null || true' EXIT
 node scripts/generate-project.mjs
 node scripts/generate-icons.mjs
 if ! xcodebuild build -project ResonWeb.xcodeproj -scheme ResonWeb -configuration Release \
@@ -27,6 +30,7 @@ xcodebuild test -project ResonWeb.xcodeproj -scheme ResonWeb -configuration Debu
 xcrun xcresulttool get test-results summary --path .build/TestResults.xcresult > .build/test-summary.json || true
 xcrun xcresulttool export attachments --path .build/TestResults.xcresult --output-path .build/screenshots || true
 cp .build/simulator-device.json .build/screenshots/device.json
+cp .build/fixture-server.log .build/screenshots/fixture-server.log
 if [[ "$result" != '0' ]]; then
   mkdir -p .build/diagnostics
   cp "$HOME"/Library/Logs/DiagnosticReports/ResonWeb* .build/diagnostics/ 2>/dev/null || true

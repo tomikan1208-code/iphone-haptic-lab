@@ -33,17 +33,13 @@ enum BrowserFixtures {
     }
 
     // A real HTML media clock, not an injected native snapshot or mocked playback properties.
-    private static func audio() -> String {
-        guard let url = Bundle.main.url(forResource: "BrowserFixture", withExtension: "mp4"),
-              let data = try? Data(contentsOf: url) else { return "" }
-        return "data:video/mp4;base64," + data.base64EncodedString()
-    }
+    private static let mediaSource = "http://127.0.0.1:8766/BrowserFixture.mp4"
 
     static func html(url: URL) -> String {
         let isWatch = url.path == "/watch"
         let heading = url.path == "/feed/history" ? "視聴履歴" : url.path == "/feed/playlists" ? "あなたの再生リスト" : isWatch ? "テスト動画" : "YouTube"
         let player = isWatch ? """
-        <div id="movie_player"><video playsinline preload="auto" src="\(audio())"></video></div>
+        <div id="movie_player"><video playsinline preload="auto" src="\(mediaSource)"></video></div>
         <p><button onclick="document.querySelector('video').play()">動画を再生</button>
         <button onclick="document.querySelector('video').pause()">一時停止</button>
         <button onclick="document.querySelector('video').currentTime=20">20秒へ移動</button>
