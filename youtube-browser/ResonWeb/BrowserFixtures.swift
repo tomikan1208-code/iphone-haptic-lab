@@ -47,7 +47,7 @@ enum BrowserFixtures {
         <p><a href="https://www.youtube.com/watch?v=\(nextID)">次の動画</a></p>
         """ : "<div class=\"video\">▶</div>"
         return """
-        <html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>\(heading) - YouTube</title>
+        <html><head><base href="\(url.absoluteString.replacingOccurrences(of: "&", with: "&amp;"))"><meta name="viewport" content="width=device-width,initial-scale=1"><title>\(heading) - YouTube</title>
         <style>html,body{margin:0;background:#0f0f0f;color:white;font:16px system-ui}header{padding:18px;font-size:24px;font-weight:700}
         .video,video{margin:16px;width:calc(100% - 32px);height:175px;background:linear-gradient(135deg,#18232b,#3d2442);border-radius:12px}
         .video{display:flex;align-items:center;justify-content:center;font-size:42px}

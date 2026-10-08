@@ -130,7 +130,21 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
         error = nil
         if fixture {
             #if DEBUG
-            webView.loadHTMLString(BrowserFixtures.html(url: url), baseURL: url)
+            var endpoint = URLComponents(string: "http://127.0.0.1:8766/page")!
+            endpoint.queryItems = [URLQueryItem(name: "url", value: url.absoluteString)]
+            let fixtureURL = endpoint.url!
+            var request = URLRequest(url: fixtureURL)
+            request.httpMethod = "POST"
+            request.httpBody = Data(BrowserFixtures.html(url: url).utf8)
+            request.setValue("text/html; charset=utf-8", forHTTPHeaderField: "Content-Type")
+            Task { @MainActor [weak self] in
+                do {
+                    let (_, response) = try await URLSession.shared.data(for: request)
+                    guard let self, self.currentURL == url else { return }
+                    guard (response as? HTTPURLResponse)?.statusCode == 201 else { throw URLError(.badServerResponse) }
+                    self.webView.load(URLRequest(url: fixtureURL))
+                } catch { self?.report(error) }
+            }
             #endif
         } else { webView.load(URLRequest(url: url)) }
     }
@@ -157,6 +171,10 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = navigationAction.request.url else { decisionHandler(.cancel); return }
+        if fixture, url.scheme == "http", url.host == "127.0.0.1", url.port == 8766, url.path == "/page" {
+            decisionHandler(.allow)
+            return
+        }
         if fixture, BrowserNavigation.isInternal(url), url != currentURL {
             decisionHandler(.cancel)
             Task { @MainActor [weak self] in self?.load(url) }
