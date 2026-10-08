@@ -148,7 +148,10 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
         guard let url = navigationAction.request.url else { decisionHandler(.cancel); return }
         if url.scheme == "about" || navigationAction.targetFrame?.isMainFrame == false { decisionHandler(.allow); return }
         if BrowserNavigation.isInternal(url) {
-            if fixture, navigationAction.navigationType == .linkActivated { load(url); decisionHandler(.cancel) }
+            if fixture, navigationAction.navigationType == .linkActivated {
+                decisionHandler(.cancel)
+                Task { @MainActor [weak self] in self?.load(url) }
+            }
             else { decisionHandler(.allow) }
         } else {
             if navigationAction.navigationType == .linkActivated { UIApplication.shared.open(url) }
