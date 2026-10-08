@@ -18,7 +18,7 @@ final class ResonWebUITests: XCTestCase {
         screenshot("00-reson-web-search", app)
         input.tap()
         input.typeText("Piano live\n")
-        XCTAssertFalse(app.keyboards.firstMatch.exists)
+        waitForKeyboardToDismiss(app)
         app.buttons["browser.tab.history"].tap()
         XCTAssertTrue(app.buttons["browser.tab.history"].isSelected)
         XCTAssertTrue(app.webViews.staticTexts["視聴履歴"].waitForExistence(timeout: 10))
@@ -120,7 +120,7 @@ final class ResonWebUITests: XCTestCase {
         input.tap()
         input.typeText("https://www.youtube.com/watch?v=lkiV3U0GfGg\n")
         XCTAssertTrue(app.buttons["browser.haptics.prepare"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.keyboards.firstMatch.exists)
+        waitForKeyboardToDismiss(app)
         app.buttons["動画を再生"].tap()
         waitForClock(app, greaterThan: 0.3)
         app.buttons["一時停止"].tap()
@@ -154,6 +154,10 @@ final class ResonWebUITests: XCTestCase {
 
     private func clock(_ app: XCUIApplication) -> Double {
         Double(app.staticTexts["browser.haptics.clock"].label) ?? -1
+    }
+    private func waitForKeyboardToDismiss(_ app: XCUIApplication) {
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.keyboards.firstMatch)
+        waitForExpectations(timeout: 5)
     }
     private func tapWebsiteButton(_ title: String, _ app: XCUIApplication) {
         if !app.buttons[title].isHittable { app.webViews["browser.website"].swipeUp() }
