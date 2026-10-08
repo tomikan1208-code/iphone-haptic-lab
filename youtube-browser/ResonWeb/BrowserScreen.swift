@@ -107,6 +107,10 @@ struct BrowserScreen: View {
                             }
                         }
                         Section {
+                        if browser.canGoBack {
+                            Button { sheet = nil; browser.back() } label: { Label("前のページに戻る", systemImage: "chevron.left") }
+                                .accessibilityIdentifier("browser.back")
+                        }
                         Button { sheet = nil; browser.reload() } label: { Label("ページを再読み込み", systemImage: "arrow.clockwise") }
                         Button { sheet = nil; browser.openInSafari() } label: { Label("Safariで開く", systemImage: "safari") }
                         Button { sheet = nil; immersive = true } label: { Label("バーをたたむ", systemImage: "arrow.up.left.and.arrow.down.right") }

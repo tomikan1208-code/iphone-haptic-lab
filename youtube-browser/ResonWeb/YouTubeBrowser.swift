@@ -87,7 +87,9 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
         configuration.userContentController.add(handler, contentWorld: .world(name: "ResonPlayback"), name: "resonPlayback")
         webView.navigationDelegate = self
         webView.uiDelegate = self
-        webView.allowsBackForwardNavigationGestures = true
+        // Use native back controls. WebKit's navigation swipe recognizers can
+        // retain invalid gesture dependencies when its media page is replaced.
+        webView.allowsBackForwardNavigationGestures = false
         webView.isOpaque = false
         webView.backgroundColor = .black
         webView.scrollView.backgroundColor = .black
