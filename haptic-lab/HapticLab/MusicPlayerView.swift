@@ -16,6 +16,7 @@ struct MusicPlayerScreen: View {
                     .frame(width: geometry.size.width, height: mediaHeight(in: geometry.size))
                     .background(.black).clipped().contentShape(Rectangle())
                     .simultaneousGesture(playerSwipe)
+                    .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("music.mediaPlayer")
                 if presentation.mode == .minimized {
                     miniPlayer
@@ -134,6 +135,7 @@ struct MusicPlayerScreen: View {
                         }
                     }.frame(maxWidth: .infinity, alignment: .leading)
                 }.buttonStyle(.plain).accessibilityIdentifier("player.expand")
+                    .accessibilityValue(musicTime(playback.position) + " / " + musicTime(playback.duration))
                 Button { playback.toggle() } label: {
                     Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill").frame(width: 36, height: 44)
                 }.disabled(!playback.isReady).accessibilityLabel(playback.isPlaying ? "一時停止" : "音楽を再生")
@@ -142,7 +144,7 @@ struct MusicPlayerScreen: View {
                     .accessibilityLabel("再生を終了").accessibilityIdentifier("player.close")
             }.padding(.horizontal, 12).frame(height: 52)
                 .contentShape(Rectangle()).simultaneousGesture(playerSwipe)
-        }.background(LabTheme.panel).accessibilityIdentifier("player.miniPlayer")
+        }.background(LabTheme.panel).accessibilityElement(children: .contain).accessibilityIdentifier("player.miniPlayer")
     }
 
     private var landscapeControls: some View {
@@ -169,6 +171,7 @@ struct MusicPlayerScreen: View {
             }
         }.padding(.horizontal, 16).frame(height: 96).background(LabTheme.panel).tint(LabTheme.mint)
             .contentShape(Rectangle()).simultaneousGesture(playerSwipe)
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("music.landscapeControls")
     }
 

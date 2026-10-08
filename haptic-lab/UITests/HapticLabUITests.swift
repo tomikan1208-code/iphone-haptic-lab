@@ -36,11 +36,11 @@ final class HapticLabUITests: XCTestCase {
         XCTAssertEqual(app.buttons["player.play"].label, "一時停止")
         XCTAssertEqual(webView.value as? String, instance)
         XCTAssertGreaterThanOrEqual(media.frame.height, 200)
-        let position = app.staticTexts["player.position"]
-        let previous = position.label
+        let position = app.buttons["player.expand"]
+        let previous = position.value as? String
         app.buttons["tab.history"].tap()
         app.buttons["tab.search"].tap()
-        expectation(for: NSPredicate { _, _ in position.label != previous }, evaluatedWith: position)
+        expectation(for: NSPredicate { _, _ in position.value as? String != previous }, evaluatedWith: position)
         waitForExpectations(timeout: 6)
         XCTAssertEqual(app.buttons["player.play"].label, "一時停止")
         screenshot("25-video-mini-player-keeps-playing", app: app)
@@ -79,9 +79,9 @@ final class HapticLabUITests: XCTestCase {
         app.buttons["music.minimize"].tap()
         XCTAssertTrue(app.buttons["player.expand"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.buttons["player.play"].label, "一時停止")
-        let position = app.staticTexts["player.position"]
-        let previous = position.label
-        expectation(for: NSPredicate { _, _ in position.label != previous }, evaluatedWith: position)
+        let position = app.buttons["player.expand"]
+        let previous = position.value as? String
+        expectation(for: NSPredicate { _, _ in position.value as? String != previous }, evaluatedWith: position)
         waitForExpectations(timeout: 4)
         app.buttons["player.expand"].tap()
         XCTAssertEqual(play.label, "一時停止")
