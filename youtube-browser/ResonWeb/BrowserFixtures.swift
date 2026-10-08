@@ -43,7 +43,7 @@ enum BrowserFixtures {
         let isWatch = url.path == "/watch"
         let heading = url.path == "/feed/history" ? "視聴履歴" : url.path == "/feed/playlists" ? "あなたの再生リスト" : isWatch ? "テスト動画" : "YouTube"
         let player = isWatch ? """
-        <div id="movie_player"><video playsinline controls preload="auto" src="\(audio())"></video></div>
+        <div id="movie_player"><video playsinline preload="auto" src="\(audio())"></video></div>
         <p><button onclick="document.querySelector('video').play()">動画を再生</button>
         <button onclick="document.querySelector('video').pause()">一時停止</button>
         <button onclick="document.querySelector('video').currentTime=20">20秒へ移動</button>
