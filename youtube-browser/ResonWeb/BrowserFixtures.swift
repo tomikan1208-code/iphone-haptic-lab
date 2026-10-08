@@ -6,7 +6,7 @@ enum BrowserFixtures {
     static let firstID = "lkiV3U0GfGg"
     static let nextID = "dQw4w9WgXcQ"
 
-    static func makeLibrary() -> MusicLibrary {
+    @MainActor static func makeLibrary() -> MusicLibrary {
         guard ProcessInfo.processInfo.arguments.contains("--browser-haptics-fixture") else { return MusicLibrary() }
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("BrowserHapticUITests", isDirectory: true)
