@@ -47,4 +47,5 @@ jobs:
             youtube-browser/.build/build.log
             youtube-browser/.build/test.log
             youtube-browser/.build/test-summary.json
+            youtube-browser/.build/diagnostics/
           retention-days: 7

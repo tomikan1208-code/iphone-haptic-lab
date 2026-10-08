@@ -34,15 +34,9 @@ enum BrowserFixtures {
 
     // A real HTML media clock, not an injected native snapshot or mocked playback properties.
     private static func audio() -> String {
-        let samples = Int(duration * 8_000), bytes = samples * 2
-        var data = Data()
-        func text(_ value: String) { data.append(contentsOf: value.utf8) }
-        func u16(_ value: UInt16) { var value = value.littleEndian; withUnsafeBytes(of: &value) { data.append(contentsOf: $0) } }
-        func u32(_ value: UInt32) { var value = value.littleEndian; withUnsafeBytes(of: &value) { data.append(contentsOf: $0) } }
-        text("RIFF"); u32(UInt32(bytes + 36)); text("WAVEfmt "); u32(16); u16(1); u16(1)
-        u32(8_000); u32(16_000); u16(2); u16(16); text("data"); u32(UInt32(bytes))
-        data.append(Data(repeating: 0, count: bytes))
-        return "data:audio/wav;base64," + data.base64EncodedString()
+        guard let url = Bundle.main.url(forResource: "BrowserFixture", withExtension: "mp4"),
+              let data = try? Data(contentsOf: url) else { return "" }
+        return "data:video/mp4;base64," + data.base64EncodedString()
     }
 
     static func html(url: URL) -> String {

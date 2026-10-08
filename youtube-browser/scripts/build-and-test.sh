@@ -3,6 +3,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p .build/screenshots
 node --test scripts/test-playback-observation.mjs
+python3 -m pip install imageio-ffmpeg==0.6.0
+python3 scripts/generate-fixture.py
 node scripts/generate-project.mjs
 node scripts/generate-icons.mjs
 if ! xcodebuild build -project ResonWeb.xcodeproj -scheme ResonWeb -configuration Release \
@@ -25,6 +27,9 @@ xcrun xcresulttool get test-results summary --path .build/TestResults.xcresult >
 xcrun xcresulttool export attachments --path .build/TestResults.xcresult --output-path .build/screenshots || true
 cp .build/simulator-device.json .build/screenshots/device.json
 if [[ "$result" != '0' ]]; then
+  mkdir -p .build/diagnostics
+  cp "$HOME"/Library/Logs/DiagnosticReports/ResonWeb* .build/diagnostics/ 2>/dev/null || true
+  xcrun simctl spawn "$device" log show --style compact --last 5m --predicate 'process == "ResonWeb"' > .build/diagnostics/runtime.log 2>&1 || true
   tail -n 120 .build/test.log
   exit "$result"
 fi

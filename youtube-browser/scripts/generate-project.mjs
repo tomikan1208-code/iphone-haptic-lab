@@ -54,6 +54,7 @@ const appSources = appReferences.map((reference, index) => add(`build.app.${appF
 }));
 appSources.push(...sharedSources);
 const resourceReferences = [
+  add('ref.browser-video', { isa: 'PBXFileReference', lastKnownFileType: 'video.mpeg-4', path: '.build/BrowserFixture.mp4', sourceTree: 'SOURCE_ROOT' }),
   add('ref.playback-script', { isa: 'PBXFileReference', lastKnownFileType: 'sourcecode.javascript', path: 'PlaybackObservation.js', sourceTree: '<group>' }),
   add('ref.youtube-license', { isa: 'PBXFileReference', lastKnownFileType: 'text', path: '../haptic-lab/HapticLab/Resources/YouTubeKit-LICENSE.txt', sourceTree: 'SOURCE_ROOT' }),
   add('ref.assets', { isa: 'PBXFileReference', lastKnownFileType: 'folder.assetcatalog', path: 'Assets.xcassets', sourceTree: '<group>' })
