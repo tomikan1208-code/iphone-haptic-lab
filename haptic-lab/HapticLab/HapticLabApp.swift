@@ -97,10 +97,10 @@ struct HapticLabApp: App {
                 .onChange(of: scenePhase) { phase in
                     if phase != .active {
                         haptics.suspend()
-                        music.suspend()
                     }
-                    if phase == .background, library.preparation != nil {
-                        library.cancelPreparation()
+                    if phase == .background {
+                        music.suspend()
+                        if library.preparation != nil { library.cancelPreparation() }
                     }
                 }
         }

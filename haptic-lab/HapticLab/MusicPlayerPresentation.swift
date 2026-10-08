@@ -50,8 +50,9 @@ final class MusicPlayerPresentation: ObservableObject {
 
     private func setMode(_ next: Mode) {
         guard mode != next else { return }
+        let previousOrientations = supportedOrientations
         mode = next
-        requestOrientation(supportedOrientations)
+        if supportedOrientations != previousOrientations { requestOrientation(supportedOrientations) }
     }
 
     static func rotateScene(_ orientations: UIInterfaceOrientationMask) {

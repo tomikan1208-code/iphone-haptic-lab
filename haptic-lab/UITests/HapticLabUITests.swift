@@ -1,7 +1,17 @@
 import XCTest
 
 final class HapticLabUITests: XCTestCase {
-    override func setUp() { continueAfterFailure = false }
+    override func setUp() {
+        super.setUp()
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
+    }
+
+    override func tearDown() {
+        XCUIApplication().terminate()
+        XCUIDevice.shared.orientation = .portrait
+        super.tearDown()
+    }
 
     func testYouTubeWebViewKeepsPlayingAcrossCorrectedSwipesAndTabChanges() {
         XCUIDevice.shared.orientation = .portrait
@@ -33,8 +43,8 @@ final class HapticLabUITests: XCTestCase {
         XCTAssertEqual(play.label, "一時停止")
         swipePlayer(media, up: false)
         XCTAssertTrue(app.buttons["player.expand"].waitForExistence(timeout: 10))
-        XCTAssertEqual(app.buttons["player.play"].label, "一時停止")
         XCTAssertEqual(webView.value as? String, instance)
+        XCTAssertEqual(app.buttons["player.play"].label, "一時停止")
         XCTAssertGreaterThanOrEqual(media.frame.height, 200)
         let position = app.buttons["player.expand"]
         let previous = position.value as? String
@@ -601,13 +611,13 @@ final class HapticLabUITests: XCTestCase {
     }
 
     private func swipePlayer(_ element: XCUIElement, up: Bool) {
-        let start = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.85 : 0.15))
-        let end = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.15 : 0.85))
+        let start = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.8 : 0.3))
+        let end = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.3 : 0.8))
         start.press(forDuration: 0.05, thenDragTo: end)
     }
 
     private func screenshot(_ name: String, app: XCUIApplication) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)

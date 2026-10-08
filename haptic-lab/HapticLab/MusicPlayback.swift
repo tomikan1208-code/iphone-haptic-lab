@@ -271,6 +271,11 @@ final class MusicPlayback: ObservableObject {
     }
 
     func pause() {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--youtube-playback-fixture") {
+            print("Playback fixture paused: \(Thread.callStackSymbols.prefix(8).joined(separator: " | "))")
+        }
+        #endif
         player.pause()
         if selection?.kind == .youtube { evaluate("player.pauseVideo()") }
         isPlaying = false
@@ -461,6 +466,7 @@ struct YouTubeMusicPlayer: UIViewRepresentable {
             webView.isAccessibilityElement = true
             webView.accessibilityIdentifier = "music.youtubeFixture"
             webView.accessibilityValue = UUID().uuidString
+            print("Playback fixture WebView created: \(webView.accessibilityValue ?? "")")
             webView.loadHTMLString(Self.playbackFixtureHTML(videoID: videoID), baseURL: URL(string: origin))
             return webView
         }

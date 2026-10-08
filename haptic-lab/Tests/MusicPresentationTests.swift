@@ -14,7 +14,7 @@ final class MusicPresentationTests: XCTestCase {
         XCTAssertEqual(presentation.mode, .portrait)
         presentation.swipe(up: false)
         XCTAssertEqual(presentation.mode, .minimized)
-        XCTAssertEqual(requests, [.portrait, .landscape, .portrait, .portrait])
+        XCTAssertEqual(requests, [.landscape, .portrait])
     }
 
     @MainActor
