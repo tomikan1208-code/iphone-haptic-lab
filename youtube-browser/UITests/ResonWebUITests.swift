@@ -45,13 +45,9 @@ final class ResonWebUITests: XCTestCase {
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launchArguments = ["--browser-ui-fixture", "--browser-haptics-fixture", "--reset-browser-haptics-fixture",
-                               "--music-test-library", "--reset-music-test-library"]
+                               "--browser-watch-fixture", "--music-test-library", "--reset-music-test-library"]
         app.launch()
         defer { app.terminate(); XCUIDevice.shared.orientation = .portrait }
-        XCTAssertTrue(app.links["Preview video"].waitForExistence(timeout: 10))
-        let input = app.textFields["browser.searchQuery"]
-        input.tap()
-        input.typeText("https://www.youtube.com/watch?v=lkiV3U0GfGg\n")
         XCTAssertTrue(app.webViews.staticTexts["テスト動画"].waitForExistence(timeout: 10))
         let preparationExists = app.buttons["browser.haptics.prepare"].waitForExistence(timeout: 10)
         let diagnostic = app.staticTexts["browser.haptics.diagnostic"].label
@@ -97,7 +93,7 @@ final class ResonWebUITests: XCTestCase {
         XCTAssertTrue(app.buttons["browser.haptics.prepare"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["browser.haptics.adjust"].exists)
         app.terminate()
-        app.launchArguments.removeAll { $0 == "--reset-browser-haptics-fixture" || $0 == "--reset-music-test-library" }
+        app.launchArguments.removeAll { $0 == "--reset-browser-haptics-fixture" || $0 == "--reset-music-test-library" || $0 == "--browser-watch-fixture" }
         app.launch()
         XCTAssertTrue(app.buttons["browser.menu"].waitForExistence(timeout: 10))
         app.buttons["browser.menu"].tap()
@@ -110,6 +106,26 @@ final class ResonWebUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["browser.haptics.settingsScope"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["browser.haptics.settingsScope"].label, "この動画の個別設定")
         XCTAssertEqual(app.sliders["browser.haptics.continuous"].value as? String, "25%")
+    }
+
+    func testWebsitePlaybackRemainsInteractiveAfterNativeSearchDismissesKeyboard() {
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchArguments = ["--browser-ui-fixture", "--browser-haptics-fixture", "--reset-browser-haptics-fixture"]
+        app.launch()
+        defer { app.terminate() }
+        let input = app.textFields["browser.searchQuery"]
+        XCTAssertTrue(input.waitForExistence(timeout: 10))
+        input.tap()
+        input.typeText("https://www.youtube.com/watch?v=lkiV3U0GfGg\n")
+        XCTAssertTrue(app.buttons["browser.haptics.prepare"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.keyboards.firstMatch.exists)
+        app.buttons["動画を再生"].tap()
+        waitForClock(app, greaterThan: 0.3)
+        app.buttons["一時停止"].tap()
+        XCTAssertEqual(app.state, .runningForeground)
+        screenshot("08-reson-web-playback-after-native-search", app)
     }
 
     private func clock(_ app: XCUIApplication) -> Double {

@@ -128,5 +128,12 @@ struct BrowserScreen: View {
                 }
             }
     }
-    private func search() { searchFocused = false; browser.search() }
+    private func search() {
+        searchFocused = false
+        // Finish dismissing the native keyboard before replacing WebKit's page.
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            browser.search()
+        }
+    }
 }

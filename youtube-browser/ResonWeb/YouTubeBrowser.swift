@@ -87,9 +87,7 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
         configuration.userContentController.add(handler, contentWorld: .world(name: "ResonPlayback"), name: "resonPlayback")
         webView.navigationDelegate = self
         webView.uiDelegate = self
-        // Use native back controls. WebKit's navigation swipe recognizers can
-        // retain invalid gesture dependencies when its media page is replaced.
-        webView.allowsBackForwardNavigationGestures = false
+        webView.allowsBackForwardNavigationGestures = true
         webView.isOpaque = false
         webView.backgroundColor = .black
         webView.scrollView.backgroundColor = .black
@@ -104,7 +102,13 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
                 self.currentURL = url
             }
         }]
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--browser-watch-fixture") {
+            load(URL(string: "https://www.youtube.com/watch?v=" + BrowserFixtures.firstID)!)
+        } else { load(BrowserPage.search.url) }
+        #else
         load(BrowserPage.search.url)
+        #endif
     }
 
     func open(_ page: BrowserPage) { self.page = page; load(page.url) }
