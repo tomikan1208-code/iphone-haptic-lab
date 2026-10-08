@@ -8,18 +8,26 @@ on:
       - 'haptic-lab/HapticLab/**'
       - '.github/workflows/build-youtube-browser.yml'
   workflow_dispatch:
+    inputs:
+      xcode:
+        description: Xcode version and matching iOS test runtime
+        type: choice
+        default: '26.2'
+        options: ['26.2', '16.4']
 
 permissions:
   contents: read
 
 concurrency:
-  group: resonweb-${{ github.ref }}
+  group: resonweb-${{ github.ref }}-${{ inputs.xcode || '26.2' }}
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: macos-15
     timeout-minutes: 35
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_${{ inputs.xcode || '26.2' }}.app/Contents/Developer
     defaults:
       run:
         working-directory: youtube-browser

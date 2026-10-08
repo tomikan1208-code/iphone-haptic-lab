@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import plistlib
+import subprocess
 import zipfile
 from pathlib import Path
 
@@ -26,6 +27,9 @@ metadata = {
     "displayName": info["CFBundleDisplayName"], "bundleIdentifier": info["CFBundleIdentifier"],
     "version": info["CFBundleShortVersionString"], "build": info["CFBundleVersion"],
     "signed": False, "sourceCommit": os.environ.get("GITHUB_SHA"), "nativeTestsPassed": summary["passedTests"],
+    "xcode": subprocess.check_output(["xcodebuild", "-version"], text=True).strip(),
+    "iOSSDK": subprocess.check_output(["xcrun", "--sdk", "iphoneos", "--show-sdk-version"], text=True).strip(),
+    "testSimulator": json.loads((root / ".build/simulator-device.json").read_text()),
     "youtubeAccountLoginTested": False, "youtubeHistoryWriteTested": False,
     "userReportedDeviceVerification": {"version": "0.1.0", "date": "2026-10-08", "login": True, "youtubeHistory": True},
     "hapticHardwareTested": False, "websiteObserverTestsPassed": 6,

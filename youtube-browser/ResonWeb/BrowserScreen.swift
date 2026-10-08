@@ -59,6 +59,14 @@ struct BrowserScreen: View {
                     }.padding(24).background(WebTheme.panel, in: RoundedRectangle(cornerRadius: 16)).padding(20)
                 }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: .top) {
+                    if let message = haptics.message ?? library.message {
+                        MusicMessage(text: message) {
+                            haptics.message = nil
+                            library.message = nil
+                        }.padding(12).accessibilityIdentifier("browser.haptics.message")
+                    }
+                }
             if !immersive {
                 #if DEBUG
                 if ProcessInfo.processInfo.arguments.contains("--browser-haptics-fixture") {
