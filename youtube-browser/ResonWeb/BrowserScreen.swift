@@ -13,7 +13,6 @@ struct BrowserScreen: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var sheet: BrowserSheet?
     @State private var immersive = false
-    @State private var searchNavigation: Task<Void, Never>?
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -67,7 +66,7 @@ struct BrowserScreen: View {
                         .accessibilityIdentifier("browser.haptics.diagnostic")
                 }
                 #endif
-                if haptics.selection != nil || library.preparation != nil { BrowserHapticBar(sheet: $sheet) }
+                if showHapticBar, haptics.selection != nil || library.preparation != nil { BrowserHapticBar(sheet: $sheet) }
                 HStack(spacing: 0) {
                     ForEach(BrowserPage.allCases) { page in
                         Button { searchFocused = false; browser.open(page) } label: {
@@ -82,8 +81,6 @@ struct BrowserScreen: View {
                 }.accessibilityElement(children: .contain).accessibilityIdentifier("browser.navigation")
             }
         }.background(WebTheme.background.ignoresSafeArea()).foregroundStyle(.white)
-            .onChange(of: browser.currentURL) { _ in searchNavigation?.cancel(); searchNavigation = nil }
-            .onChange(of: browser.page) { _ in searchNavigation?.cancel(); searchNavigation = nil }
             .onChange(of: scenePhase) { phase in
                 if phase == .background { haptics.setForeground(false) }
                 else if phase == .active { haptics.setForeground(true) }
@@ -131,13 +128,12 @@ struct BrowserScreen: View {
                 }
             }
     }
-    private func search() {
-        searchNavigation?.cancel()
-        searchFocused = false
-        // Finish dismissing the native keyboard before replacing WebKit's page.
-        searchNavigation = Task { @MainActor in
-            do { try await Task.sleep(nanoseconds: 400_000_000) } catch { return }
-            browser.search()
-        }
+    private var showHapticBar: Bool {
+        #if DEBUG
+        return !ProcessInfo.processInfo.arguments.contains("--browser-without-haptic-bar-fixture")
+        #else
+        return true
+        #endif
     }
+    private func search() { searchFocused = false; browser.search() }
 }

@@ -66,7 +66,12 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
         configuration.allowsInlineMediaPlayback = true
-        if let url = Bundle.main.url(forResource: "PlaybackObservation", withExtension: "js"),
+        #if DEBUG
+        let observe = !ProcessInfo.processInfo.arguments.contains("--browser-without-observer-fixture")
+        #else
+        let observe = true
+        #endif
+        if observe, let url = Bundle.main.url(forResource: "PlaybackObservation", withExtension: "js"),
            let script = try? String(contentsOf: url, encoding: .utf8) {
             #if DEBUG
             let fixture = ProcessInfo.processInfo.arguments.contains("--browser-ui-fixture")

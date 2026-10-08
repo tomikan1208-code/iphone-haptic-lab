@@ -53,14 +53,14 @@ final class ResonWebUITests: XCTestCase {
         let diagnostic = app.staticTexts["browser.haptics.diagnostic"].label
         XCTAssertTrue(preparationExists, diagnostic)
         XCTAssertFalse(app.staticTexts["music.firstPreparation"].exists)
-        app.buttons["動画を再生"].tap()
-        waitForClock(app, greaterThan: 0.3)
         screenshot("04-reson-web-haptics-before-preparation", app)
         app.buttons["browser.haptics.prepare"].tap()
         XCTAssertTrue(app.staticTexts["music.firstPreparation"].waitForExistence(timeout: 5))
         for _ in 0..<4 where !app.buttons["music.prepare"].isHittable { app.swipeUp() }
         app.buttons["music.prepare"].tap()
         XCTAssertTrue(app.buttons["browser.haptics.adjust"].waitForExistence(timeout: 15))
+        app.buttons["動画を再生"].tap()
+        waitForClock(app, greaterThan: 0.3)
         app.buttons["browser.haptics.adjust"].tap()
         XCTAssertTrue(app.buttons["browser.haptics.crispPreset"].waitForExistence(timeout: 5))
         app.buttons["browser.haptics.crispPreset"].tap()
@@ -126,6 +126,30 @@ final class ResonWebUITests: XCTestCase {
         app.buttons["一時停止"].tap()
         XCTAssertEqual(app.state, .runningForeground)
         screenshot("08-reson-web-playback-after-native-search", app)
+    }
+
+    func testWebsiteTouchWithoutPlaybackObserver() {
+        checkWebsiteTouch(extraArgument: "--browser-without-observer-fixture")
+    }
+
+    func testWebsiteTouchWithObserverAndWithoutHapticBar() {
+        checkWebsiteTouch(extraArgument: "--browser-without-haptic-bar-fixture")
+    }
+
+    private func checkWebsiteTouch(extraArgument: String) {
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchArguments = ["--browser-ui-fixture", "--browser-haptics-fixture", "--browser-watch-fixture",
+                               "--reset-browser-haptics-fixture", extraArgument]
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(app.webViews.staticTexts["テスト動画"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["browser.haptics.prepare"].exists)
+        app.buttons["動画を再生"].tap()
+        XCTAssertEqual(app.state, .runningForeground)
+        app.buttons["一時停止"].tap()
+        XCTAssertEqual(app.state, .runningForeground)
     }
 
     private func clock(_ app: XCUIApplication) -> Double {
