@@ -13,6 +13,7 @@ struct BrowserScreen: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var sheet: BrowserSheet?
     @State private var immersive = false
+    @State private var searchNavigation: Task<Void, Never>?
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -81,6 +82,8 @@ struct BrowserScreen: View {
                 }.accessibilityElement(children: .contain).accessibilityIdentifier("browser.navigation")
             }
         }.background(WebTheme.background.ignoresSafeArea()).foregroundStyle(.white)
+            .onChange(of: browser.currentURL) { _ in searchNavigation?.cancel(); searchNavigation = nil }
+            .onChange(of: browser.page) { _ in searchNavigation?.cancel(); searchNavigation = nil }
             .onChange(of: scenePhase) { phase in
                 if phase == .background { haptics.setForeground(false) }
                 else if phase == .active { haptics.setForeground(true) }
@@ -129,10 +132,11 @@ struct BrowserScreen: View {
             }
     }
     private func search() {
+        searchNavigation?.cancel()
         searchFocused = false
         // Finish dismissing the native keyboard before replacing WebKit's page.
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 400_000_000)
+        searchNavigation = Task { @MainActor in
+            do { try await Task.sleep(nanoseconds: 400_000_000) } catch { return }
             browser.search()
         }
     }
