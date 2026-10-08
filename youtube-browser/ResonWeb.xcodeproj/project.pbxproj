@@ -1,0 +1,539 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+
+	};
+	objectVersion = 56;
+	objects = {
+		DC48C2DB6B819D0D470F25DD = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = BrowserScreen.swift;
+			sourceTree = "<group>";
+		};
+		2826876AC9E08355B491B21A = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = ResonWebApp.swift;
+			sourceTree = "<group>";
+		};
+		B5A3A8F249CFED560D8FF806 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = YouTubeBrowser.swift;
+			sourceTree = "<group>";
+		};
+		DB749354C08D1785941D9FC1 = {
+			isa = PBXBuildFile;
+			fileRef = DC48C2DB6B819D0D470F25DD;
+		};
+		2AC1AF0091A31BD14294BF97 = {
+			isa = PBXBuildFile;
+			fileRef = 2826876AC9E08355B491B21A;
+		};
+		2C1E7895A779FBD04A9ADDDE = {
+			isa = PBXBuildFile;
+			fileRef = B5A3A8F249CFED560D8FF806;
+		};
+		376880C88EDA46CA5EF27FF9 = {
+			isa = PBXFileReference;
+			lastKnownFileType = folder.assetcatalog;
+			path = Assets.xcassets;
+			sourceTree = "<group>";
+		};
+		76C8E638A6C792CA49EDF8F2 = {
+			isa = PBXBuildFile;
+			fileRef = 376880C88EDA46CA5EF27FF9;
+		};
+		86A44DD5146006ABE3C64383 = {
+			isa = PBXGroup;
+			children = (
+				376880C88EDA46CA5EF27FF9,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		3E7E88F2FBC4F9F2EC9F28A3 = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.plist.xml;
+			path = Info.plist;
+			sourceTree = "<group>";
+		};
+		CCDFDF35B89D1A78EA639AE6 = {
+			isa = PBXGroup;
+			children = (
+				DC48C2DB6B819D0D470F25DD,
+				2826876AC9E08355B491B21A,
+				B5A3A8F249CFED560D8FF806,
+				86A44DD5146006ABE3C64383,
+				3E7E88F2FBC4F9F2EC9F28A3,
+			);
+			path = ResonWeb;
+			sourceTree = "<group>";
+		};
+		0229D566AF1ADD7CC996AFD7 = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.application;
+			includeInIndex = 0;
+			path = ResonWeb.app;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		30629AD2DAC238EBFFDDD89D = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DB749354C08D1785941D9FC1,
+				2AC1AF0091A31BD14294BF97,
+				2C1E7895A779FBD04A9ADDDE,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		96DC412426365B075F56354F = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C6E6BD337CD95D59F63C84FF = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				76C8E638A6C792CA49EDF8F2,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D979CEDF29F815B79EE15F01 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tomikan1208.resonweb;
+				TARGETED_DEVICE_FAMILY = 1;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				SWIFT_VERSION = 5.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				INFOPLIST_FILE = ResonWeb/Info.plist;
+				GENERATE_INFOPLIST_FILE = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ENABLE_PREVIEWS = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+			};
+			name = Debug;
+		};
+		93683E69BD6CAD9559D1367C = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tomikan1208.resonweb;
+				TARGETED_DEVICE_FAMILY = 1;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				SWIFT_VERSION = 5.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				INFOPLIST_FILE = ResonWeb/Info.plist;
+				GENERATE_INFOPLIST_FILE = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ENABLE_PREVIEWS = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+			};
+			name = Release;
+		};
+		DBD16DE0CCCD1F407C82DCE8 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D979CEDF29F815B79EE15F01,
+				93683E69BD6CAD9559D1367C,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		465303A2B5E9ADF49AA2A2C0 = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DBD16DE0CCCD1F407C82DCE8;
+			buildPhases = (
+				30629AD2DAC238EBFFDDD89D,
+				96DC412426365B075F56354F,
+				C6E6BD337CD95D59F63C84FF,
+			);
+			buildRules = (
+
+			);
+			dependencies = (
+
+			);
+			packageProductDependencies = (
+
+			);
+			name = ResonWeb;
+			productName = ResonWeb;
+			productReference = 0229D566AF1ADD7CC996AFD7;
+			productType = "com.apple.product-type.application";
+		};
+		CA07D5D8DA69CF4CD8B1B1BC = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = BrowserNavigationTests.swift;
+			sourceTree = "<group>";
+		};
+		9DF2E16C915AE5F5492F2A95 = {
+			isa = PBXBuildFile;
+			fileRef = CA07D5D8DA69CF4CD8B1B1BC;
+		};
+		5F502FDFE79CBC038785BC97 = {
+			isa = PBXGroup;
+			children = (
+				CA07D5D8DA69CF4CD8B1B1BC,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		640610D6CC245EF230D66220 = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.cfbundle;
+			includeInIndex = 0;
+			path = ResonWebTests.xctest;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		6EFA925A8AF6796A8F67C92D = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9DF2E16C915AE5F5492F2A95,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9F5A694821A5C68F904D172F = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		95BF0C552EE632E7F37E998D = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C552661D7410CD4358198CFC = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tomikan1208.resonwebtests;
+				TARGETED_DEVICE_FAMILY = 1;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				SWIFT_VERSION = 5.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				GENERATE_INFOPLIST_FILE = YES;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ResonWeb.app/ResonWeb";
+				BUNDLE_LOADER = "$(TEST_HOST)";
+			};
+			name = Debug;
+		};
+		6A57D49776FC75305851F09E = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tomikan1208.resonwebtests;
+				TARGETED_DEVICE_FAMILY = 1;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				SWIFT_VERSION = 5.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				GENERATE_INFOPLIST_FILE = YES;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ResonWeb.app/ResonWeb";
+				BUNDLE_LOADER = "$(TEST_HOST)";
+			};
+			name = Release;
+		};
+		B90F2996F657B1E28D0BA1C7 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C552661D7410CD4358198CFC,
+				6A57D49776FC75305851F09E,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F52589A9372DCB06D71CE7EC = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 09EE96B5BF5FF87B3E6BB214;
+			proxyType = 1;
+			remoteGlobalIDString = 465303A2B5E9ADF49AA2A2C0;
+			remoteInfo = ResonWeb;
+		};
+		428900C1D73F51C3467BF44F = {
+			isa = PBXTargetDependency;
+			target = 465303A2B5E9ADF49AA2A2C0;
+			targetProxy = F52589A9372DCB06D71CE7EC;
+		};
+		A0EE2AFA7732A1C021D21D5F = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B90F2996F657B1E28D0BA1C7;
+			buildPhases = (
+				6EFA925A8AF6796A8F67C92D,
+				9F5A694821A5C68F904D172F,
+				95BF0C552EE632E7F37E998D,
+			);
+			buildRules = (
+
+			);
+			dependencies = (
+				428900C1D73F51C3467BF44F,
+			);
+			packageProductDependencies = (
+
+			);
+			name = ResonWebTests;
+			productName = ResonWebTests;
+			productReference = 640610D6CC245EF230D66220;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		52130F8BF7BA15B6925A9BCA = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = ResonWebUITests.swift;
+			sourceTree = "<group>";
+		};
+		902F0C221DD8EC0AB87DCBB1 = {
+			isa = PBXBuildFile;
+			fileRef = 52130F8BF7BA15B6925A9BCA;
+		};
+		400D79A6DC530FBE3455F093 = {
+			isa = PBXGroup;
+			children = (
+				52130F8BF7BA15B6925A9BCA,
+			);
+			path = UITests;
+			sourceTree = "<group>";
+		};
+		3F0BF03A705C0DBC48BD9E5C = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.cfbundle;
+			includeInIndex = 0;
+			path = ResonWebUITests.xctest;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B26D977D56FFE5FE5A2A05DA = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				902F0C221DD8EC0AB87DCBB1,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0F9D3B77D616B3A50CA1D7CB = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9149BDF24C7EB14D602E211B = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		71994FD2402C2132D7B9ACC6 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tomikan1208.resonwebuitests;
+				TARGETED_DEVICE_FAMILY = 1;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				SWIFT_VERSION = 5.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				GENERATE_INFOPLIST_FILE = YES;
+				TEST_TARGET_NAME = ResonWeb;
+			};
+			name = Debug;
+		};
+		3B8DA1BB62F3E3158E9D4707 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tomikan1208.resonwebuitests;
+				TARGETED_DEVICE_FAMILY = 1;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				SWIFT_VERSION = 5.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				GENERATE_INFOPLIST_FILE = YES;
+				TEST_TARGET_NAME = ResonWeb;
+			};
+			name = Release;
+		};
+		F850E64086F14DBC1109C355 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				71994FD2402C2132D7B9ACC6,
+				3B8DA1BB62F3E3158E9D4707,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3D6F7061178D25FE7E88C315 = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 09EE96B5BF5FF87B3E6BB214;
+			proxyType = 1;
+			remoteGlobalIDString = 465303A2B5E9ADF49AA2A2C0;
+			remoteInfo = ResonWeb;
+		};
+		72081F094EAB704AB6AD1648 = {
+			isa = PBXTargetDependency;
+			target = 465303A2B5E9ADF49AA2A2C0;
+			targetProxy = 3D6F7061178D25FE7E88C315;
+		};
+		9A996B093F2CB08E9CBB48E9 = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F850E64086F14DBC1109C355;
+			buildPhases = (
+				B26D977D56FFE5FE5A2A05DA,
+				0F9D3B77D616B3A50CA1D7CB,
+				9149BDF24C7EB14D602E211B,
+			);
+			buildRules = (
+
+			);
+			dependencies = (
+				72081F094EAB704AB6AD1648,
+			);
+			packageProductDependencies = (
+
+			);
+			name = ResonWebUITests;
+			productName = ResonWebUITests;
+			productReference = 3F0BF03A705C0DBC48BD9E5C;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		A5A0AD48D83659AD3E4229AD = {
+			isa = PBXGroup;
+			children = (
+				0229D566AF1ADD7CC996AFD7,
+				640610D6CC245EF230D66220,
+				3F0BF03A705C0DBC48BD9E5C,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		F4186EEA3E4E6BBDEF61E09B = {
+			isa = PBXGroup;
+			children = (
+				CCDFDF35B89D1A78EA639AE6,
+				5F502FDFE79CBC038785BC97,
+				400D79A6DC530FBE3455F093,
+				A5A0AD48D83659AD3E4229AD,
+			);
+			sourceTree = "<group>";
+		};
+		E41D928DDD2F192A847D03CC = {
+			isa = XCBuildConfiguration;
+			name = Debug;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				SDKROOT = iphoneos;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SWIFT_VERSION = 5.0;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_COMPILATION_MODE = singlefile;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+			};
+		};
+		060F1927443FAC9C0F9E4C6F = {
+			isa = XCBuildConfiguration;
+			name = Release;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				SDKROOT = iphoneos;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SWIFT_VERSION = 5.0;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited)";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_TESTABILITY = NO;
+			};
+		};
+		B3F8AFC9499986A34C7DAC4E = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E41D928DDD2F192A847D03CC,
+				060F1927443FAC9C0F9E4C6F,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		09EE96B5BF5FF87B3E6BB214 = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					465303A2B5E9ADF49AA2A2C0 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					A0EE2AFA7732A1C021D21D5F = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = 465303A2B5E9ADF49AA2A2C0;
+					};
+					9A996B093F2CB08E9CBB48E9 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = 465303A2B5E9ADF49AA2A2C0;
+					};
+				};
+			};
+			buildConfigurationList = B3F8AFC9499986A34C7DAC4E;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = ja;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				ja,
+				en,
+				Base,
+			);
+			mainGroup = F4186EEA3E4E6BBDEF61E09B;
+			productRefGroup = A5A0AD48D83659AD3E4229AD;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				465303A2B5E9ADF49AA2A2C0,
+				A0EE2AFA7732A1C021D21D5F,
+				9A996B093F2CB08E9CBB48E9,
+			);
+			packageReferences = (
+
+			);
+		};
+	};
+	rootObject = 09EE96B5BF5FF87B3E6BB214;
+}

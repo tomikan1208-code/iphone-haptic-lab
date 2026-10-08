@@ -1,0 +1,49 @@
+name: Build Reson Web prototype
+
+on:
+  push:
+    branches: [main, 'codex/**']
+    paths:
+      - 'youtube-browser/**'
+      - '.github/workflows/build-youtube-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: resonweb-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: youtube-browser
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build separate iPhone app and verify browser UI
+        run: bash scripts/build-and-test.sh
+      - name: Upload prototype IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Reson-Web-iPhone
+          path: youtube-browser/.build/artifact/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload screenshots and test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Reson-Web-preview-and-tests
+          path: |
+            youtube-browser/.build/screenshots/
+            youtube-browser/.build/build.log
+            youtube-browser/.build/test.log
+            youtube-browser/.build/test-summary.json
+          retention-days: 7
