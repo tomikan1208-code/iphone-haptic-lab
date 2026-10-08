@@ -205,8 +205,36 @@ private final class BrowserPlaybackHandler: NSObject, WKScriptMessageHandler {
     }
 }
 
-struct YouTubeWebsite: UIViewRepresentable {
+struct YouTubeWebsite: UIViewControllerRepresentable {
     @ObservedObject var browser: YouTubeBrowser
-    func makeUIView(context: Context) -> WKWebView { browser.webView }
-    func updateUIView(_ uiView: WKWebView, context: Context) {}
+    func makeUIViewController(context: Context) -> BrowserWebsiteController {
+        BrowserWebsiteController(webView: browser.webView)
+    }
+    func updateUIViewController(_ controller: BrowserWebsiteController, context: Context) {}
+}
+
+final class BrowserWebsiteController: UIViewController {
+    private let webView: WKWebView
+
+    init(webView: WKWebView) {
+        self.webView = webView
+        super.init(nibName: nil, bundle: nil)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func loadView() {
+        let container = UIView()
+        container.backgroundColor = .black
+        // Keep WebKit's gesture recognizers in a stable UIKit hierarchy while the
+        // SwiftUI controls, keyboard and haptic bar change around the website.
+        webView.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(webView)
+        NSLayoutConstraint.activate([
+            webView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            webView.topAnchor.constraint(equalTo: container.topAnchor),
+            webView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+        view = container
+    }
 }
