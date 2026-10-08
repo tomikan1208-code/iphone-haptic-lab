@@ -68,7 +68,7 @@ struct BrowserScreen: View {
                         }.buttonStyle(.plain).accessibilityIdentifier("browser.tab.\(page.rawValue)")
                             .accessibilityAddTraits(browser.page == page ? .isSelected : [])
                     }
-                }.accessibilityIdentifier("browser.navigation")
+                }.accessibilityElement(children: .contain).accessibilityIdentifier("browser.navigation")
             }
         }.background(WebTheme.background.ignoresSafeArea()).foregroundStyle(.white)
             .sheet(isPresented: $showMenu) {
