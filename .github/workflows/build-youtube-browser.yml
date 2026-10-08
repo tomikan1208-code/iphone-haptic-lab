@@ -1,10 +1,11 @@
-name: Build Reson Web prototype
+name: Build Reson Web
 
 on:
   push:
     branches: [main, 'codex/**']
     paths:
       - 'youtube-browser/**'
+      - 'haptic-lab/HapticLab/**'
       - '.github/workflows/build-youtube-browser.yml'
   workflow_dispatch:
 
@@ -18,7 +19,7 @@ concurrency:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 25
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: youtube-browser
@@ -27,9 +28,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Build separate iPhone app and verify browser UI
+      - name: Build separate iPhone app and verify browser haptics
         run: bash scripts/build-and-test.sh
-      - name: Upload prototype IPA
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: Reson-Web-iPhone

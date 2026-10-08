@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p .build/screenshots
+node --test scripts/test-playback-observation.mjs
 node scripts/generate-project.mjs
 node scripts/generate-icons.mjs
 if ! xcodebuild build -project ResonWeb.xcodeproj -scheme ResonWeb -configuration Release \

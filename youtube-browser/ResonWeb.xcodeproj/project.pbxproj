@@ -6,6 +6,236 @@
 	};
 	objectVersion = 56;
 	objects = {
+		2D3751F50363365CB2A0CE79 = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/alexeichhorn/YouTubeKit.git";
+			requirement = {
+				kind = revision;
+				revision = e5b7d0396ce12bf3444f0d209e8436c83373b7af;
+			};
+		};
+		CED10FBFCB56268FE1648A5A = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2D3751F50363365CB2A0CE79;
+			productName = YouTubeKit;
+		};
+		AD4D78B7073AFE65C2D032B5 = {
+			isa = PBXBuildFile;
+			productRef = CED10FBFCB56268FE1648A5A;
+		};
+		D6BAC7E45D59C07E70DD2E87 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = HapticPattern.swift;
+			sourceTree = "<group>";
+		};
+		C7725C70CFA961375F0CCBFA = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = HapticAHAP.swift;
+			sourceTree = "<group>";
+		};
+		5B1F47933B20E469EEC82420 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicModels.swift;
+			sourceTree = "<group>";
+		};
+		F30F229E7E688F2DBF14323D = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicLibrary.swift;
+			sourceTree = "<group>";
+		};
+		FB960B8E6D96A5B6760E7183 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicAnalyzer.swift;
+			sourceTree = "<group>";
+		};
+		A2BEE8D299216A367DA81201 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicPCMDecoder.swift;
+			sourceTree = "<group>";
+		};
+		DE25AB7CAE95C1FCA1831371 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicPrecisionAnalysis.swift;
+			sourceTree = "<group>";
+		};
+		822CEED6E5A21AE8B0F45896 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicComposer.swift;
+			sourceTree = "<group>";
+		};
+		1BD6BFC24EF6FDEFAC7F53DA = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicHapticRenderer.swift;
+			sourceTree = "<group>";
+		};
+		F893953D2B01148BDABA8D94 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = YouTubeAudioSource.swift;
+			sourceTree = "<group>";
+		};
+		A0CBDE1DC95D9AAD30B50A38 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = YouTubeAudioDownload.swift;
+			sourceTree = "<group>";
+		};
+		E16DDE1EF2CBC4CD819CC860 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = PCAnalysis.swift;
+			sourceTree = "<group>";
+		};
+		FFE25FE85F34865F4177BEC2 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = Theme.swift;
+			sourceTree = "<group>";
+		};
+		B9F12C9CABCE892DE4F17694 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicVibrationSettings.swift;
+			sourceTree = "<group>";
+		};
+		79C3E1BBF82D3C16BB77FBD7 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicPreparationView.swift;
+			sourceTree = "<group>";
+		};
+		EEE5794C5451AD494F82032F = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicMessage.swift;
+			sourceTree = "<group>";
+		};
+		C7E802EA867C0C991033C1CF = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MusicAnalysisDeletionView.swift;
+			sourceTree = "<group>";
+		};
+		6BE5353849BDA006A729E8C3 = {
+			isa = PBXBuildFile;
+			fileRef = D6BAC7E45D59C07E70DD2E87;
+		};
+		2399A42ED020589A7938793A = {
+			isa = PBXBuildFile;
+			fileRef = C7725C70CFA961375F0CCBFA;
+		};
+		C5BD78F90E47E28DEA2BC0EA = {
+			isa = PBXBuildFile;
+			fileRef = 5B1F47933B20E469EEC82420;
+		};
+		5DF694D054DB2CA2197CA4AA = {
+			isa = PBXBuildFile;
+			fileRef = F30F229E7E688F2DBF14323D;
+		};
+		E87932F60D98A3187B497A1B = {
+			isa = PBXBuildFile;
+			fileRef = FB960B8E6D96A5B6760E7183;
+		};
+		5A8F7C6CB3EC09FFB2AEB258 = {
+			isa = PBXBuildFile;
+			fileRef = A2BEE8D299216A367DA81201;
+		};
+		DE270DC78596DDBFE1C0C5A6 = {
+			isa = PBXBuildFile;
+			fileRef = DE25AB7CAE95C1FCA1831371;
+		};
+		EC4E6CC6F12F9C7880985099 = {
+			isa = PBXBuildFile;
+			fileRef = 822CEED6E5A21AE8B0F45896;
+		};
+		C0C46AC847871505B072C03F = {
+			isa = PBXBuildFile;
+			fileRef = 1BD6BFC24EF6FDEFAC7F53DA;
+		};
+		B829141EECE1756728396935 = {
+			isa = PBXBuildFile;
+			fileRef = F893953D2B01148BDABA8D94;
+		};
+		925245EA0CADB94083FC0892 = {
+			isa = PBXBuildFile;
+			fileRef = A0CBDE1DC95D9AAD30B50A38;
+		};
+		136A274F5631A6D65FA218E2 = {
+			isa = PBXBuildFile;
+			fileRef = E16DDE1EF2CBC4CD819CC860;
+		};
+		CD9835714026C666730011B1 = {
+			isa = PBXBuildFile;
+			fileRef = FFE25FE85F34865F4177BEC2;
+		};
+		4C13D6AE5A6806FEB6F060A3 = {
+			isa = PBXBuildFile;
+			fileRef = B9F12C9CABCE892DE4F17694;
+		};
+		2821F47CF81016BE3F9B21A7 = {
+			isa = PBXBuildFile;
+			fileRef = 79C3E1BBF82D3C16BB77FBD7;
+		};
+		9E118C83B670C79E47EB2A24 = {
+			isa = PBXBuildFile;
+			fileRef = EEE5794C5451AD494F82032F;
+		};
+		991E53BBA27F93EED9E5A7D9 = {
+			isa = PBXBuildFile;
+			fileRef = C7E802EA867C0C991033C1CF;
+		};
+		97EF7224FD6E7B000EE69496 = {
+			isa = PBXGroup;
+			children = (
+				D6BAC7E45D59C07E70DD2E87,
+				C7725C70CFA961375F0CCBFA,
+				5B1F47933B20E469EEC82420,
+				F30F229E7E688F2DBF14323D,
+				FB960B8E6D96A5B6760E7183,
+				A2BEE8D299216A367DA81201,
+				DE25AB7CAE95C1FCA1831371,
+				822CEED6E5A21AE8B0F45896,
+				1BD6BFC24EF6FDEFAC7F53DA,
+				F893953D2B01148BDABA8D94,
+				A0CBDE1DC95D9AAD30B50A38,
+				E16DDE1EF2CBC4CD819CC860,
+				FFE25FE85F34865F4177BEC2,
+				B9F12C9CABCE892DE4F17694,
+				79C3E1BBF82D3C16BB77FBD7,
+				EEE5794C5451AD494F82032F,
+				C7E802EA867C0C991033C1CF,
+			);
+			name = "Shared Reson haptics";
+			path = "../haptic-lab/HapticLab";
+			sourceTree = "<group>";
+		};
+		3DF21A1F21FFD3744BDCF2E3 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = BrowserFixtures.swift;
+			sourceTree = "<group>";
+		};
+		31D61FE3BA0803AB2BC39DC7 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = BrowserHapticViews.swift;
+			sourceTree = "<group>";
+		};
+		0F1C29C5E8A706DAF6C91FD5 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = BrowserHaptics.swift;
+			sourceTree = "<group>";
+		};
 		DC48C2DB6B819D0D470F25DD = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.swift;
@@ -18,11 +248,29 @@
 			path = ResonWebApp.swift;
 			sourceTree = "<group>";
 		};
+		615C7171D5D087669FBD2263 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = WebPlaybackSnapshot.swift;
+			sourceTree = "<group>";
+		};
 		B5A3A8F249CFED560D8FF806 = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.swift;
 			path = YouTubeBrowser.swift;
 			sourceTree = "<group>";
+		};
+		9D4FCF55BC584E98092A0D11 = {
+			isa = PBXBuildFile;
+			fileRef = 3DF21A1F21FFD3744BDCF2E3;
+		};
+		5DCAA308AC1EECA60EEEF6D6 = {
+			isa = PBXBuildFile;
+			fileRef = 31D61FE3BA0803AB2BC39DC7;
+		};
+		194D5901128EE791C5FFF12C = {
+			isa = PBXBuildFile;
+			fileRef = 0F1C29C5E8A706DAF6C91FD5;
 		};
 		DB749354C08D1785941D9FC1 = {
 			isa = PBXBuildFile;
@@ -32,9 +280,25 @@
 			isa = PBXBuildFile;
 			fileRef = 2826876AC9E08355B491B21A;
 		};
+		27CBF3BBD54D739E8EE01EB4 = {
+			isa = PBXBuildFile;
+			fileRef = 615C7171D5D087669FBD2263;
+		};
 		2C1E7895A779FBD04A9ADDDE = {
 			isa = PBXBuildFile;
 			fileRef = B5A3A8F249CFED560D8FF806;
+		};
+		87A9F49A7628E01F0B35EABF = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.javascript;
+			path = PlaybackObservation.js;
+			sourceTree = "<group>";
+		};
+		B127918A4473B4977D881B90 = {
+			isa = PBXFileReference;
+			lastKnownFileType = text;
+			path = "../haptic-lab/HapticLab/Resources/YouTubeKit-LICENSE.txt";
+			sourceTree = SOURCE_ROOT;
 		};
 		376880C88EDA46CA5EF27FF9 = {
 			isa = PBXFileReference;
@@ -44,11 +308,21 @@
 		};
 		76C8E638A6C792CA49EDF8F2 = {
 			isa = PBXBuildFile;
+			fileRef = 87A9F49A7628E01F0B35EABF;
+		};
+		1A86ADB16D1E07D4532510A7 = {
+			isa = PBXBuildFile;
+			fileRef = B127918A4473B4977D881B90;
+		};
+		1AB2A68084B67758A02A1252 = {
+			isa = PBXBuildFile;
 			fileRef = 376880C88EDA46CA5EF27FF9;
 		};
 		86A44DD5146006ABE3C64383 = {
 			isa = PBXGroup;
 			children = (
+				87A9F49A7628E01F0B35EABF,
+				B127918A4473B4977D881B90,
 				376880C88EDA46CA5EF27FF9,
 			);
 			path = Resources;
@@ -63,8 +337,12 @@
 		CCDFDF35B89D1A78EA639AE6 = {
 			isa = PBXGroup;
 			children = (
+				3DF21A1F21FFD3744BDCF2E3,
+				31D61FE3BA0803AB2BC39DC7,
+				0F1C29C5E8A706DAF6C91FD5,
 				DC48C2DB6B819D0D470F25DD,
 				2826876AC9E08355B491B21A,
+				615C7171D5D087669FBD2263,
 				B5A3A8F249CFED560D8FF806,
 				86A44DD5146006ABE3C64383,
 				3E7E88F2FBC4F9F2EC9F28A3,
@@ -83,9 +361,30 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9D4FCF55BC584E98092A0D11,
+				5DCAA308AC1EECA60EEEF6D6,
+				194D5901128EE791C5FFF12C,
 				DB749354C08D1785941D9FC1,
 				2AC1AF0091A31BD14294BF97,
+				27CBF3BBD54D739E8EE01EB4,
 				2C1E7895A779FBD04A9ADDDE,
+				6BE5353849BDA006A729E8C3,
+				2399A42ED020589A7938793A,
+				C5BD78F90E47E28DEA2BC0EA,
+				5DF694D054DB2CA2197CA4AA,
+				E87932F60D98A3187B497A1B,
+				5A8F7C6CB3EC09FFB2AEB258,
+				DE270DC78596DDBFE1C0C5A6,
+				EC4E6CC6F12F9C7880985099,
+				C0C46AC847871505B072C03F,
+				B829141EECE1756728396935,
+				925245EA0CADB94083FC0892,
+				136A274F5631A6D65FA218E2,
+				CD9835714026C666730011B1,
+				4C13D6AE5A6806FEB6F060A3,
+				2821F47CF81016BE3F9B21A7,
+				9E118C83B670C79E47EB2A24,
+				991E53BBA27F93EED9E5A7D9,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -93,7 +392,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-
+				AD4D78B7073AFE65C2D032B5,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -102,6 +401,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				76C8E638A6C792CA49EDF8F2,
+				1A86ADB16D1E07D4532510A7,
+				1AB2A68084B67758A02A1252,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -171,12 +472,18 @@
 
 			);
 			packageProductDependencies = (
-
+				CED10FBFCB56268FE1648A5A,
 			);
 			name = ResonWeb;
 			productName = ResonWeb;
 			productReference = 0229D566AF1ADD7CC996AFD7;
 			productType = "com.apple.product-type.application";
+		};
+		FC85EF517F15DC25DEBFCA75 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = BrowserHapticsTests.swift;
+			sourceTree = "<group>";
 		};
 		CA07D5D8DA69CF4CD8B1B1BC = {
 			isa = PBXFileReference;
@@ -184,14 +491,30 @@
 			path = BrowserNavigationTests.swift;
 			sourceTree = "<group>";
 		};
+		3DBAA322579D5C2D4DA8CDC8 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = WebPlaybackSnapshotTests.swift;
+			sourceTree = "<group>";
+		};
+		F1844A7AE1778CC0DC06E9A0 = {
+			isa = PBXBuildFile;
+			fileRef = FC85EF517F15DC25DEBFCA75;
+		};
 		9DF2E16C915AE5F5492F2A95 = {
 			isa = PBXBuildFile;
 			fileRef = CA07D5D8DA69CF4CD8B1B1BC;
 		};
+		702D4CF84713D43D446B7D7C = {
+			isa = PBXBuildFile;
+			fileRef = 3DBAA322579D5C2D4DA8CDC8;
+		};
 		5F502FDFE79CBC038785BC97 = {
 			isa = PBXGroup;
 			children = (
+				FC85EF517F15DC25DEBFCA75,
 				CA07D5D8DA69CF4CD8B1B1BC,
+				3DBAA322579D5C2D4DA8CDC8,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -207,7 +530,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F1844A7AE1778CC0DC06E9A0,
 				9DF2E16C915AE5F5492F2A95,
+				702D4CF84713D43D446B7D7C,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -446,6 +771,7 @@
 			isa = PBXGroup;
 			children = (
 				CCDFDF35B89D1A78EA639AE6,
+				97EF7224FD6E7B000EE69496,
 				5F502FDFE79CBC038785BC97,
 				400D79A6DC530FBE3455F093,
 				A5A0AD48D83659AD3E4229AD,
@@ -531,7 +857,7 @@
 				9A996B093F2CB08E9CBB48E9,
 			);
 			packageReferences = (
-
+				2D3751F50363365CB2A0CE79,
 			);
 		};
 	};

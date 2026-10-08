@@ -8,7 +8,10 @@ enum WebTheme {
 
 struct BrowserScreen: View {
     @EnvironmentObject private var browser: YouTubeBrowser
-    @State private var showMenu = false
+    @EnvironmentObject private var library: MusicLibrary
+    @EnvironmentObject private var haptics: BrowserHaptics
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var sheet: BrowserSheet?
     @State private var immersive = false
     @FocusState private var searchFocused: Bool
 
@@ -23,7 +26,7 @@ struct BrowserScreen: View {
                 Text("Reson Web").font(.system(size: 23, weight: .bold, design: .rounded)).tracking(0.5)
                 Spacer()
                 if !immersive {
-                    Button { searchFocused = false; showMenu = true } label: {
+                    Button { searchFocused = false; sheet = .menu } label: {
                         Image(systemName: "ellipsis").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
                     }.accessibilityLabel("メニュー").accessibilityIdentifier("browser.menu")
                     Button { searchFocused = false; browser.account() } label: {
@@ -57,6 +60,7 @@ struct BrowserScreen: View {
                 }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
             if !immersive {
+                if haptics.selection != nil || library.preparation != nil { BrowserHapticBar(sheet: $sheet) }
                 HStack(spacing: 0) {
                     ForEach(BrowserPage.allCases) { page in
                         Button { searchFocused = false; browser.open(page) } label: {
@@ -71,23 +75,46 @@ struct BrowserScreen: View {
                 }.accessibilityElement(children: .contain).accessibilityIdentifier("browser.navigation")
             }
         }.background(WebTheme.background.ignoresSafeArea()).foregroundStyle(.white)
-            .sheet(isPresented: $showMenu) {
+            .onChange(of: scenePhase) { phase in
+                if phase == .background { haptics.setForeground(false) }
+                else if phase == .active { haptics.setForeground(true) }
+            }
+            .sheet(item: $sheet) { item in
+                switch item {
+                case .preparation(let selection):
+                    MusicPreparationView(selection: selection, initialAudio: nil, preview: { sheet = nil })
+                case .adjustment(let selection):
+                    BrowserHapticSettingsView(selection: selection, prepareAgain: { sheet = .preparation(selection) })
+                case .progress:
+                    BrowserPreparationProgressView()
+                case .menu:
                 NavigationStack {
                     List {
-                        Button { showMenu = false; browser.reload() } label: { Label("ページを再読み込み", systemImage: "arrow.clockwise") }
-                        Button { showMenu = false; browser.openInSafari() } label: { Label("Safariで開く", systemImage: "safari") }
-                        Button { showMenu = false; immersive = true } label: { Label("バーをたたむ", systemImage: "arrow.up.left.and.arrow.down.right") }
+                        Section("振動") {
+                            Toggle("YouTubeの再生に同期", isOn: $haptics.enabled).accessibilityIdentifier("browser.haptics.menuToggle")
+                            NavigationLink { BrowserSavedHapticsView(close: { sheet = nil }) } label: { Label("保存した振動", systemImage: "waveform") }
+                                .accessibilityIdentifier("browser.haptics.saved")
+                            NavigationLink { GlobalMusicSettingsView() } label: { Label("グローバル振動設定", systemImage: "slider.horizontal.3") }
+                            NavigationLink { AnalysisSettingsView() } label: { Label("解析方法・PCサーバー", systemImage: "desktopcomputer") }
+                            if library.preparation != nil {
+                                Button("作成の進捗を表示") { sheet = .progress }
+                            }
+                        }
+                        Section {
+                        Button { sheet = nil; browser.reload() } label: { Label("ページを再読み込み", systemImage: "arrow.clockwise") }
+                        Button { sheet = nil; browser.openInSafari() } label: { Label("Safariで開く", systemImage: "safari") }
+                        Button { sheet = nil; immersive = true } label: { Label("バーをたたむ", systemImage: "arrow.up.left.and.arrow.down.right") }
                             .accessibilityIdentifier("browser.hideChrome")
+                        }
                         Section {
                             Text("YouTubeへのログイン中は、YouTube側の履歴・再生リストを使えます。")
-                            Text("Googleの制限によりアプリ内でログインできない場合があります。Safariのログイン状態はこのアプリとは共有されません。")
-                                .foregroundStyle(.secondary)
-                            Text("Resonとは別のUI試作アプリです。保存した振動はResonで引き続き使えます。")
+                            Text("作成した振動はこのアプリに保存します。次回から解析せずに動画へ同期できます。")
                                 .foregroundStyle(.secondary)
                         }.font(.system(size: 13))
                     }.scrollContentBackground(.hidden).background(WebTheme.background)
                         .navigationTitle("メニュー").navigationBarTitleDisplayMode(.inline)
-                        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("閉じる") { showMenu = false } } }
+                        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("閉じる") { sheet = nil } } }
+                }
                 }
             }
     }

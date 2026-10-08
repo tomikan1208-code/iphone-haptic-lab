@@ -12,10 +12,10 @@ assert info["CFBundleIdentifier"] == "com.tomikan1208.resonweb"
 assert info["CFBundleDisplayName"] == "Reson Web"
 assert not (app / "_CodeSignature").exists()
 summary = json.loads((root / ".build/test-summary.json").read_text())
-assert summary["result"] == "Passed" and summary["failedTests"] == 0 and summary["passedTests"] >= 4
+assert summary["result"] == "Passed" and summary["failedTests"] == 0 and summary["passedTests"] >= 20
 artifact = root / ".build/artifact"
 artifact.mkdir(parents=True, exist_ok=True)
-ipa = artifact / "Reson-Web-0.1.0-unsigned.ipa"
+ipa = artifact / f"Reson-Web-{info['CFBundleShortVersionString']}-unsigned.ipa"
 with zipfile.ZipFile(ipa, "w", zipfile.ZIP_DEFLATED) as archive:
     for file in sorted(app.rglob("*")):
         if file.is_file():
@@ -27,6 +27,8 @@ metadata = {
     "version": info["CFBundleShortVersionString"], "build": info["CFBundleVersion"],
     "signed": False, "sourceCommit": os.environ.get("GITHUB_SHA"), "nativeTestsPassed": summary["passedTests"],
     "youtubeAccountLoginTested": False, "youtubeHistoryWriteTested": False,
+    "userReportedDeviceVerification": {"version": "0.1.0", "date": "2026-10-08", "login": True, "youtubeHistory": True},
+    "hapticHardwareTested": False, "websiteObserverTestsPassed": 6,
     "ipaSHA256": hashlib.sha256(ipa.read_bytes()).hexdigest(),
     "workflowURL": f"https://github.com/{os.environ.get('GITHUB_REPOSITORY')}/actions/runs/{os.environ.get('GITHUB_RUN_ID')}"
 }

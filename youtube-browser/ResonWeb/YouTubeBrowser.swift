@@ -47,6 +47,9 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
     @Published private(set) var canGoBack = false
     @Published private(set) var currentURL = BrowserPage.search.url
     @Published private(set) var error: String?
+    var onPlayback: ((WebPlaybackSnapshot) -> Void)?
+    var onPlaybackDisconnected: (() -> Void)?
+    private var playbackHandler: BrowserPlaybackHandler?
     private var observations: [NSKeyValueObservation] = []
     private var fixture: Bool {
         #if DEBUG
@@ -60,8 +63,22 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
         configuration.allowsInlineMediaPlayback = true
+        if let url = Bundle.main.url(forResource: "PlaybackObservation", withExtension: "js"),
+           let script = try? String(contentsOf: url, encoding: .utf8) {
+            #if DEBUG
+            let fixture = ProcessInfo.processInfo.arguments.contains("--browser-ui-fixture")
+            #else
+            let fixture = false
+            #endif
+            configuration.userContentController.addUserScript(WKUserScript(
+                source: script.replacingOccurrences(of: "__RESON_TEST_FIXTURE__", with: fixture ? "true" : "false"),
+                injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .world(name: "ResonPlayback")))
+        }
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
+        let handler = BrowserPlaybackHandler(browser: self)
+        playbackHandler = handler
+        configuration.userContentController.add(handler, contentWorld: .world(name: "ResonPlayback"), name: "resonPlayback")
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
@@ -73,6 +90,11 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
             Task { @MainActor in self?.loading = self?.webView.isLoading ?? false }
         }, webView.observe(\.canGoBack, options: [.new]) { [weak self] _, _ in
             Task { @MainActor in self?.canGoBack = self?.webView.canGoBack ?? false }
+        }, webView.observe(\.url, options: [.new]) { [weak self] _, _ in
+            Task { @MainActor in
+                guard let self, !self.fixture, let url = self.webView.url else { return }
+                self.currentURL = url
+            }
         }]
         load(BrowserPage.search.url)
     }
@@ -83,20 +105,15 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
     func reload() { load(currentURL) }
     func back() { webView.goBack() }
     func openInSafari() { UIApplication.shared.open(currentURL) }
+    func openVideo(_ selection: MusicSelection) { page = .search; load(URL(string: selection.url)!) }
 
     private func load(_ url: URL) {
+        onPlaybackDisconnected?()
         currentURL = url
         error = nil
         if fixture {
             #if DEBUG
-            let heading = url.path == "/feed/history" ? "視聴履歴" : url.path == "/feed/playlists" ? "あなたの再生リスト" : "YouTube"
-            webView.loadHTMLString("""
-            <html><head><meta name="viewport" content="width=device-width,initial-scale=1">
-            <style>html,body{margin:0;background:#0f0f0f;color:white;font:16px system-ui}header{padding:18px;font-size:24px;font-weight:700}
-            .video{margin:16px;height:175px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#18232b,#3d2442);border-radius:12px;font-size:42px}
-            p{margin:16px;color:#aaa}a{color:#9cddce}</style></head><body><header>\(heading)</header><div class="video">▶</div>
-            <p>UI Preview · オフラインの画面確認用</p><p><a href="https://www.youtube.com/watch?v=lkiV3U0GfGg">Preview video</a></p></body></html>
-            """, baseURL: url)
+            webView.loadHTMLString(BrowserFixtures.html(url: url), baseURL: url)
             #endif
         } else { webView.load(URLRequest(url: url)) }
     }
@@ -106,11 +123,16 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
         loading = false
         canGoBack = webView.canGoBack
     }
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) { onPlaybackDisconnected?() }
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { report(error) }
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { report(error) }
-    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { self.error = "ページが中断されました。再読み込みしてください。" }
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        onPlaybackDisconnected?()
+        self.error = "ページが中断されました。再読み込みしてください。"
+    }
     private func report(_ error: Error) {
         guard (error as NSError).code != NSURLErrorCancelled else { return }
+        onPlaybackDisconnected?()
         loading = false
         self.error = "ページを開けませんでした。接続を確認して再読み込みしてください。"
     }
@@ -134,6 +156,29 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
             else { UIApplication.shared.open(url) }
         }
         return nil
+    }
+
+    fileprivate func receive(_ message: WKScriptMessage) {
+        let origin = message.frameInfo.securityOrigin
+        let trusted = WebPlaybackSnapshot.acceptsOrigin(scheme: origin.protocol, host: origin.host,
+                                                       mainFrame: message.frameInfo.isMainFrame)
+        guard message.webView === webView, message.frameInfo.isMainFrame, trusted || fixture,
+              let url = fixture ? currentURL : webView.url,
+              let snapshot = WebPlaybackSnapshot.decode(message.body, pageURL: url) else {
+            onPlaybackDisconnected?()
+            return
+        }
+        if !fixture { currentURL = snapshot.url }
+        onPlayback?(snapshot)
+    }
+}
+
+@MainActor
+private final class BrowserPlaybackHandler: NSObject, WKScriptMessageHandler {
+    weak var browser: YouTubeBrowser?
+    init(browser: YouTubeBrowser) { self.browser = browser }
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        browser?.receive(message)
     }
 }
 

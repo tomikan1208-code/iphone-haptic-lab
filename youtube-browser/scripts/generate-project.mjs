@@ -24,6 +24,27 @@ function serialize(value, depth = 0) {
 
 const appTarget = id('target.app');
 const projectID = id('project');
+const youtubePackage = add('package.youtube', {
+  isa: 'XCRemoteSwiftPackageReference', repositoryURL: 'https://github.com/alexeichhorn/YouTubeKit.git',
+  requirement: { kind: 'revision', revision: 'e5b7d0396ce12bf3444f0d209e8436c83373b7af' }
+});
+const youtubeProduct = add('product.youtube', {
+  isa: 'XCSwiftPackageProductDependency', package: youtubePackage, productName: 'YouTubeKit'
+});
+const youtubeFramework = add('build.youtube', { isa: 'PBXBuildFile', productRef: youtubeProduct });
+const sharedFiles = [
+  'HapticPattern.swift', 'HapticAHAP.swift', 'MusicModels.swift', 'MusicLibrary.swift',
+  'MusicAnalyzer.swift', 'MusicPCMDecoder.swift', 'MusicPrecisionAnalysis.swift', 'MusicComposer.swift',
+  'MusicHapticRenderer.swift', 'YouTubeAudioSource.swift', 'YouTubeAudioDownload.swift', 'PCAnalysis.swift',
+  'Theme.swift', 'MusicVibrationSettings.swift', 'MusicPreparationView.swift', 'MusicMessage.swift',
+  'MusicAnalysisDeletionView.swift'
+];
+const sharedReferences = sharedFiles.map(file => {
+  if (!fs.existsSync(path.join(root, '../haptic-lab/HapticLab', file))) throw new Error(`Missing shared source: ${file}`);
+  return add(`ref.shared.${file}`, { isa: 'PBXFileReference', lastKnownFileType: 'sourcecode.swift', path: file, sourceTree: '<group>' });
+});
+const sharedSources = sharedReferences.map((reference, i) => add(`build.shared.${sharedFiles[i]}`, { isa: 'PBXBuildFile', fileRef: reference }));
+const sharedGroup = add('group.shared', { isa: 'PBXGroup', children: sharedReferences, name: 'Shared Reson haptics', path: '../haptic-lab/HapticLab', sourceTree: '<group>' });
 const appFiles = fs.readdirSync(path.join(root, 'ResonWeb')).filter(file => file.endsWith('.swift')).sort();
 const appReferences = appFiles.map(file => add(`ref.app.${file}`, {
   isa: 'PBXFileReference', lastKnownFileType: 'sourcecode.swift', path: file, sourceTree: '<group>'
@@ -31,7 +52,10 @@ const appReferences = appFiles.map(file => add(`ref.app.${file}`, {
 const appSources = appReferences.map((reference, index) => add(`build.app.${appFiles[index]}`, {
   isa: 'PBXBuildFile', fileRef: reference
 }));
+appSources.push(...sharedSources);
 const resourceReferences = [
+  add('ref.playback-script', { isa: 'PBXFileReference', lastKnownFileType: 'sourcecode.javascript', path: 'PlaybackObservation.js', sourceTree: '<group>' }),
+  add('ref.youtube-license', { isa: 'PBXFileReference', lastKnownFileType: 'text', path: '../haptic-lab/HapticLab/Resources/YouTubeKit-LICENSE.txt', sourceTree: 'SOURCE_ROOT' }),
   add('ref.assets', { isa: 'PBXFileReference', lastKnownFileType: 'folder.assetcatalog', path: 'Assets.xcassets', sourceTree: '<group>' })
 ];
 const resourceBuildFiles = resourceReferences.map((reference, index) => add(`build.resource.${index}`, {
@@ -60,7 +84,7 @@ for (const target of targets) {
   products.push(product);
   const phases = [
     add(`sources.${target.key}`, { isa: 'PBXSourcesBuildPhase', buildActionMask: 2147483647, files: target.sources, runOnlyForDeploymentPostprocessing: 0 }),
-    add(`frameworks.${target.key}`, { isa: 'PBXFrameworksBuildPhase', buildActionMask: 2147483647, files: [], runOnlyForDeploymentPostprocessing: 0 }),
+    add(`frameworks.${target.key}`, { isa: 'PBXFrameworksBuildPhase', buildActionMask: 2147483647, files: target.key === 'app' ? [youtubeFramework] : [], runOnlyForDeploymentPostprocessing: 0 }),
     add(`resources.${target.key}`, { isa: 'PBXResourcesBuildPhase', buildActionMask: 2147483647, files: target.resources, runOnlyForDeploymentPostprocessing: 0 })
   ];
   const base = {
@@ -100,13 +124,13 @@ for (const target of targets) {
   }
   add(`target.${target.key}`, {
     isa: 'PBXNativeTarget', buildConfigurationList: configList, buildPhases: phases, buildRules: [],
-    dependencies, packageProductDependencies: [],
+    dependencies, packageProductDependencies: target.key === 'app' ? [youtubeProduct] : [],
     name: target.name, productName: target.name, productReference: product, productType: target.type
   });
 }
 
 const productGroup = add('group.products', { isa: 'PBXGroup', children: products, name: 'Products', sourceTree: '<group>' });
-const mainGroup = add('group.main', { isa: 'PBXGroup', children: [appGroup, ...testGroups, productGroup], sourceTree: '<group>' });
+const mainGroup = add('group.main', { isa: 'PBXGroup', children: [appGroup, sharedGroup, ...testGroups, productGroup], sourceTree: '<group>' });
 const projectConfigurations = ['Debug', 'Release'].map(name => add(`config.project.${name}`, {
   isa: 'XCBuildConfiguration', name,
   buildSettings: {
@@ -128,7 +152,7 @@ add('project', {
   buildConfigurationList: projectConfigurationList, compatibilityVersion: 'Xcode 14.0',
   developmentRegion: 'ja', hasScannedForEncodings: 0, knownRegions: ['ja', 'en', 'Base'],
   mainGroup, productRefGroup: productGroup, projectDirPath: '', projectRoot: '',
-  targets: targets.map(target => id(`target.${target.key}`)), packageReferences: []
+  targets: targets.map(target => id(`target.${target.key}`)), packageReferences: [youtubePackage]
 });
 const project = { archiveVersion: 1, classes: {}, objectVersion: 56, objects, rootObject: projectID };
 const projectDir = path.join(root, 'ResonWeb.xcodeproj');
