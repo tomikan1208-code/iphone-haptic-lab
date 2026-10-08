@@ -147,6 +147,7 @@ final class MusicHapticRenderer {
 
 @MainActor
 final class MusicPlayback: ObservableObject {
+    @Published private(set) var mediaSessionID = UUID()
     @Published private(set) var selection: MusicSelection?
     @Published private(set) var isPlaying = false
     @Published private(set) var isReady = false
@@ -203,6 +204,7 @@ final class MusicPlayback: ObservableObject {
 
     func load(_ selection: MusicSelection, track: MusicHapticTrack?, mediaURL: URL?, settings: MusicSettings, variantID: String? = nil) {
         stop()
+        mediaSessionID = UUID()
         self.selection = selection
         self.track = track
         analysisVariantID = variantID
@@ -454,10 +456,39 @@ struct YouTubeMusicPlayer: UIViewRepresentable {
         context.coordinator.webView = webView
         playback.beginYouTubeLoading(videoID: videoID)
         let origin = "https://\(Bundle.main.bundleIdentifier ?? "com.tomikan1208.hapticlab")"
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--youtube-playback-fixture") {
+            webView.isAccessibilityElement = true
+            webView.accessibilityIdentifier = "music.youtubeFixture"
+            webView.accessibilityValue = UUID().uuidString
+            webView.loadHTMLString(Self.playbackFixtureHTML(videoID: videoID), baseURL: URL(string: origin))
+            return webView
+        }
+        #endif
         // The bundle-ID HTTPS base supplies the app identity required by YouTube (error 153).
         webView.loadHTMLString(Self.html(videoID: videoID, origin: origin), baseURL: URL(string: origin))
         return webView
     }
+
+    #if DEBUG
+    /// An offline clock exercises the same WebView lifecycle and message bridge without a YouTube account.
+    private static func playbackFixtureHTML(videoID: String) -> String {
+        """
+        <html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>html,body{height:100%;margin:0;background:#101d22;color:#8ff0cf;font:24px system-ui}
+        body{display:flex;align-items:center;justify-content:center}</style></head><body>Playback Fixture<script>
+        var state=2,position=0,started=performance.now(),timer;
+        function time(){return position+(state===1?(performance.now()-started)/1000:0)}
+        function send(extra){window.webkit.messageHandlers.musicPlayer.postMessage(Object.assign({state:state,time:time(),
+          duration:120,rate:1,videoID:'\(videoID)',sent:Date.now()},extra||{}))}
+        var player={playVideo:function(){started=performance.now();state=1;send()},
+          pauseVideo:function(){position=time();state=2;send()},stopVideo:function(){position=0;state=2;send()},
+          seekTo:function(value){position=value;started=performance.now();send()},destroy:function(){clearInterval(timer)}};
+        timer=setInterval(function(){send()},20);send({ready:true});
+        </script></body></html>
+        """
+    }
+    #endif
 
     static func html(videoID: String, origin: String) -> String {
         """

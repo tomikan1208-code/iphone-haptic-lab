@@ -2,32 +2,28 @@ import AVKit
 import SwiftUI
 
 struct MusicPlayerScreen: View {
+    let bottomInset: CGFloat
     @EnvironmentObject private var playback: MusicPlayback
     @EnvironmentObject private var library: MusicLibrary
-    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var presentation: MusicPlayerPresentation
     @State private var showSpectrum = true
     @State private var showSettings = false
 
     var body: some View {
-        NavigationStack {
-            GeometryReader { geometry in
-                VStack(spacing: 0) {
-                    mediaPlayer
-                        .frame(width: geometry.size.width, height: playback.containsVideo
-                               ? max(200, geometry.size.width * 9 / 16)
-                               : min(170, max(100, geometry.size.height * 0.27))).background(.black)
-                        .accessibilityIdentifier("music.mediaPlayer")
-                    HStack {
-                        Button("閉じる") { playback.pause(); dismiss() }.frame(minHeight: 44)
-                        Spacer()
-                        Button { showSettings = true } label: {
-                            Label("振動を調整", systemImage: "slider.horizontal.3")
-                        }.frame(minHeight: 44).disabled(!playback.hasHaptics)
-                            .accessibilityIdentifier("music.settings")
-                    }.font(.system(size: 13)).tint(LabTheme.mint).padding(.horizontal, 16)
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                mediaPlayer
+                    .frame(width: geometry.size.width, height: mediaHeight(in: geometry.size))
+                    .background(.black).clipped().contentShape(Rectangle())
+                    .simultaneousGesture(playerSwipe)
+                    .accessibilityIdentifier("music.mediaPlayer")
+                if presentation.mode == .minimized {
+                    miniPlayer
+                } else if presentation.mode == .portrait {
+                    portraitHandle
                     ScrollView {
                         VStack(alignment: .leading, spacing: 12) {
-                            songHeader
+                            songHeader.simultaneousGesture(playerSwipe)
                             if let score = playback.visualizationTrack?.arrangement { arrangementPanel(score) }
                             if let message = playback.message { MusicMessage(text: message) { playback.message = nil } }
                             if !playback.hasHaptics {
@@ -35,46 +31,22 @@ struct MusicPlayerScreen: View {
                                     .font(.system(size: 13)).foregroundStyle(LabTheme.muted)
                             }
                         }.padding(16)
-                    }
-                    .scrollIndicators(.hidden)
+                    }.scrollIndicators(.hidden)
                     VStack(spacing: 8) {
-                        if playback.hasHaptics {
-                            HStack {
-                                Text(showSpectrum ? playback.visualizationTrack?.version == 3
-                                     ? "音の周波数（参考）" : "音の周波数 · 灰：音 / 緑：振動"
-                                     : "現在の前後2秒 · 白：アクセント")
-                                    .font(.system(size: 10)).foregroundStyle(LabTheme.muted)
-                                Spacer()
-                                Button(showSpectrum ? "波形" : "周波数") { showSpectrum.toggle() }
-                                    .font(.system(size: 11)).foregroundStyle(LabTheme.mint)
-                                    .accessibilityIdentifier("haptics.toggle")
-                            }
-                            TimelineView(.animation(minimumInterval: 0.02, paused: !playback.isPlaying)) { _ in
-                                Group {
-                                    if showSpectrum {
-                                        HapticSpectrumView(track: playback.visualizationTrack, position: playback.visualizationPosition,
-                                                           settings: playback.settings, active: playback.hapticsActive)
-                                    } else {
-                                        HapticTimelineView(track: playback.visualizationTrack, position: playback.visualizationPosition,
-                                                           settings: playback.settings, playing: playback.isPlaying)
-                                    }
-                                }
-                            }.frame(height: showSpectrum ? 66 : 48)
-                        }
+                        visualization
                         controls
-                    }.padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 12).background(LabTheme.panel)
+                    }.padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 12 + bottomInset).background(LabTheme.panel)
+                } else {
+                    landscapeControls.padding(.bottom, bottomInset)
                 }
-                .background(LabTheme.background).foregroundStyle(.white)
             }
-            .ignoresSafeArea(.container, edges: .top)
-            .toolbar(.hidden, for: .navigationBar)
+            .background(LabTheme.background).foregroundStyle(.white)
         }
-        .statusBarHidden()
         .preferredColorScheme(.dark)
-        .onAppear {
-            if playback.visualizationTrack?.version == 3 {
-                showSpectrum = false
-            }
+        .onAppear { showSpectrum = playback.visualizationTrack?.version != 3 }
+        .onChange(of: playback.selection?.id) { _ in showSpectrum = playback.visualizationTrack?.version != 3 }
+        .onChange(of: presentation.mode) { mode in
+            if mode == .portrait { showSpectrum = playback.visualizationTrack?.version != 3 }
         }
         .sheet(isPresented: $showSettings) {
             NavigationStack {
@@ -84,13 +56,126 @@ struct MusicPlayerScreen: View {
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完了") { showSettings = false } } }
             }.preferredColorScheme(.dark)
         }
-        .onDisappear { playback.pause() }
+    }
+
+    private func mediaHeight(in size: CGSize) -> CGFloat {
+        switch presentation.mode {
+        case .minimized: return playback.containsVideo ? max(200, size.width * 9 / 16) : 0
+        case .portrait: return playback.containsVideo ? max(200, size.width * 9 / 16) : min(170, max(100, size.height * 0.27))
+        case .landscape: return max(200, size.height - 96 - bottomInset)
+        }
+    }
+
+    private var playerSwipe: some Gesture {
+        DragGesture(minimumDistance: 30).onEnded { gesture in
+            guard abs(gesture.translation.height) > 70,
+                  abs(gesture.translation.height) > abs(gesture.translation.width) * 1.5 else { return }
+            presentation.swipe(up: gesture.translation.height < 0)
+        }
+    }
+
+    private var portraitHandle: some View {
+        HStack {
+            Button("閉じる") { presentation.minimize() }.frame(minHeight: 44)
+                .accessibilityIdentifier("music.minimize")
+            Spacer()
+            Button { presentation.enterLandscape() } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
+                .frame(width: 44, height: 44).accessibilityLabel("横向き全画面")
+                .accessibilityIdentifier("music.fullscreen")
+            Button { showSettings = true } label: { Label("振動を調整", systemImage: "slider.horizontal.3") }
+                .frame(minHeight: 44).disabled(!playback.hasHaptics).accessibilityIdentifier("music.settings")
+        }.font(.system(size: 13)).tint(LabTheme.mint).padding(.horizontal, 16)
+            .contentShape(Rectangle()).simultaneousGesture(playerSwipe)
+            .accessibilityElement(children: .contain).accessibilityIdentifier("music.playerHandle")
+    }
+
+    @ViewBuilder private var visualization: some View {
+        if playback.hasHaptics {
+            HStack {
+                Text(showSpectrum ? playback.visualizationTrack?.version == 3
+                     ? "音の周波数（参考）" : "音の周波数 · 灰：音 / 緑：振動"
+                     : "現在の前後2秒 · 白：アクセント")
+                    .font(.system(size: 10)).foregroundStyle(LabTheme.muted)
+                Spacer()
+                Button(showSpectrum ? "波形" : "周波数") { showSpectrum.toggle() }
+                    .font(.system(size: 11)).foregroundStyle(LabTheme.mint).accessibilityIdentifier("haptics.toggle")
+            }
+            TimelineView(.animation(minimumInterval: 0.02, paused: !playback.isPlaying)) { _ in
+                Group {
+                    if showSpectrum {
+                        HapticSpectrumView(track: playback.visualizationTrack, position: playback.visualizationPosition,
+                                           settings: playback.settings, active: playback.hapticsActive)
+                    } else {
+                        HapticTimelineView(track: playback.visualizationTrack, position: playback.visualizationPosition,
+                                           settings: playback.settings, playing: playback.isPlaying)
+                    }
+                }
+            }.frame(height: showSpectrum ? 66 : 48)
+        }
+    }
+
+    private var miniPlayer: some View {
+        VStack(spacing: 0) {
+            if !playback.containsVideo {
+                TimelineView(.animation(minimumInterval: 0.02, paused: !playback.isPlaying)) { _ in
+                    HapticSpectrumView(track: playback.visualizationTrack, position: playback.visualizationPosition,
+                                       settings: playback.settings, active: playback.hapticsActive, compact: true)
+                }.frame(height: 36)
+            }
+            HStack(spacing: 12) {
+                Button { presentation.expand() } label: {
+                    HStack(spacing: 10) {
+                        if !playback.containsVideo { MusicArtwork(selection: playback.selection, compact: true).frame(width: 42, height: 34) }
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(playback.selection?.title ?? "").font(.system(size: 12, weight: .semibold)).lineLimit(1)
+                            Text(musicTime(playback.position) + " / " + musicTime(playback.duration))
+                                .font(.system(size: 10, design: .monospaced)).foregroundStyle(LabTheme.muted)
+                                .accessibilityIdentifier("player.position")
+                        }
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                }.buttonStyle(.plain).accessibilityIdentifier("player.expand")
+                Button { playback.toggle() } label: {
+                    Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill").frame(width: 36, height: 44)
+                }.disabled(!playback.isReady).accessibilityLabel(playback.isPlaying ? "一時停止" : "音楽を再生")
+                    .accessibilityIdentifier("player.play")
+                Button { playback.stop(); presentation.minimize() } label: { Image(systemName: "xmark").frame(width: 32, height: 44) }
+                    .accessibilityLabel("再生を終了").accessibilityIdentifier("player.close")
+            }.padding(.horizontal, 12).frame(height: 52)
+                .contentShape(Rectangle()).simultaneousGesture(playerSwipe)
+        }.background(LabTheme.panel).accessibilityIdentifier("player.miniPlayer")
+    }
+
+    private var landscapeControls: some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 16) {
+                Button { presentation.returnToPortrait() } label: { Image(systemName: "arrow.down.right.and.arrow.up.left") }
+                    .frame(width: 44, height: 44).accessibilityLabel("縦画面に戻す").accessibilityIdentifier("music.portrait")
+                Text(playback.selection?.title ?? "").font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                Spacer(minLength: 0)
+                Button { playback.seek(to: playback.position - 10) } label: { Image(systemName: "gobackward.10") }
+                    .frame(width: 44, height: 44).accessibilityLabel("10秒戻す").disabled(!playback.isReady)
+                Button { playback.toggle() } label: { Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill") }
+                    .frame(width: 44, height: 44).disabled(!playback.isReady)
+                    .accessibilityLabel(playback.isPlaying ? "一時停止" : "音楽を再生").accessibilityIdentifier("music.play")
+                Button { playback.seek(to: playback.position + 10) } label: { Image(systemName: "goforward.10") }
+                    .frame(width: 44, height: 44).accessibilityLabel("10秒進める").disabled(!playback.isReady)
+            }
+            HStack(spacing: 12) {
+                Text(musicTime(playback.position)).font(.system(size: 10, design: .monospaced))
+                Slider(value: Binding(get: { min(max(0, playback.position), max(0.01, playback.duration)) },
+                                      set: { playback.seek(to: $0) }), in: 0...max(0.01, playback.duration))
+                    .disabled(!playback.isReady || playback.duration <= 0).accessibilityLabel("再生位置").accessibilityIdentifier("music.seek")
+                Text(musicTime(playback.duration)).font(.system(size: 10, design: .monospaced))
+            }
+        }.padding(.horizontal, 16).frame(height: 96).background(LabTheme.panel).tint(LabTheme.mint)
+            .contentShape(Rectangle()).simultaneousGesture(playerSwipe)
+            .accessibilityIdentifier("music.landscapeControls")
     }
 
     @ViewBuilder private var mediaPlayer: some View {
         if let selection = playback.selection {
             if let videoID = selection.videoID {
-                YouTubeMusicPlayer(videoID: videoID, playback: playback).id(selection.id)
+                YouTubeMusicPlayer(videoID: videoID, playback: playback).id(playback.mediaSessionID)
             } else if playback.containsVideo { VideoPlayer(player: playback.player) }
             else { MusicArtwork(selection: selection).padding(10) }
         } else {

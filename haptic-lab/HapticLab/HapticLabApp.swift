@@ -2,6 +2,8 @@ import SwiftUI
 
 @main
 struct HapticLabApp: App {
+    @UIApplicationDelegateAdaptor(PlayerAppDelegate.self) private var appDelegate
+    @StateObject private var presentation = MusicPlayerPresentation.shared
     @StateObject private var haptics = HapticController()
     @StateObject private var music = MusicPlayback()
     @StateObject private var library: MusicLibrary
@@ -63,10 +65,16 @@ struct HapticLabApp: App {
                 .environmentObject(library)
                 .environmentObject(youtube)
                 .environmentObject(analysis)
+                .environmentObject(presentation)
                 .tint(LabTheme.mint)
                 .preferredColorScheme(.dark)
                 .task {
                     #if DEBUG
+                    if ProcessInfo.processInfo.arguments.contains("--youtube-playback-fixture"),
+                       let selection = try? MusicSelection.youtube(id: "lkiV3U0GfGg") {
+                        music.load(selection, track: nil, mediaURL: nil, settings: MusicSettings())
+                        presentation.expand(orientation: .portrait)
+                    }
                     if ProcessInfo.processInfo.arguments.contains("--music-test-library"),
                        ProcessInfo.processInfo.arguments.contains("--music-test-prepared"),
                        library.prepared.isEmpty,

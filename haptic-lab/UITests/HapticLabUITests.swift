@@ -2,6 +2,95 @@ import XCTest
 
 final class HapticLabUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
+
+    func testYouTubeWebViewKeepsPlayingAcrossCorrectedSwipesAndTabChanges() {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchArguments = ["--music-test-library", "--reset-music-test-library", "--youtube-playback-fixture"]
+        app.launch()
+        defer { app.terminate(); XCUIDevice.shared.orientation = .portrait }
+        let play = app.buttons["music.play"]
+        XCTAssertTrue(play.waitForExistence(timeout: 10))
+        expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: play)
+        waitForExpectations(timeout: 10)
+        let webView = app.descendants(matching: .any).matching(identifier: "music.youtubeFixture").firstMatch
+        let instance = webView.value as? String
+        XCTAssertNotNil(instance)
+        play.tap()
+        let media = app.descendants(matching: .any).matching(identifier: "music.mediaPlayer").firstMatch
+        swipePlayer(media, up: true)
+        XCTAssertTrue(app.buttons["music.portrait"].waitForExistence(timeout: 10))
+        expectation(for: NSPredicate { _, _ in app.frame.width > app.frame.height }, evaluatedWith: app)
+        waitForExpectations(timeout: 10)
+        XCTAssertEqual(webView.value as? String, instance)
+        XCTAssertEqual(play.label, "一時停止")
+        screenshot("24-swipe-landscape-player", app: app)
+        swipePlayer(media, up: false)
+        XCTAssertTrue(app.buttons["music.minimize"].waitForExistence(timeout: 10))
+        expectation(for: NSPredicate { _, _ in app.frame.height > app.frame.width }, evaluatedWith: app)
+        waitForExpectations(timeout: 10)
+        XCTAssertEqual(webView.value as? String, instance)
+        XCTAssertEqual(play.label, "一時停止")
+        swipePlayer(media, up: false)
+        XCTAssertTrue(app.buttons["player.expand"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.buttons["player.play"].label, "一時停止")
+        XCTAssertEqual(webView.value as? String, instance)
+        XCTAssertGreaterThanOrEqual(media.frame.height, 200)
+        let position = app.staticTexts["player.position"]
+        let previous = position.label
+        app.buttons["tab.history"].tap()
+        app.buttons["tab.search"].tap()
+        expectation(for: NSPredicate { _, _ in position.label != previous }, evaluatedWith: position)
+        waitForExpectations(timeout: 6)
+        XCTAssertEqual(app.buttons["player.play"].label, "一時停止")
+        screenshot("25-video-mini-player-keeps-playing", app: app)
+        app.buttons["player.expand"].tap()
+        XCTAssertTrue(play.waitForExistence(timeout: 10))
+        XCTAssertEqual(play.label, "一時停止")
+        XCTAssertEqual(webView.value as? String, instance)
+        app.buttons["music.minimize"].tap()
+        app.buttons["player.close"].tap()
+        XCTAssertFalse(app.buttons["player.expand"].exists)
+        XCTAssertFalse(webView.exists)
+    }
+
+    func testPhysicalRotationAndMinimizingDoNotPauseNativeAudio() {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchArguments = ["--music-test-library", "--reset-music-test-library", "--music-test-prepared"]
+        app.launch()
+        defer { app.terminate(); XCUIDevice.shared.orientation = .portrait }
+        openPreparedPlaylist(app)
+        let song = app.buttons["music.song.music-ui-fixture"]
+        XCTAssertTrue(song.waitForExistence(timeout: 40))
+        song.tap()
+        XCTAssertTrue(app.buttons["music.minimize"].waitForExistence(timeout: 10))
+        XCUIDevice.shared.orientation = .landscapeRight
+        XCTAssertTrue(app.buttons["music.portrait"].waitForExistence(timeout: 10))
+        expectation(for: NSPredicate { _, _ in app.frame.width > app.frame.height }, evaluatedWith: app)
+        waitForExpectations(timeout: 10)
+        screenshot("26-physical-rotation-fullscreen", app: app)
+        XCUIDevice.shared.orientation = .portrait
+        XCTAssertTrue(app.buttons["music.minimize"].waitForExistence(timeout: 10))
+        let play = app.buttons["music.play"]
+        expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: play)
+        waitForExpectations(timeout: 10)
+        play.tap()
+        app.buttons["music.minimize"].tap()
+        XCTAssertTrue(app.buttons["player.expand"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["player.play"].label, "一時停止")
+        let position = app.staticTexts["player.position"]
+        let previous = position.label
+        expectation(for: NSPredicate { _, _ in position.label != previous }, evaluatedWith: position)
+        waitForExpectations(timeout: 4)
+        app.buttons["player.expand"].tap()
+        XCTAssertEqual(play.label, "一時停止")
+        app.buttons["music.minimize"].tap()
+        app.buttons["player.play"].tap()
+        XCTAssertEqual(app.buttons["player.play"].label, "音楽を再生")
+        app.buttons["player.close"].tap()
+        XCTAssertFalse(app.buttons["player.expand"].exists)
+    }
     func testSmallScreenNavigationAndControls() {
         let app = XCUIApplication()
         app.launchArguments = ["--music-test-library", "--reset-music-test-library"]
@@ -505,8 +594,16 @@ final class HapticLabUITests: XCTestCase {
     private func reveal(_ element: XCUIElement, app: XCUIApplication) {
         for _ in 0..<5 {
             if element.isHittable { return }
-            app.swipeUp()
+            let scroll = app.scrollViews.firstMatch
+            if scroll.exists && scroll.isHittable { scroll.swipeUp() }
+            else { app.swipeUp() }
         }
+    }
+
+    private func swipePlayer(_ element: XCUIElement, up: Bool) {
+        let start = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.85 : 0.15))
+        let end = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.15 : 0.85))
+        start.press(forDuration: 0.05, thenDragTo: end)
     }
 
     private func screenshot(_ name: String, app: XCUIApplication) {

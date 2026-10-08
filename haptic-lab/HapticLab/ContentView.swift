@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum PlayerTab: String, CaseIterable, Identifiable {
     case search, history, playlists
@@ -23,12 +24,45 @@ struct ContentView: View {
     @EnvironmentObject private var haptics: HapticController
     @EnvironmentObject private var music: MusicPlayback
     @EnvironmentObject private var youtube: YouTubeAccount
+    @EnvironmentObject private var presentation: MusicPlayerPresentation
     @State private var tab: PlayerTab = .search
     @State private var showTools = false
-    @State private var showPlayer = false
     @State private var showAccount = false
 
     var body: some View {
+        GeometryReader { geometry in
+            let miniHeight: CGFloat = music.containsVideo ? max(200, geometry.size.width * 9 / 16) + 52 : 88
+            ZStack(alignment: .top) {
+                browsing(miniHeight: music.selection == nil ? 0 : miniHeight)
+                    .allowsHitTesting(!presentation.isExpanded)
+                    .accessibilityHidden(presentation.isExpanded)
+                if music.selection != nil {
+                    // This host stays mounted when minimized or rotated, including its WKWebView.
+                    MusicPlayerScreen(bottomInset: presentation.isExpanded ? geometry.safeAreaInsets.bottom : 0)
+                        .frame(width: geometry.size.width, height: presentation.isExpanded
+                               ? geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom : miniHeight)
+                        .offset(y: presentation.isExpanded ? -geometry.safeAreaInsets.top
+                                : geometry.size.height - 56 - miniHeight)
+                }
+            }.frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
+        }
+        .background(LabTheme.background.ignoresSafeArea())
+        .foregroundStyle(.white)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
+        .statusBarHidden(presentation.isExpanded)
+        .onChange(of: tab) { _ in haptics.stop() }
+        .onChange(of: presentation.isExpanded) { expanded in
+            if expanded { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
+        }
+        .onChange(of: music.selection?.id) { id in if id == nil { presentation.minimize() } }
+        .onChange(of: showTools) { showing in
+            if showing { haptics.stop(); music.suspend() }
+        }
+        .sheet(isPresented: $showTools) { PlayerToolsView() }
+        .sheet(isPresented: $showAccount) { YouTubeAccountView() }
+    }
+
+    private func browsing(miniHeight: CGFloat) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Image(systemName: "waveform").font(.system(size: 24)).foregroundStyle(LabTheme.mint)
@@ -50,7 +84,7 @@ struct ContentView: View {
                 MusicMessage(text: message) { haptics.message = nil }.padding(.horizontal, 16)
             }
             MusicView(tab: $tab, showAccount: $showAccount)
-            if music.selection != nil { miniPlayer }
+            Color.clear.frame(height: miniHeight)
             HStack(spacing: 0) {
                 ForEach(PlayerTab.allCases) { item in
                     Button { tab = item } label: {
@@ -62,49 +96,9 @@ struct ContentView: View {
                     }.buttonStyle(.plain).accessibilityIdentifier("tab.\(item.rawValue)")
                         .accessibilityAddTraits(tab == item ? .isSelected : [])
                 }
-            }.background(LabTheme.background).accessibilityElement(children: .contain).accessibilityIdentifier("player.navigation")
+            }.frame(height: 56).background(LabTheme.background).accessibilityElement(children: .contain).accessibilityIdentifier("player.navigation")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(LabTheme.background.ignoresSafeArea())
-        .foregroundStyle(.white)
-        .ignoresSafeArea(.keyboard, edges: .bottom)
-        .onChange(of: tab) { _ in haptics.stop(); music.suspend() }
-        .onChange(of: showTools) { showing in
-            if showing { haptics.stop(); music.suspend() }
-        }
-        .sheet(isPresented: $showTools) { PlayerToolsView() }
-        .fullScreenCover(isPresented: $showPlayer, onDismiss: { music.pause() }) { MusicPlayerScreen() }
-        .sheet(isPresented: $showAccount) { YouTubeAccountView() }
-    }
-
-    private var miniPlayer: some View {
-        VStack(spacing: 0) {
-            TimelineView(.animation(minimumInterval: 0.02, paused: !music.isPlaying)) { _ in
-                HapticSpectrumView(track: music.visualizationTrack, position: music.visualizationPosition,
-                                   settings: music.settings, active: music.hapticsActive, compact: true)
-            }.frame(height: 36)
-            HStack(spacing: 12) {
-                Button { showPlayer = true } label: {
-                    HStack(spacing: 10) {
-                        MusicArtwork(selection: music.selection, compact: true).frame(width: 42, height: 34)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(music.selection?.title ?? "").font(.system(size: 12, weight: .semibold)).lineLimit(1)
-                            Text(musicTime(music.position) + " / " + musicTime(music.duration))
-                                .font(.system(size: 10)).foregroundStyle(LabTheme.muted)
-                        }
-                    }.frame(maxWidth: .infinity, alignment: .leading)
-                }.buttonStyle(.plain).accessibilityIdentifier("player.expand")
-                Button {
-                    if music.selection?.kind == .youtube { showPlayer = true }
-                    else { music.toggle() }
-                } label: {
-                    Image(systemName: music.isPlaying ? "pause.fill" : "play.fill").frame(width: 36, height: 40)
-                }.disabled(!music.isReady).accessibilityLabel(music.isPlaying ? "一時停止" : "音楽を再生")
-                Button { haptics.stop(); music.stop() } label: {
-                    Image(systemName: "xmark").frame(width: 32, height: 40)
-                }.accessibilityLabel("再生を終了").accessibilityIdentifier("player.close")
-            }.padding(.horizontal, 12).padding(.bottom, 4)
-        }.background(LabTheme.panel).accessibilityIdentifier("player.miniPlayer")
     }
 }
 

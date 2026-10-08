@@ -15,11 +15,11 @@ struct MusicView: View {
     @EnvironmentObject private var haptics: HapticController
     @EnvironmentObject private var youtube: YouTubeAccount
     @EnvironmentObject private var preferences: AnalysisPreferences
+    @EnvironmentObject private var presentation: MusicPlayerPresentation
     @StateObject private var search = YouTubeSearch()
     @State private var showingPrepared = false
     @State private var playAfterPreparation: MusicSelection?
     @State private var pending: MusicPreparationRequest?
-    @State private var showPlayer = false
     @State private var deleting: MusicRecord?
     @State private var openPlayerAfterDismiss = false
     @State private var showPreparation = false
@@ -61,7 +61,7 @@ struct MusicView: View {
             }
         }
         .sheet(item: $pending, onDismiss: {
-            if openPlayerAfterDismiss { openPlayerAfterDismiss = false; showPlayer = true }
+            if openPlayerAfterDismiss { openPlayerAfterDismiss = false; presentation.expand() }
             else if let progress = library.preparation {
                 preparationSelection = progress.selection
                 showPreparation = true
@@ -85,9 +85,6 @@ struct MusicView: View {
                 showPreparation = false
             }
             .environmentObject(library)
-        }
-        .fullScreenCover(isPresented: $showPlayer, onDismiss: { playback.pause() }) {
-            MusicPlayerScreen().environmentObject(playback).environmentObject(library)
         }
         .sheet(item: $deleting) { record in
             NavigationStack { MusicAnalysisDeletionView(recordID: record.id) }
@@ -120,7 +117,7 @@ struct MusicView: View {
     }
 
     private var currentSongPanel: some View {
-        Button { showPlayer = true } label: {
+        Button { urlFocused = false; presentation.expand() } label: {
             HStack(spacing: 12) {
                 Image(systemName: playback.isPlaying ? "waveform" : "play.circle.fill")
                     .font(.system(size: 26)).foregroundStyle(LabTheme.mint)
@@ -308,11 +305,18 @@ struct MusicView: View {
         do {
             let track = withHaptics ? try record.map { try library.disk.track($0) } : nil
             haptics.stop()
-            playback.load(record?.selection ?? selection, track: track,
-                          mediaURL: record.flatMap { library.disk.mediaURL($0) }, settings: library.settings(for: selection.id),
-                          variantID: withHaptics ? record?.selectedVariantID : nil)
+            if playback.selection?.id == selection.id, playback.hasHaptics == withHaptics {
+                if let track, let variantID = record?.selectedVariantID, playback.analysisVariantID != variantID {
+                    try playback.switchAnalysis(track, variantID: variantID)
+                }
+                playback.settings = library.settings(for: selection.id)
+            } else {
+                playback.load(record?.selection ?? selection, track: track,
+                              mediaURL: record.flatMap { library.disk.mediaURL($0) }, settings: library.settings(for: selection.id),
+                              variantID: withHaptics ? record?.selectedVariantID : nil)
+            }
             if pending != nil { openPlayerAfterDismiss = true; pending = nil }
-            else { showPlayer = true }
+            else { urlFocused = false; presentation.expand() }
         } catch {
             library.message = error.localizedDescription
             pending = MusicPreparationRequest(selection: selection, audioURL: record.flatMap { library.disk.mediaURL($0) })
