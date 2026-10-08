@@ -17,7 +17,7 @@ if ! xcodebuild build -project ResonWeb.xcodeproj -scheme ResonWeb -configuratio
   tail -n 100 .build/build.log
   exit 1
 fi
-node ../haptic-lab/scripts/select-simulator.mjs
+node scripts/select-simulator.mjs
 device="$(cat .build/simulator-id.txt)"
 xcrun simctl boot "$device" 2>/dev/null || true
 xcrun simctl bootstatus "$device" -b
