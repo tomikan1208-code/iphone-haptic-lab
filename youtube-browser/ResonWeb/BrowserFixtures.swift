@@ -2,7 +2,7 @@
 import Foundation
 
 enum BrowserFixtures {
-    static let duration = 60.0
+    static var duration: Double { ProcessInfo.processInfo.arguments.contains("--browser-haptics-fixture") ? 180 : 60 }
     static let firstID = "lkiV3U0GfGg"
     static let nextID = "dQw4w9WgXcQ"
 

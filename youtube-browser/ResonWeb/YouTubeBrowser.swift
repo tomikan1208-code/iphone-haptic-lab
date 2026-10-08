@@ -50,6 +50,9 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
     var onPlayback: ((WebPlaybackSnapshot) -> Void)?
     var onPlaybackDisconnected: (() -> Void)?
     private var playbackHandler: BrowserPlaybackHandler?
+    #if DEBUG
+    @Published private(set) var playbackDiagnostic = "観測スクリプトなし"
+    #endif
     private var observations: [NSKeyValueObservation] = []
     private var fixture: Bool {
         #if DEBUG
@@ -72,10 +75,13 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
             #endif
             configuration.userContentController.addUserScript(WKUserScript(
                 source: script.replacingOccurrences(of: "__RESON_TEST_FIXTURE__", with: fixture ? "true" : "false"),
-                injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .world(name: "ResonPlayback")))
+                injectionTime: .atDocumentEnd, forMainFrameOnly: true, in: .world(name: "ResonPlayback")))
         }
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
+        #if DEBUG
+        playbackDiagnostic = configuration.userContentController.userScripts.isEmpty ? "観測スクリプトなし" : "観測メッセージ待ち"
+        #endif
         let handler = BrowserPlaybackHandler(browser: self)
         playbackHandler = handler
         configuration.userContentController.add(handler, contentWorld: .world(name: "ResonPlayback"), name: "resonPlayback")
@@ -165,9 +171,22 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
         guard message.webView === webView, message.frameInfo.isMainFrame, trusted || fixture,
               let url = fixture ? currentURL : webView.url,
               let snapshot = WebPlaybackSnapshot.decode(message.body, pageURL: url) else {
+            #if DEBUG
+            if fixture {
+                let values = message.body as? [String: Any] ?? [:]
+                let diagnostic = "観測の検証待ち: \(values["url"] ?? "URLなし") · \(values["videoID"] ?? "IDなし")"
+                if playbackDiagnostic != diagnostic { playbackDiagnostic = diagnostic }
+            }
+            #endif
             onPlaybackDisconnected?()
             return
         }
+        #if DEBUG
+        if fixture {
+            let diagnostic = "観測中: \(snapshot.videoID ?? "動画なし")"
+            if playbackDiagnostic != diagnostic { playbackDiagnostic = diagnostic }
+        }
+        #endif
         if !fixture { currentURL = snapshot.url }
         onPlayback?(snapshot)
     }

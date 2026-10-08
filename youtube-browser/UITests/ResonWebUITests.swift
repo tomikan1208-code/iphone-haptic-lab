@@ -50,7 +50,8 @@ final class ResonWebUITests: XCTestCase {
         defer { app.terminate(); XCUIDevice.shared.orientation = .portrait }
         XCTAssertTrue(app.links["Preview video"].waitForExistence(timeout: 10))
         app.links["Preview video"].tap()
-        XCTAssertTrue(app.buttons["browser.haptics.prepare"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["browser.haptics.prepare"].waitForExistence(timeout: 10),
+                      app.staticTexts["browser.haptics.diagnostic"].label)
         XCTAssertFalse(app.staticTexts["music.firstPreparation"].exists)
         app.buttons["動画を再生"].tap()
         waitForClock(app, greaterThan: 0.3)
@@ -78,15 +79,16 @@ final class ResonWebUITests: XCTestCase {
         waitForClock(app, greaterThan: paused + 0.2)
         app.buttons["20秒へ移動"].tap()
         waitForClock(app, greaterThan: 19.9)
-        app.buttons["広告を切り替え"].tap()
+        tapWebsiteButton("広告を切り替え", app)
         waitForStatus(app, contains: "広告中")
         screenshot("06-reson-web-advertisement-waits", app)
-        app.buttons["広告を切り替え"].tap()
+        tapWebsiteButton("広告を切り替え", app)
         app.buttons["browser.haptics.toggle"].tap()
         waitForStatus(app, contains: "振動オフ")
         let whileDisabled = clock(app)
         waitForClock(app, greaterThan: whileDisabled + 0.2)
         app.buttons["browser.haptics.toggle"].tap()
+        if !app.links["次の動画"].isHittable { app.webViews["browser.website"].swipeUp() }
         app.links["次の動画"].tap()
         XCTAssertTrue(app.buttons["browser.haptics.prepare"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["browser.haptics.adjust"].exists)
@@ -108,6 +110,10 @@ final class ResonWebUITests: XCTestCase {
 
     private func clock(_ app: XCUIApplication) -> Double {
         Double(app.staticTexts["browser.haptics.clock"].label) ?? -1
+    }
+    private func tapWebsiteButton(_ title: String, _ app: XCUIApplication) {
+        if !app.buttons[title].isHittable { app.webViews["browser.website"].swipeUp() }
+        app.buttons[title].tap()
     }
     private func waitForClock(_ app: XCUIApplication, greaterThan value: Double) {
         expectation(for: NSPredicate { _, _ in self.clock(app) > value }, evaluatedWith: app)

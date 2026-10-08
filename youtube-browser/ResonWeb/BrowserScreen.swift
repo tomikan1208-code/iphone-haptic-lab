@@ -60,6 +60,12 @@ struct BrowserScreen: View {
                 }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
             if !immersive {
+                #if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("--browser-haptics-fixture") {
+                    Text(browser.playbackDiagnostic).font(.caption2).lineLimit(1)
+                        .accessibilityIdentifier("browser.haptics.diagnostic")
+                }
+                #endif
                 if haptics.selection != nil || library.preparation != nil { BrowserHapticBar(sheet: $sheet) }
                 HStack(spacing: 0) {
                     ForEach(BrowserPage.allCases) { page in
