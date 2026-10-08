@@ -3,8 +3,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p .build/screenshots
 node --test scripts/test-playback-observation.mjs
-python3 -m pip install imageio-ffmpeg==0.6.0
-python3 scripts/generate-fixture.py
+python3 -m venv .build/fixture-venv
+.build/fixture-venv/bin/python -m pip install imageio-ffmpeg==0.6.0
+.build/fixture-venv/bin/python scripts/generate-fixture.py
 node scripts/generate-project.mjs
 node scripts/generate-icons.mjs
 if ! xcodebuild build -project ResonWeb.xcodeproj -scheme ResonWeb -configuration Release \
