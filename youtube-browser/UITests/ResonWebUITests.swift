@@ -49,9 +49,13 @@ final class ResonWebUITests: XCTestCase {
         app.launch()
         defer { app.terminate(); XCUIDevice.shared.orientation = .portrait }
         XCTAssertTrue(app.links["Preview video"].waitForExistence(timeout: 10))
-        app.links["Preview video"].tap()
-        XCTAssertTrue(app.buttons["browser.haptics.prepare"].waitForExistence(timeout: 10),
-                      app.staticTexts["browser.haptics.diagnostic"].label)
+        let input = app.textFields["browser.searchQuery"]
+        input.tap()
+        input.typeText("https://www.youtube.com/watch?v=lkiV3U0GfGg\n")
+        XCTAssertTrue(app.webViews.staticTexts["テスト動画"].waitForExistence(timeout: 10))
+        let preparationExists = app.buttons["browser.haptics.prepare"].waitForExistence(timeout: 10)
+        let diagnostic = app.staticTexts["browser.haptics.diagnostic"].label
+        XCTAssertTrue(preparationExists, diagnostic)
         XCTAssertFalse(app.staticTexts["music.firstPreparation"].exists)
         app.buttons["動画を再生"].tap()
         waitForClock(app, greaterThan: 0.3)

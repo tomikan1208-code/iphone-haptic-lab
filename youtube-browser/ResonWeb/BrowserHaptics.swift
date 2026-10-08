@@ -108,10 +108,10 @@ final class BrowserHaptics: ObservableObject {
         lastSnapshot = snapshot
         lastSampleHost = hostTime
         // Render at the website's sample rate, but avoid rebuilding the native UI 50 times/second.
-        if hostTime - lastPublishedHost >= 0.1 || videoPlaying != snapshot.playing {
-            position = snapshot.position
-            duration = snapshot.duration
-            videoPlaying = snapshot.playing
+        if hostTime - lastPublishedHost >= 1 || videoPlaying != snapshot.playing {
+            if abs(position - snapshot.position) > 0.02 { position = snapshot.position }
+            if abs(duration - snapshot.duration) > 0.001 { duration = snapshot.duration }
+            if videoPlaying != snapshot.playing { videoPlaying = snapshot.playing }
             lastPublishedHost = hostTime
         }
         synchronize(snapshot, hostTime: hostTime)

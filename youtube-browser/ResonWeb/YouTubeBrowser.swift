@@ -146,13 +146,14 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = navigationAction.request.url else { decisionHandler(.cancel); return }
+        if fixture, BrowserNavigation.isInternal(url), url != currentURL {
+            decisionHandler(.cancel)
+            Task { @MainActor [weak self] in self?.load(url) }
+            return
+        }
         if url.scheme == "about" || navigationAction.targetFrame?.isMainFrame == false { decisionHandler(.allow); return }
         if BrowserNavigation.isInternal(url) {
-            if fixture, navigationAction.navigationType == .linkActivated {
-                decisionHandler(.cancel)
-                Task { @MainActor [weak self] in self?.load(url) }
-            }
-            else { decisionHandler(.allow) }
+            decisionHandler(.allow)
         } else {
             if navigationAction.navigationType == .linkActivated { UIApplication.shared.open(url) }
             decisionHandler(.cancel)
@@ -190,7 +191,7 @@ final class YouTubeBrowser: NSObject, ObservableObject, WKNavigationDelegate, WK
             if playbackDiagnostic != diagnostic { playbackDiagnostic = diagnostic }
         }
         #endif
-        if !fixture { currentURL = snapshot.url }
+        if !fixture && currentURL != snapshot.url { currentURL = snapshot.url }
         onPlayback?(snapshot)
     }
 }
