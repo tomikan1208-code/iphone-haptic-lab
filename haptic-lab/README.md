@@ -4,7 +4,7 @@ Resonは、YouTube動画の音に合わせてiPhoneを振動させるプレー�
 
 初回と作り直しでは、解析方法を確認してから開始します。iPhoneの帯域別精密解析、またはPCで楽器・拍・サビ・曲の雰囲気をAI解析して振動を編曲する方法を選べます。iPhoneへ保存後は、PCなしでYouTubeの時刻に同期して再生します。LLMやクラウド推論は使いません。Googleログインは自分の再生リストを使う場合の追加設定です。
 
-このソースは2.8.4です。動画の上スワイプ・端末の横向きで全画面にし、横画面の下スワイプ・縦向きで戻せます。縦画面の下スワイプや「閉じる」はミニプレイヤーに戻し、検索・履歴・再生リストへ移動しても再生を続けます。同じ曲の解析結果と調整設定は引き続き保存・切り替えできます。Xcodeビルドとテスト結果は配布物のBUILD-INFO.jsonとTEST-SUMMARY.jsonで確認できます。iPhone実機の触感は未検証です。[調査・設計](docs/HAPTIC-ARRANGEMENT-DESIGN.md)、[欠落と再解析の検証](docs/verification/CONTINUITY-AND-REANALYSIS.md)。
+このソースは2.8.5です。横画面では動画が画面全体を使い、YouTube本体のシーク・設定を操作できます。縦画面の上スワイプで横画面、横画面の下スワイプで縦画面、縦画面の下スワイプで最小化します。ドラッグ中は指に追従し、離すと切り替えが完了します。短いドラッグは元へ戻ります。端末の回転にも対応し、最小化やタブ移動で再生は途切れません。同じ曲の解析結果と調整設定は引き続き保存・切り替えできます。Xcodeビルドとテスト結果は配布物のBUILD-INFO.jsonとTEST-SUMMARY.jsonで確認できます。iPhone実機の触感は未検証です。[調査・設計](docs/HAPTIC-ARRANGEMENT-DESIGN.md)、[欠落と再解析の検証](docs/verification/CONTINUITY-AND-REANALYSIS.md)。
 
 > **初めて使う方:** [Releasesからダウンロード](https://github.com/tomikan1208-code/iphone-haptic-lab/releases/latest) → [インストール手順](docs/INSTALL.md)。AIに導入を手伝ってもらう場合は [AI向け導入ガイド](docs/AI-INSTALL.md) の依頼文を使えます。
 

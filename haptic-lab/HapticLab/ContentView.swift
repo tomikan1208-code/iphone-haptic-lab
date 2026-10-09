@@ -32,19 +32,26 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { geometry in
             let miniHeight: CGFloat = music.containsVideo ? max(200, geometry.size.width * 9 / 16) + 52 : 88
+            let expandedHeight = geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
+            let expandedY = -geometry.safeAreaInsets.top
+            let minimizedY = geometry.size.height - 56 - miniHeight
+            let collapseDistance = max(100, minimizedY - expandedY)
             ZStack(alignment: .top) {
                 browsing(miniHeight: music.selection == nil ? 0 : miniHeight)
                     .allowsHitTesting(!presentation.isExpanded)
                     .accessibilityHidden(presentation.isExpanded)
                 if music.selection != nil {
                     // This host stays mounted when minimized or rotated, including its WKWebView.
-                    MusicPlayerScreen(bottomInset: presentation.isExpanded ? geometry.safeAreaInsets.bottom : 0)
-                        .frame(width: geometry.size.width, height: presentation.isExpanded
-                               ? geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom : miniHeight)
-                        .offset(y: presentation.isExpanded ? -geometry.safeAreaInsets.top
-                                : geometry.size.height - 56 - miniHeight)
+                    MusicPlayerScreen(bottomInset: presentation.isExpanded ? geometry.safeAreaInsets.bottom : 0,
+                                      viewportHeight: expandedHeight, collapseDistance: collapseDistance)
+                        .frame(width: geometry.size.width,
+                               height: playerHeight(expanded: expandedHeight, minimized: miniHeight))
+                        .clipped()
+                        .offset(y: playerY(expanded: expandedY, minimized: minimizedY))
+                        .accessibilityElement(children: .contain).accessibilityIdentifier("music.playerHost")
                 }
             }.frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
+                .coordinateSpace(name: "music.playerContainer")
         }
         .background(LabTheme.background.ignoresSafeArea())
         .foregroundStyle(.white)
@@ -55,11 +62,30 @@ struct ContentView: View {
             if expanded { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
         }
         .onChange(of: music.selection?.id) { id in if id == nil { presentation.minimize() } }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+            presentation.cancelDrag()
+        }
         .onChange(of: showTools) { showing in
             if showing { haptics.stop(); music.suspend() }
         }
         .sheet(isPresented: $showTools) { PlayerToolsView() }
         .sheet(isPresented: $showAccount) { YouTubeAccountView() }
+    }
+
+    private func playerHeight(expanded: CGFloat, minimized: CGFloat) -> CGFloat {
+        guard let drag = presentation.drag else { return presentation.isExpanded ? expanded : minimized }
+        if drag.target == .minimized { return drag.interpolate(expanded, minimized) }
+        if drag.source == .minimized { return drag.interpolate(minimized, expanded) }
+        return expanded
+    }
+
+    private func playerY(expanded: CGFloat, minimized: CGFloat) -> CGFloat {
+        guard let drag = presentation.drag else { return presentation.isExpanded ? expanded : minimized }
+        if drag.target == .minimized { return drag.interpolate(expanded, minimized) }
+        if drag.source == .minimized { return drag.interpolate(minimized, expanded) }
+        // Follow the finger while returning from full screen, then let UIKit
+        // animate the actual orientation change after release.
+        return expanded + drag.translation
     }
 
     private func browsing(miniHeight: CGFloat) -> some View {

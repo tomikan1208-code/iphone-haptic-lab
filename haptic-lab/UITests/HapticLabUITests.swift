@@ -33,7 +33,9 @@ final class HapticLabUITests: XCTestCase {
         expectation(for: NSPredicate { _, _ in app.frame.width > app.frame.height }, evaluatedWith: app)
         waitForExpectations(timeout: 10)
         XCTAssertEqual(webView.value as? String, instance)
-        XCTAssertEqual(play.label, "一時停止")
+        XCTAssertFalse(app.sliders["music.seek"].exists)
+        XCTAssertFalse(app.otherElements["music.landscapeControls"].exists)
+        XCTAssertGreaterThanOrEqual(media.frame.height, app.frame.height - 2)
         screenshot("24-swipe-landscape-player", app: app)
         swipePlayer(media, up: false)
         XCTAssertTrue(app.buttons["music.minimize"].waitForExistence(timeout: 10))
@@ -62,6 +64,33 @@ final class HapticLabUITests: XCTestCase {
         app.buttons["player.close"].tap()
         XCTAssertFalse(app.buttons["player.expand"].exists)
         XCTAssertFalse(webView.exists)
+    }
+
+    func testShortAndHorizontalVideoDragsRestorePortraitAndKeepTheSamePlayback() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--music-test-library", "--reset-music-test-library", "--youtube-playback-fixture"]
+        app.launch()
+        let play = app.buttons["music.play"]
+        XCTAssertTrue(play.waitForExistence(timeout: 10))
+        expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: play)
+        waitForExpectations(timeout: 10)
+        play.tap()
+        let media = app.descendants(matching: .any).matching(identifier: "music.mediaPlayer").firstMatch
+        let webView = app.descendants(matching: .any).matching(identifier: "music.youtubeFixture").firstMatch
+        let instance = webView.value as? String
+        let start = media.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 30)),
+                    withVelocity: XCUIGestureVelocity(rawValue: 50), thenHoldForDuration: 0.3)
+        XCTAssertTrue(app.buttons["music.minimize"].isHittable)
+        XCTAssertLessThanOrEqual(abs(media.frame.minY), 2)
+        XCTAssertEqual(play.label, "一時停止")
+        XCTAssertEqual(webView.value as? String, instance)
+        let horizontal = media.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5))
+        horizontal.press(forDuration: 0.05, thenDragTo: horizontal.withOffset(CGVector(dx: 140, dy: 8)))
+        XCTAssertTrue(app.buttons["music.minimize"].isHittable)
+        XCTAssertFalse(app.buttons["music.portrait"].exists)
+        XCTAssertEqual(webView.value as? String, instance)
+        screenshot("27-cancelled-swipe-restores-portrait", app: app)
     }
 
     func testPhysicalRotationAndMinimizingDoNotPauseNativeAudio() {

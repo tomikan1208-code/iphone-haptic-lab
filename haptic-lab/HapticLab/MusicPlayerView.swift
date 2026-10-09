@@ -3,11 +3,14 @@ import SwiftUI
 
 struct MusicPlayerScreen: View {
     let bottomInset: CGFloat
+    let viewportHeight: CGFloat
+    let collapseDistance: CGFloat
     @EnvironmentObject private var playback: MusicPlayback
     @EnvironmentObject private var library: MusicLibrary
     @EnvironmentObject private var presentation: MusicPlayerPresentation
     @State private var showSpectrum = true
     @State private var showSettings = false
+    @GestureState private var dragging = false
 
     var body: some View {
         GeometryReader { geometry in
@@ -22,6 +25,7 @@ struct MusicPlayerScreen: View {
                     miniPlayer
                 } else if presentation.mode == .portrait {
                     portraitHandle
+                        .opacity(portraitOpacity)
                     ScrollView {
                         VStack(alignment: .leading, spacing: 12) {
                             songHeader.simultaneousGesture(playerSwipe)
@@ -32,16 +36,18 @@ struct MusicPlayerScreen: View {
                                     .font(.system(size: 13)).foregroundStyle(LabTheme.muted)
                             }
                         }.padding(16)
-                    }.scrollIndicators(.hidden)
+                    }.scrollIndicators(.hidden).opacity(portraitOpacity)
                     VStack(spacing: 8) {
                         visualization
                         controls
-                    }.padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 12 + bottomInset).background(LabTheme.panel)
-                } else {
-                    landscapeControls.padding(.bottom, bottomInset)
+                    }.padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 12 + bottomInset)
+                        .background(LabTheme.panel).opacity(portraitOpacity)
                 }
             }
             .background(LabTheme.background).foregroundStyle(.white)
+            .overlay {
+                if presentation.mode == .landscape { landscapeOverlay }
+            }
         }
         .preferredColorScheme(.dark)
         .onAppear { showSpectrum = playback.visualizationTrack?.version != 3 }
@@ -49,6 +55,17 @@ struct MusicPlayerScreen: View {
         .onChange(of: presentation.mode) { mode in
             if mode == .portrait { showSpectrum = playback.visualizationTrack?.version != 3 }
         }
+        .onChange(of: showSettings) { showing in if showing { presentation.cancelDrag() } }
+        .onChange(of: dragging) { active in
+            if !active {
+                // SwiftUI can cancel a drag without delivering onEnded (for
+                // example when a sheet opens). Restore the settled layout.
+                DispatchQueue.main.async {
+                    if !dragging { withAnimation(.spring(response: 0.36, dampingFraction: 0.88)) { presentation.cancelDrag() } }
+                }
+            }
+        }
+        .onDisappear { presentation.cancelDrag() }
         .sheet(isPresented: $showSettings) {
             NavigationStack {
                 ScrollView { settingsPanel.padding(16) }.background(LabTheme.background)
@@ -60,19 +77,41 @@ struct MusicPlayerScreen: View {
     }
 
     private func mediaHeight(in size: CGSize) -> CGFloat {
+        let portraitHeight = playback.containsVideo ? max(200, size.width * 9 / 16) : min(170, max(100, viewportHeight * 0.27))
+        if let drag = presentation.drag, drag.source == .portrait, drag.target == .landscape {
+            return drag.interpolate(portraitHeight, size.height)
+        }
         switch presentation.mode {
         case .minimized: return playback.containsVideo ? max(200, size.width * 9 / 16) : 0
-        case .portrait: return playback.containsVideo ? max(200, size.width * 9 / 16) : min(170, max(100, size.height * 0.27))
-        case .landscape: return max(200, size.height - 96 - bottomInset)
+        case .portrait: return portraitHeight
+        case .landscape: return size.height
         }
     }
 
+    private var portraitOpacity: Double {
+        guard let drag = presentation.drag else { return 1 }
+        return Double(max(0, 1 - drag.progress * 1.8))
+    }
+
     private var playerSwipe: some Gesture {
-        DragGesture(minimumDistance: 30).onEnded { gesture in
-            guard abs(gesture.translation.height) > 70,
-                  abs(gesture.translation.height) > abs(gesture.translation.width) * 1.5 else { return }
-            presentation.swipe(up: gesture.translation.height < 0)
-        }
+        DragGesture(minimumDistance: 10, coordinateSpace: .named("music.playerContainer"))
+            .updating($dragging) { _, state, transaction in state = true; transaction.animation = nil }
+            .onChanged { gesture in
+                if presentation.mode == .landscape, presentation.drag == nil {
+                    // Leave YouTube's top settings and bottom seek controls to WebKit.
+                    guard gesture.startLocation.y > 55, gesture.startLocation.y < viewportHeight - 64 else { return }
+                }
+                let distance = presentation.mode == .portrait && gesture.translation.height > 0
+                    || presentation.mode == .minimized ? collapseDistance : min(320, viewportHeight * 0.48)
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) { presentation.updateDrag(translation: gesture.translation, distance: distance) }
+            }
+            .onEnded { gesture in
+                withAnimation(.spring(response: 0.36, dampingFraction: 0.88)) {
+                    presentation.endDrag(predictedTranslation: gesture.predictedEndTranslation)
+                }
+            }
     }
 
     private var portraitHandle: some View {
@@ -147,38 +186,30 @@ struct MusicPlayerScreen: View {
         }.background(LabTheme.panel).accessibilityElement(children: .contain).accessibilityIdentifier("player.miniPlayer")
     }
 
-    private var landscapeControls: some View {
-        VStack(spacing: 4) {
-            HStack(spacing: 16) {
+    private var landscapeOverlay: some View {
+        VStack {
+            HStack(spacing: 12) {
                 Button { presentation.returnToPortrait() } label: { Image(systemName: "arrow.down.right.and.arrow.up.left") }
                     .frame(width: 44, height: 44).accessibilityLabel("縦画面に戻す").accessibilityIdentifier("music.portrait")
-                Text(playback.selection?.title ?? "").font(.system(size: 13, weight: .semibold)).lineLimit(1)
-                Spacer(minLength: 0)
-                Button { playback.seek(to: playback.position - 10) } label: { Image(systemName: "gobackward.10") }
-                    .frame(width: 44, height: 44).accessibilityLabel("10秒戻す").disabled(!playback.isReady)
-                Button { playback.toggle() } label: { Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill") }
-                    .frame(width: 44, height: 44).disabled(!playback.isReady)
-                    .accessibilityLabel(playback.isPlaying ? "一時停止" : "音楽を再生").accessibilityIdentifier("music.play")
-                Button { playback.seek(to: playback.position + 10) } label: { Image(systemName: "goforward.10") }
-                    .frame(width: 44, height: 44).accessibilityLabel("10秒進める").disabled(!playback.isReady)
+                    .background(.black.opacity(0.55), in: Circle())
+                Spacer()
+                Button { showSettings = true } label: { Image(systemName: "slider.horizontal.3").frame(width: 44, height: 44) }
+                    .accessibilityLabel("振動を調整").accessibilityIdentifier("music.settings")
+                    .disabled(!playback.hasHaptics).background(.black.opacity(0.55), in: Circle())
+            }.padding(.horizontal, 16).padding(.top, 8)
+            Spacer()
+            if !playback.containsVideo {
+                controls.padding(16).background(.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 16))
+                    .padding(.horizontal, 24).padding(.bottom, 12 + bottomInset)
             }
-            HStack(spacing: 12) {
-                Text(musicTime(playback.position)).font(.system(size: 10, design: .monospaced))
-                Slider(value: Binding(get: { min(max(0, playback.position), max(0.01, playback.duration)) },
-                                      set: { playback.seek(to: $0) }), in: 0...max(0.01, playback.duration))
-                    .disabled(!playback.isReady || playback.duration <= 0).accessibilityLabel("再生位置").accessibilityIdentifier("music.seek")
-                Text(musicTime(playback.duration)).font(.system(size: 10, design: .monospaced))
-            }
-        }.padding(.horizontal, 16).frame(height: 96).background(LabTheme.panel).tint(LabTheme.mint)
-            .contentShape(Rectangle()).simultaneousGesture(playerSwipe)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("music.landscapeControls")
+        }.tint(.white)
     }
 
     @ViewBuilder private var mediaPlayer: some View {
         if let selection = playback.selection {
             if let videoID = selection.videoID {
-                YouTubeMusicPlayer(videoID: videoID, playback: playback).id(playback.mediaSessionID)
+                YouTubeMusicPlayer(videoID: videoID, playback: playback,
+                                   showsControls: presentation.mode == .landscape).id(playback.mediaSessionID)
             } else if playback.containsVideo { VideoPlayer(player: playback.player) }
             else { MusicArtwork(selection: selection).padding(10) }
         } else {

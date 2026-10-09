@@ -5,6 +5,37 @@ import JavaScriptCore
 
 final class MusicPlayerTests: XCTestCase {
     @MainActor
+    func testLandscapeUsesYouTubeControlsWithoutRecreatingThePlayerOrDisablingChosenCaptions() throws {
+        let context = try embeddedPlayerContext()
+        context.evaluateScript("onYouTubeIframeAPIReady(); playerOptions.events.onReady();")
+        XCTAssertEqual(context.evaluateScript("playerOptions.playerVars.controls")?.toInt32(), 1)
+        XCTAssertEqual(context.evaluateScript("frame.style.pointerEvents")?.toString(), "none")
+        context.evaluateScript("setResonControls(true); modules=['captions']; playerOptions.events.onApiChange(); timerCallback();")
+        XCTAssertEqual(context.evaluateScript("frame.style.pointerEvents")?.toString(), "auto")
+        XCTAssertEqual(context.evaluateScript("frameMessages[frameMessages.length-1].visible")?.toBool(), true)
+        XCTAssertEqual(context.evaluateScript("unloads")?.toInt32(), 0)
+        XCTAssertEqual(context.evaluateScript("messages[messages.length-1].time")?.toDouble(), 2)
+        XCTAssertEqual(context.evaluateScript("creations")?.toInt32(), 1)
+        context.evaluateScript("setResonControls(false); timerCallback();")
+        XCTAssertEqual(context.evaluateScript("frame.style.pointerEvents")?.toString(), "none")
+        XCTAssertEqual(context.evaluateScript("unloads")?.toInt32(), 1)
+        XCTAssertEqual(context.evaluateScript("creations")?.toInt32(), 1)
+        XCTAssertNil(context.exception)
+    }
+
+    @MainActor
+    func testIframeReadyHandshakeRestoresTheCurrentControlMode() throws {
+        let context = try embeddedPlayerContext()
+        context.evaluateScript("onYouTubeIframeAPIReady(); setResonControls(true); frameMessages=[];")
+        context.evaluateScript("listeners.message({data:{type:'reson-player-controls-ready'},source:{},origin:'https://www.youtube.com'});")
+        XCTAssertEqual(context.evaluateScript("frameMessages.length")?.toInt32(), 0)
+        context.evaluateScript("listeners.message({data:{type:'reson-player-controls-ready'},source:frame.contentWindow,origin:'https://www.youtube.com'});")
+        XCTAssertEqual(context.evaluateScript("frameMessages[0].visible")?.toBool(), true)
+        XCTAssertEqual(context.evaluateScript("creations")?.toInt32(), 1)
+        XCTAssertNil(context.exception)
+    }
+
+    @MainActor
     func testLateCaptionModulesAreDisabledAgainWithoutInterruptingTheMediaClock() throws {
         let context = try embeddedPlayerContext()
         context.evaluateScript("onYouTubeIframeAPIReady(); playerOptions.events.onReady();")
@@ -36,13 +67,19 @@ final class MusicPlayerTests: XCTestCase {
     @MainActor private func embeddedPlayerContext() throws -> JSContext {
         let context = try XCTUnwrap(JSContext())
         context.evaluateScript("""
-        var modules=[],unloads=0,messages=[],playerOptions,timerCallback;
-        var window={webkit:{messageHandlers:{musicPlayer:{postMessage:function(data){messages.push(data)}}}}};
+        var modules=[],unloads=0,messages=[],playerOptions,timerCallback,creations=0,listeners={},frameMessages=[];
+        var frame={tagName:'IFRAME',src:'https://www.youtube.com/embed/lkiV3U0GfGg',style:{},
+          contentWindow:{postMessage:function(data){frameMessages.push(data)}}};
+        var document={getElementById:function(){return frame}};
+        function URL(value){this.origin=value.split('/').slice(0,3).join('/');this.protocol=value.split('/')[0];
+          this.hostname=value.split('/')[2]}
+        var window={addEventListener:function(type,callback){listeners[type]=callback},
+          webkit:{messageHandlers:{musicPlayer:{postMessage:function(data){messages.push(data)}}}}};
         function setInterval(callback){timerCallback=callback;return 1}
         var fake={getOptions:function(){return modules},unloadModule:function(){unloads++;modules=[];playerOptions.events.onApiChange()},
           getPlayerState:function(){return 1},getCurrentTime:function(){return 2},getDuration:function(){return 8},
-          getPlaybackRate:function(){return 1},getVideoData:function(){return {video_id:'lkiV3U0GfGg'}}};
-        var YT={Player:function(id,options){playerOptions=options;return fake}};
+          getPlaybackRate:function(){return 1},getVideoData:function(){return {video_id:'lkiV3U0GfGg'}},getIframe:function(){return frame}};
+        var YT={Player:function(id,options){creations++;playerOptions=options;return fake}};
         """)
         let html = YouTubeMusicPlayer.html(videoID: "lkiV3U0GfGg", origin: "https://com.tomikan1208.hapticlab")
         let script = try XCTUnwrap(html.components(separatedBy: "<script>").last?.components(separatedBy: "</script>").first)

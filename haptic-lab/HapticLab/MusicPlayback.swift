@@ -304,45 +304,54 @@ final class MusicPlayback: ObservableObject {
 struct YouTubeMusicPlayer: UIViewRepresentable {
     let videoID: String
     @ObservedObject var playback: MusicPlayback
+    var showsControls = false
 
-    func makeCoordinator() -> Coordinator { Coordinator(playback: playback, videoID: videoID) }
+    func makeCoordinator() -> Coordinator { Coordinator(playback: playback, videoID: videoID, showsControls: showsControls) }
 
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
         configuration.userContentController.add(context.coordinator, name: "musicPlayer")
+        let origin = "https://\(Bundle.main.bundleIdentifier ?? "com.tomikan1208.hapticlab")"
+        configuration.userContentController.addUserScript(YouTubePlayerControls.script(origin: origin))
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.isOpaque = false
         webView.backgroundColor = .black
         webView.scrollView.isScrollEnabled = false
+        webView.isUserInteractionEnabled = showsControls
         playback.webView = webView
         context.coordinator.webView = webView
         playback.beginYouTubeLoading(videoID: videoID)
-        let origin = "https://\(Bundle.main.bundleIdentifier ?? "com.tomikan1208.hapticlab")"
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--youtube-playback-fixture") {
             webView.isAccessibilityElement = true
             webView.accessibilityIdentifier = "music.youtubeFixture"
             webView.accessibilityValue = UUID().uuidString
             print("Playback fixture WebView created: \(webView.accessibilityValue ?? "")")
-            webView.loadHTMLString(Self.playbackFixtureHTML(videoID: videoID), baseURL: URL(string: origin))
+            webView.loadHTMLString(Self.playbackFixtureHTML(videoID: videoID, showsControls: showsControls), baseURL: URL(string: origin))
             return webView
         }
         #endif
         // The bundle-ID HTTPS base supplies the app identity required by YouTube (error 153).
-        webView.loadHTMLString(Self.html(videoID: videoID, origin: origin), baseURL: URL(string: origin))
+        webView.loadHTMLString(Self.html(videoID: videoID, origin: origin, showsControls: showsControls), baseURL: URL(string: origin))
         return webView
     }
 
     #if DEBUG
     /// An offline clock exercises the same WebView lifecycle and message bridge without a YouTube account.
-    private static func playbackFixtureHTML(videoID: String) -> String {
+    private static func playbackFixtureHTML(videoID: String, showsControls: Bool) -> String {
         """
         <html><head><meta name="viewport" content="width=device-width,initial-scale=1">
         <style>html,body{height:100%;margin:0;background:#101d22;color:#8ff0cf;font:24px system-ui}
-        body{display:flex;align-items:center;justify-content:center}</style></head><body>Playback Fixture<script>
+        body{display:flex;align-items:center;justify-content:center}
+        #fixture-controls{position:fixed;left:20px;right:20px;bottom:12px;font:14px system-ui}
+        #fixture-controls input{width:75%}button{font:14px system-ui}</style></head><body>Playback Fixture
+        <div id="fixture-controls" hidden><input type="range" min="0" max="120" aria-label="YouTubeの再生位置"
+          oninput="player.seekTo(Number(this.value))"><button onclick="this.textContent='速度・画質'">YouTubeの設定</button></div><script>
         var state=2,position=0,started=performance.now(),timer;
+        function setResonControls(visible){document.getElementById('fixture-controls').hidden=!visible}
+        setResonControls(\(showsControls ? "true" : "false"));
         function time(){return position+(state===1?(performance.now()-started)/1000:0)}
         function send(extra){window.webkit.messageHandlers.musicPlayer.postMessage(Object.assign({state:state,time:time(),
           duration:120,rate:1,videoID:'\(videoID)',sent:Date.now()},extra||{}))}
@@ -355,17 +364,36 @@ struct YouTubeMusicPlayer: UIViewRepresentable {
     }
     #endif
 
-    static func html(videoID: String, origin: String) -> String {
+    static func html(videoID: String, origin: String, showsControls: Bool = false) -> String {
         """
         <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
         <meta name="referrer" content="strict-origin-when-cross-origin">
         <style>html,body{margin:0;background:#000;height:100%;overflow:hidden}#player{width:100%;height:100%}</style></head>
         <body><div id="player"></div><script>
-        var player, timer;
+        var player, timer, resonControls = \(showsControls ? "true" : "false");
+        function setResonControls(visible) {
+          resonControls = visible === true;
+          try {
+            const frame = player && player.getIframe ? player.getIframe() : document.getElementById('player');
+            if (!frame || frame.tagName !== 'IFRAME') return;
+            const destination = new URL(frame.src);
+            if (destination.protocol !== 'https:' || !(destination.hostname === 'youtube.com' ||
+                destination.hostname.endsWith('.youtube.com'))) return;
+            frame.style.pointerEvents = resonControls ? 'auto' : 'none';
+            frame.contentWindow.postMessage({type:'reson-player-controls',visible:resonControls},destination.origin);
+          } catch(e) {}
+          if (!resonControls) disableCaptions();
+        }
+        window.addEventListener('message', function(event) {
+          if (!event.data || event.data.type !== 'reson-player-controls-ready') return;
+          const frame = document.getElementById('player');
+          if (frame && event.source === frame.contentWindow && event.origin === new URL(frame.src).origin)
+            setResonControls(resonControls);
+        });
         function disableCaptions() {
           // Module unloading is not a documented guarantee. Keep playback working when it is unavailable.
           try {
-            if (player && typeof player.unloadModule === 'function' && typeof player.getOptions === 'function' &&
+            if (!resonControls && player && typeof player.unloadModule === 'function' && typeof player.getOptions === 'function' &&
                 player.getOptions().indexOf('captions') !== -1) player.unloadModule('captions');
           } catch(e) {}
         }
@@ -378,8 +406,8 @@ struct YouTubeMusicPlayer: UIViewRepresentable {
         }
         function onYouTubeIframeAPIReady() {
           player = new YT.Player('player',{videoId:'\(videoID)',width:'100%',height:'100%',
-            playerVars:{playsinline:1,autoplay:0,controls:0,fs:0,disablekb:1,rel:0,iv_load_policy:3,cc_load_policy:0,origin:'\(origin)'},
-            events:{onReady:function(){disableCaptions();send({ready:true});timer=setInterval(function(){send()},20)},
+            playerVars:{playsinline:1,autoplay:0,controls:1,fs:0,disablekb:1,rel:0,iv_load_policy:3,cc_load_policy:0,origin:'\(origin)'},
+            events:{onReady:function(){setResonControls(resonControls);disableCaptions();send({ready:true});timer=setInterval(function(){send()},20)},
               onApiChange:function(){disableCaptions()},
               onStateChange:function(){disableCaptions();send()},onPlaybackRateChange:function(){send()},
               onError:function(e){window.webkit.messageHandlers.musicPlayer.postMessage({error:e.data})}}});
@@ -388,7 +416,11 @@ struct YouTubeMusicPlayer: UIViewRepresentable {
         """
     }
 
-    func updateUIView(_ uiView: WKWebView, context: Context) {}
+    func updateUIView(_ uiView: WKWebView, context: Context) {
+        guard context.coordinator.showsControls != showsControls else { return }
+        context.coordinator.showsControls = showsControls
+        context.coordinator.applyControls()
+    }
 
     static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
         uiView.evaluateJavaScript("clearInterval(timer); if(window.player && player.destroy) player.destroy()", completionHandler: nil)
@@ -401,11 +433,19 @@ struct YouTubeMusicPlayer: UIViewRepresentable {
         weak var playback: MusicPlayback?
         weak var webView: WKWebView?
         let videoID: String
-        init(playback: MusicPlayback, videoID: String) { self.playback = playback; self.videoID = videoID }
+        var showsControls: Bool
+        init(playback: MusicPlayback, videoID: String, showsControls: Bool) {
+            self.playback = playback; self.videoID = videoID; self.showsControls = showsControls
+        }
+        func applyControls() {
+            webView?.isUserInteractionEnabled = showsControls
+            webView?.evaluateJavaScript("if(window.setResonControls) setResonControls(\(showsControls ? "true" : "false"))", completionHandler: nil)
+        }
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard message.frameInfo.isMainFrame, let data = message.body as? [String: Any] else { return }
             Task { @MainActor [weak self] in
                 guard let self, let webView = self.webView, self.playback?.webView === webView else { return }
+                if data["ready"] as? Bool == true { self.applyControls() }
                 self.playback?.receiveYouTube(data, videoID: self.videoID)
             }
         }
